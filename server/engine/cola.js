@@ -83,7 +83,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
       }
       const parche = { estado: 'en-proceso', estadoPrevio: idea.estado };
       if (germinar && idea.trabajo !== 'germinacion') {
-        Object.assign(parche, { trabajo: 'germinacion', estadoPrevio: idea.estado, germinacion: { fase: 'preparando', iniciada: new Date().toISOString() } });
+        Object.assign(parche, { trabajo: 'germinacion', estadoPrevio: idea.estado, eleccion: null, germinacion: { fase: 'preparando', iniciada: new Date().toISOString() } });
       }
       cola.push({ ref, tipo: germinar ? (idea.sessionId && idea.interrumpida ? 'reanudar' : 'germinar') : tipoDe(idea, idea.hilo) });
       await cambiar(ref, parche);
@@ -112,7 +112,12 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
     if (veredicto === 'rechazada' && idea.trabajo !== 'germinacion') throw new Error('no-germinable');
     if (!germinable(idea) && !forzable) throw new Error('no-aceptada');
     const partes = [];
-    if (forzable && idea.estado !== 'aceptada') {
+    // Una réplica sin enviar (o la variación elegida) forma parte de lo que el usuario quiere germinar.
+    const ultimoMsg = idea.hilo.at(-1);
+    const replica = ultimoMsg?.autor === 'usuario' && ultimoMsg.n > 1
+      ? ultimoMsg.contenido.replace(/<!-- \/?camino(:[a-z0-9-]+)? -->/g, '').trim()
+      : '';
+    if (forzable && veredicto !== 'aceptada') {
       const original = idea.hilo.find((m) => m.n === 1)?.contenido;
       const modificada = typeof cuerpo === 'string' && cuerpo !== original;
       if (modificada) idea = await ideas.editarOriginal(ref.carpetaId, ref.ideaId, { cuerpo }).then(() => ideas.obtener(ref.carpetaId, ref.ideaId));
@@ -123,6 +128,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
           + ' Toma esta como la versión aceptada de la idea y germínala.',
       );
     }
+    if (replica) partes.push(`El usuario había dejado esta réplica sin enviar; tenla en cuenta:\n\n${replica}`);
     if (peticion?.trim()) partes.push(peticion.trim());
     if (partes.length) await germinacion.ponerPeticion(ref.carpetaId, ref.ideaId, partes.join('\n\n'));
     await encolar(ref, { soloPausadas: false, germinar: true, forzar: forzable });

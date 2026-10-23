@@ -318,3 +318,24 @@ test('germinar forzado con la idea modificada la guarda y pide releerla', async 
   assert.equal(await fs.readFile(path.join(cfg.datos, rutaIdea, 'hilo/001-usuario.md'), 'utf8'), 'Mi idea, acotada a la cabeza del gusano.');
   assert.match(falso.llamadas[0].mensaje, /modificó su idea/);
 });
+
+test('I2: germinar forzado con una réplica pendiente la incluye y limpia la elección', async () => {
+  const { cola, falso, ref, ideas, germinacion } = await preparar({ estado: 'cambios' });
+  await ideas.actualizar(ref.carpetaId, ref.ideaId, { veredicto: 'cambios' });
+  await ideas.responder(ref.carpetaId, ref.ideaId, 'Quiero centrarlo en la cabeza.');
+  await ideas.actualizar(ref.carpetaId, ref.ideaId, { eleccion: { dictamen: '002-claude.md', camino: 'x' } });
+  await cola.germinar(ref, { forzar: true });
+  await hasta(() => falso.llamadas[0]);
+  assert.match((await germinacion.leerProgreso(ref.carpetaId, ref.ideaId)).pendiente, /centrarlo en la cabeza/);
+  assert.equal((await ideas.obtener(ref.carpetaId, ref.ideaId)).eleccion, null);
+});
+
+test('I4: con el último veredicto «aceptada» no se dice que no se aceptó', async () => {
+  const { cola, falso, ref, ideas, germinacion } = await preparar();
+  await ideas.responder(ref.carpetaId, ref.ideaId, 'Un matiz.');
+  await cola.germinar(ref, { forzar: true });
+  await hasta(() => falso.llamadas[0]);
+  const p = (await germinacion.leerProgreso(ref.carpetaId, ref.ideaId)).pendiente ?? '';
+  assert.ok(!/aunque tu último veredicto/.test(p), p);
+  assert.match(p, /Un matiz/);
+});

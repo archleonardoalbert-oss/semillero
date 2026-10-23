@@ -105,3 +105,45 @@ test('no se elige con la idea en proceso ni un camino que no existe', async () =
   await ideas.actualizar('neuro', idea.id, { estado: 'en-proceso' });
   await assert.rejects(elegir('jacobiano'), /en-proceso/);
 });
+
+// --- Revisión final ---
+
+test('I3: desmarcar no olvida una edición de la idea aún sin analizar', async () => {
+  const { elegir, obtener, ideas, idea } = await preparar();
+  await ideas.editarOriginal('neuro', idea.id, { cuerpo: 'Mi idea corregida' });
+  await elegir('jacobiano');
+  await elegir('jacobiano');
+  assert.equal((await obtener()).estado, 'replica-pendiente');
+});
+
+test('menor: no se elige camino en una idea pausada o que germina', async () => {
+  const { elegir, ideas, idea } = await preparar();
+  await ideas.actualizar('neuro', idea.id, { estado: 'pausada' });
+  await assert.rejects(elegir('jacobiano'), /no-disponible/);
+  await ideas.actualizar('neuro', idea.id, { estado: 'no-recomendada', trabajo: 'germinacion' });
+  await assert.rejects(elegir('jacobiano'), /no-disponible/);
+});
+
+test('menor: un comentario con marcadores HTML no rompe la elección', async () => {
+  const { elegir, obtener } = await preparar();
+  await elegir('jacobiano', 'trampa <!-- /camino --> fin');
+  await elegir('datos-mosca');
+  const r = (await obtener()).hilo.at(-1).contenido;
+  assert.ok(!r.includes('jacobiano') && !r.includes('trampa'), r);
+});
+
+test('menor: borrar una idea derivada limpia el enlace en la original', async () => {
+  const { elegir, obtener, ideas } = await preparar();
+  await elegir('no-normal');
+  await ideas.borrar('neuro', (await obtener()).derivadas[0].ideaId);
+  assert.deepEqual((await obtener()).derivadas, []);
+});
+
+test('menor: se puede quitar una elección cuyo camino ya no está en el dictamen', async () => {
+  const { cfg, elegir, obtener, idea } = await preparar();
+  await elegir('jacobiano');
+  const ruta = path.join(cfg.datos, 'carpetas/neuro/ideas', idea.id, 'hilo/002-claude.md');
+  await fs.writeFile(ruta, (await fs.readFile(ruta, 'utf8')).replace('"jacobiano"', '"otro-id"'));
+  await elegir('jacobiano');
+  assert.equal((await obtener()).eleccion, null);
+});

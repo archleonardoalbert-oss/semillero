@@ -49,8 +49,11 @@
   let puedeGerminar = $derived(Boolean(idea) && !germina && veredicto && veredicto !== 'rechazada' && FORZABLES.includes(idea.estado));
   let antesDeGerminar = $state(false);
 
-  function pulsarGerminar() {
-    if (idea.estado === 'aceptada') comenzarGerminacion();
+  // Antes de germinar se guarda lo que esté pendiente y se recarga: el diálogo debe partir del texto actual.
+  async function pulsarGerminar() {
+    await autoguardado.vaciar();
+    await cargar();
+    if (veredicto === 'aceptada') comenzarGerminacion(idea.estado === 'aceptada' ? null : {});
     else antesDeGerminar = true;
   }
 
@@ -65,6 +68,13 @@
 
   // El manuscrito se condensa en una semilla que cae al pie de la pantalla; luego empieza la germinación.
   async function comenzarGerminacion(forzado = null) {
+    // Primero se pide al servidor: si falla, el diálogo sigue abierto con lo que el usuario escribió.
+    try {
+      await api.germinar(carpetaId, ideaId, forzado ? { forzar: true, ...forzado } : {});
+    } catch (e) {
+      avisar(`No se pudo comenzar la germinación: ${e.message}`, 'error');
+      return;
+    }
     antesDeGerminar = false;
     const pagina = document.querySelector('.pagina');
     const r = pagina.getBoundingClientRect();
@@ -73,7 +83,6 @@
     const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches;
     await new Promise((fin) => setTimeout(fin, reducido ? 0 : 1250));
     try {
-      await api.germinar(carpetaId, ideaId, forzado ? { forzar: true, ...forzado } : {});
       await cargar();
       verManuscrito = false;
       refrescar();
@@ -217,7 +226,7 @@
               autofoco={!m.contenido} marcador="Describe tu idea con todo el detalle que puedas: qué es, por qué se te ocurrió, cómo crees que funcionaría…" />
           {:else}
             <Glosable html={renderizar(m.contenido, base)} documento="hilo/{m.archivo}" autor="usuario" {glosas} {base} bloqueado={enProceso} />
-            {#if m === replicaPendiente && !enProceso}
+            {#if m === replicaPendiente && !enProceso && !germina}
               <p class="espera">Pendiente de análisis: se enviará a la sesión al pulsar «Comenzar Análisis».</p>
             {/if}
           {/if}

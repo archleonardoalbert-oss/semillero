@@ -29,7 +29,7 @@ const ESTADO_HTTP = {
   'ruta-invalida': 400, 'extension-invalida': 400, 'nombre-vacio': 400, 'titulo-vacio': 400, 'refs-invalidos': 400,
   'tipo-invalido': 400, 'documento-invalido': 400, 'prompt-vacio': 400, 'fragmento-vacio': 400,
   'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404, 'glosa-no-existe': 404, cuota: 409,
-  'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409, 'no-germinable': 409,
+  'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409, 'no-germinable': 409, 'no-disponible': 409,
   'respuestas-invalidas': 400, 'camino-invalido': 400, 'ya-analizada': 409, 'nodo-invalido': 400, 'estado-invalido': 400,
 };
 
@@ -179,7 +179,7 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa } =
       if (!elegido) throw new Error('camino-invalido');
     }
     await cola.germinar(refDe(req), {
-      peticion: String(peticion ?? ''), forzar: Boolean(forzar), camino: elegido, comentario: String(comentario ?? ''),
+      peticion: String(peticion ?? '').slice(0, 20000), forzar: Boolean(forzar), camino: elegido, comentario: String(comentario ?? '').slice(0, 5000),
       ...(typeof cuerpo === 'string' && { cuerpo }),
     });
     return ideas.obtener(req.params.c, req.params.i);

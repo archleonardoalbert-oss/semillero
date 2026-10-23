@@ -172,9 +172,11 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
 
   // Bloque que marca, dentro de una réplica, qué camino eligió el usuario (se puede quitar sin tocar su texto).
   const RE_ELECCION = /<!-- camino:[a-z0-9-]+ -->[\s\S]*?<!-- \/camino -->\n*/;
+  // Sin marcadores de comentario HTML dentro: cortarían el bloque.
+  const neutro = (t) => String(t ?? '').replace(/<!--|-->/g, '');
   const bloqueEleccion = (cam, comentario) =>
-    `<!-- camino:${cam.id} -->\n**Elijo el camino «${cam.titulo}»**, la variación que propusiste en tu dictamen.` +
-    `${comentario ? `\n\n${comentario}` : ''}\n<!-- /camino -->\n\n`;
+    `<!-- camino:${cam.id} -->\n**Elijo el camino «${neutro(cam.titulo)}»**, la variación que propusiste en tu dictamen.` +
+    `${comentario ? `\n\n${neutro(comentario)}` : ''}\n<!-- /camino -->\n\n`;
 
   async function escribirReplica(c, i, archivo, texto) {
     const ruta = path.join(dirIdea(c, i), 'hilo', archivo);
@@ -185,9 +187,14 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
   async function elegirCamino(c, i, { dictamen, camino, comentario = '' }) {
     const idea = await leerIdea(c, i);
     if (idea.estado === 'en-proceso') throw new Error('en-proceso');
+    // Una idea pausada o que germina no recibe análisis: la elección nunca se enviaría.
+    if (idea.estado === 'pausada' || idea.trabajo === 'germinacion') throw new Error('no-disponible');
     const ms = await mensajes(c, i);
     const ultimo = ms.findLast((m) => m.autor === 'claude');
-    const cam = ultimo?.archivo === dictamen ? ultimo.caminos.find((x) => x.id === camino) : null;
+    const misma = idea.eleccion?.dictamen === dictamen && idea.eleccion?.camino === camino;
+    // Si el camino elegido ya no está en el dictamen (p. ej. tras una enmienda), aún se puede quitar.
+    const cam = (ultimo?.archivo === dictamen ? ultimo.caminos.find((x) => x.id === camino) : null)
+      ?? (misma ? { id: camino, tipo: 'variacion' } : null);
     if (!cam) throw new Error('camino-invalido');
     const nota = String(comentario ?? '').trim().slice(0, 5000);
 
@@ -214,11 +221,12 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
     // Variación: una sola a la vez, guardada como réplica pendiente para el próximo análisis.
     const pendiente = ms.at(-1)?.autor === 'usuario' && ms.at(-1).n > 1 ? ms.at(-1) : null;
     const resto = (pendiente?.contenido ?? '').replace(RE_ELECCION, '');
-    const misma = idea.eleccion?.dictamen === dictamen && idea.eleccion?.camino === camino;
     const archivo = pendiente?.archivo ?? `${String(ms.at(-1).n + 1).padStart(3, '0')}-usuario.md`;
     if (misma) {
       await escribirReplica(c, i, archivo, resto);
-      return actualizar(c, i, { eleccion: null, estado: resto.trim() ? 'replica-pendiente' : (idea.veredicto ?? ultimo.meta?.veredicto ?? idea.estado) });
+      // Sigue pendiente si queda texto en la réplica o una edición de la idea sin analizar.
+      const pendienteAun = resto.trim() || idea.editadaTrasDictamen;
+      return actualizar(c, i, { eleccion: null, estado: pendienteAun ? 'replica-pendiente' : (idea.veredicto ?? ultimo.meta?.veredicto ?? idea.estado) });
     }
     await escribirReplica(c, i, archivo, bloqueEleccion(cam, nota) + resto);
     return actualizar(c, i, { eleccion: { dictamen, camino }, estado: 'replica-pendiente' });
@@ -228,6 +236,12 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
     const idea = await leerIdea(c, i);
     if (idea.estado === 'en-proceso') throw new Error('en-proceso');
     await proteger([rel(c, i)], () => fs.rm(dirIdea(c, i), { recursive: true, force: true }));
+    // Una idea derivada de otra: la original deja de enlazarla.
+    const o = idea.origen;
+    const madre = o && (await leerIdea(o.carpetaId, o.ideaId).catch(() => null));
+    if (madre?.derivadas?.some((d) => d.ideaId === i)) {
+      await actualizar(o.carpetaId, o.ideaId, { derivadas: madre.derivadas.filter((d) => d.ideaId !== i) });
+    }
   }
 
   return {

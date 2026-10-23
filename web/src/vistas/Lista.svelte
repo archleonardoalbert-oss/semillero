@@ -47,6 +47,7 @@
         <li>
           <a href={enlace.idea(i.carpetaId, i.id)} onclick={(e) => (e.preventDefault(), ir(enlace.idea(i.carpetaId, i.id)))}>
             <span class="titulo">{i.titulo}</span>
+            {#if i.etiqueta}<span class="etiqueta">{i.etiqueta}</span>{/if}
             {#if i.resumen}<span class="resumen">{i.resumen}</span>{/if}
             <time>{fecha(i.ultimoVeredicto ?? i.actualizada)}</time>
           </a>
@@ -117,6 +118,12 @@
   .titulo {
     font-family: var(--serif);
     font-size: var(--t1);
+  }
+  .etiqueta {
+    font-family: var(--sans);
+    font-size: var(--t-1);
+    font-weight: 600;
+    color: var(--liquen);
   }
   .resumen {
     grid-row: 2;

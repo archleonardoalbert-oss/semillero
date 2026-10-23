@@ -11,7 +11,8 @@
 
   const original = idea.hilo.find((m) => m.n === 1)?.contenido ?? '';
   let cuerpo = $state(original);
-  let elegido = $state(null);
+  // Si el usuario ya había elegido una variación de este dictamen, sale marcada.
+  let elegido = $state(idea.eleccion?.dictamen === dictamen?.archivo ? idea.eleccion.camino : null);
   let comentario = $state('');
   let ocupado = $state(false);
 
