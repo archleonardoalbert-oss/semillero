@@ -170,6 +170,60 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
     return `adjuntos/${archivo}`;
   }
 
+  // Bloque que marca, dentro de una réplica, qué camino eligió el usuario (se puede quitar sin tocar su texto).
+  const RE_ELECCION = /<!-- camino:[a-z0-9-]+ -->[\s\S]*?<!-- \/camino -->\n*/;
+  const bloqueEleccion = (cam, comentario) =>
+    `<!-- camino:${cam.id} -->\n**Elijo el camino «${cam.titulo}»**, la variación que propusiste en tu dictamen.` +
+    `${comentario ? `\n\n${comentario}` : ''}\n<!-- /camino -->\n\n`;
+
+  async function escribirReplica(c, i, archivo, texto) {
+    const ruta = path.join(dirIdea(c, i), 'hilo', archivo);
+    await proteger([rel(c, i, 'hilo', archivo)], () => (texto.trim() ? escribirAtomico(ruta, texto) : fs.rm(ruta, { force: true })));
+  }
+
+  // Elegir (o desmarcar) uno de los caminos que propone el último dictamen.
+  async function elegirCamino(c, i, { dictamen, camino, comentario = '' }) {
+    const idea = await leerIdea(c, i);
+    if (idea.estado === 'en-proceso') throw new Error('en-proceso');
+    const ms = await mensajes(c, i);
+    const ultimo = ms.findLast((m) => m.autor === 'claude');
+    const cam = ultimo?.archivo === dictamen ? ultimo.caminos.find((x) => x.id === camino) : null;
+    if (!cam) throw new Error('camino-invalido');
+    const nota = String(comentario ?? '').trim().slice(0, 5000);
+
+    if (cam.tipo === 'idea-nueva') {
+      const derivadas = idea.derivadas ?? [];
+      const previa = derivadas.find((d) => d.dictamen === dictamen && d.camino === camino);
+      if (previa) {
+        const hija = await leerIdea(c, previa.ideaId).catch(() => null);
+        if (hija && (hija.estado !== 'borrador' || (await tieneDictamen(c, previa.ideaId)))) throw new Error('ya-analizada');
+        if (hija) await borrar(c, previa.ideaId);
+        return actualizar(c, i, { derivadas: derivadas.filter((d) => d !== previa) });
+      }
+      const cuerpo = [
+        cam.descripcion,
+        ...(nota ? ['', nota] : []),
+        '',
+        `*Surge del dictamen de «${idea.titulo}» (carpetas/${c}/ideas/${i}), donde Claude la propuso como idea aparte.*`,
+      ].join('\n');
+      const hija = await crear(c, { titulo: cam.titulo, cuerpo });
+      await actualizar(c, hija.id, { origen: { carpetaId: c, ideaId: i, camino } });
+      return actualizar(c, i, { derivadas: [...derivadas, { dictamen, camino, carpetaId: c, ideaId: hija.id }] });
+    }
+
+    // Variación: una sola a la vez, guardada como réplica pendiente para el próximo análisis.
+    const pendiente = ms.at(-1)?.autor === 'usuario' && ms.at(-1).n > 1 ? ms.at(-1) : null;
+    const resto = (pendiente?.contenido ?? '').replace(RE_ELECCION, '');
+    const misma = idea.eleccion?.dictamen === dictamen && idea.eleccion?.camino === camino;
+    const archivo = pendiente?.archivo ?? `${String(ms.at(-1).n + 1).padStart(3, '0')}-usuario.md`;
+    if (misma) {
+      await escribirReplica(c, i, archivo, resto);
+      return actualizar(c, i, { eleccion: null, estado: resto.trim() ? 'replica-pendiente' : (idea.veredicto ?? ultimo.meta?.veredicto ?? idea.estado) });
+    }
+    await escribirReplica(c, i, archivo, bloqueEleccion(cam, nota) + resto);
+    return actualizar(c, i, { eleccion: { dictamen, camino }, estado: 'replica-pendiente' });
+  }
+
   async function borrar(c, i) {
     const idea = await leerIdea(c, i);
     if (idea.estado === 'en-proceso') throw new Error('en-proceso');
@@ -178,7 +232,7 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
 
   return {
     crear, obtener, listar, actualizar, editarOriginal, responder, siguienteArchivo,
-    numeroSiguiente, pendientes, guardarAdjunto, borrar, mensajes,
+    numeroSiguiente, pendientes, guardarAdjunto, borrar, mensajes, elegirCamino,
     dirIdea, relIdea: (c, i) => rel(c, i),
   };
 }

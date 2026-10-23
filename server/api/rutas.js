@@ -30,7 +30,7 @@ const ESTADO_HTTP = {
   'tipo-invalido': 400, 'documento-invalido': 400, 'prompt-vacio': 400, 'fragmento-vacio': 400,
   'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404, 'glosa-no-existe': 404, cuota: 409,
   'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409,
-  'respuestas-invalidas': 400, 'nodo-invalido': 400, 'estado-invalido': 400,
+  'respuestas-invalidas': 400, 'camino-invalido': 400, 'ya-analizada': 409, 'nodo-invalido': 400, 'estado-invalido': 400,
 };
 
 function agrupar(carpetas, ideas, extra = () => ({})) {
@@ -134,6 +134,11 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa } =
   });
   app.post('/api/carpetas/:c/ideas/:i/replica', async (req) => {
     await ideas.responder(req.params.c, req.params.i, String(req.body?.cuerpo ?? ''));
+    return ideas.obtener(req.params.c, req.params.i);
+  });
+  app.post('/api/carpetas/:c/ideas/:i/camino', async (req) => {
+    const { dictamen, camino, comentario } = req.body ?? {};
+    await ideas.elegirCamino(req.params.c, req.params.i, { dictamen: String(dictamen ?? ''), camino: String(camino ?? ''), comentario });
     return ideas.obtener(req.params.c, req.params.i);
   });
   app.post('/api/carpetas/:c/ideas/:i/adjuntos', async (req, reply) => {
