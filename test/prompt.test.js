@@ -85,3 +85,8 @@ test('el prompt define las cinco categorías, la etiqueta y los caminos', () => 
   const p = promptSistema();
   for (const s of ['no-recomendada', 'Rechazada rotundamente', 'etiqueta:', 'semillero-caminos', 'idea-nueva', 'variacion']) assert.ok(p.includes(s), `falta ${s}`);
 });
+
+test('el prompt separa errores de conocimiento de un mal camino', () => {
+  const p = promptSistema();
+  for (const s of ['errores de conocimiento', 'intención', 'mejor versión', 'mal camino']) assert.ok(p.includes(s), `falta ${s}`);
+});
