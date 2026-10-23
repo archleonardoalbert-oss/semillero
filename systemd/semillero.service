@@ -5,12 +5,11 @@ After=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=%h/Proyectos/semillero
-ExecStart=/usr/bin/node %h/Proyectos/semillero/server/index.js
-Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/share/fnm/aliases/default/bin/node %h/Proyectos/semillero/server/index.js
+Environment=PATH=%h/.local/share/fnm/aliases/default/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 Restart=on-failure
 RestartSec=5
-# Las sesiones de claude son hijas de este servicio: que systemd-oomd no lo elija.
-OOMScoreAdjust=-500
+# Las sesiones de claude son hijas de este servicio: que systemd-oomd no lo elija primero.
 ManagedOOMPreference=avoid
 # Al parar el servicio, claude recibe SIGINT y conserva la sesión.
 KillMode=control-group
