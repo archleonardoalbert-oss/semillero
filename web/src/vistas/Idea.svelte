@@ -14,6 +14,7 @@
   import { crearGlosas } from '../lib/glosas.svelte.js';
   import Glosable from '../componentes/Glosable.svelte';
   import Brote from '../componentes/Brote.svelte';
+  import AntesDeGerminar from '../componentes/AntesDeGerminar.svelte';
   import Germinacion from './Germinacion.svelte';
 
   let { carpetaId, ideaId } = $props();
@@ -41,10 +42,30 @@
   let ultimo = $derived(idea?.hilo.at(-1));
   let replicaPendiente = $derived(ultimo?.autor === 'usuario' && ultimo.n > 1 ? ultimo : null);
   let germina = $derived(Boolean(idea?.germinacion));
-  let puedeGerminar = $derived(idea?.estado === 'aceptada' && !germina);
+  let ultimoDictamen = $derived(idea?.hilo.findLast((m) => m.autor === 'claude'));
+  let veredicto = $derived(idea?.veredicto ?? ultimoDictamen?.meta?.veredicto ?? null);
+  // Se puede germinar todo salvo lo rechazado rotundamente; fuera de «Aceptada», pasando por «Antes de germinar».
+  const FORZABLES = ['aceptada', 'cambios', 'no-recomendada', 'aclaracion', 'replica-pendiente'];
+  let puedeGerminar = $derived(Boolean(idea) && !germina && veredicto && veredicto !== 'rechazada' && FORZABLES.includes(idea.estado));
+  let antesDeGerminar = $state(false);
+
+  function pulsarGerminar() {
+    if (idea.estado === 'aceptada') comenzarGerminacion();
+    else antesDeGerminar = true;
+  }
+
+  async function elegirCamino(camino, comentario) {
+    try {
+      idea = await api.elegirCamino(carpetaId, ideaId, { dictamen: ultimoDictamen.archivo, camino: camino.id, comentario });
+      refrescar();
+    } catch (e) {
+      avisar(e.message === 'ya-analizada' ? 'Esa idea nueva ya se analizó: no se borra.' : `No se pudo elegir el camino: ${e.message}`, 'error');
+    }
+  }
 
   // El manuscrito se condensa en una semilla que cae al pie de la pantalla; luego empieza la germinación.
-  async function comenzarGerminacion() {
+  async function comenzarGerminacion(forzado = null) {
+    antesDeGerminar = false;
     const pagina = document.querySelector('.pagina');
     const r = pagina.getBoundingClientRect();
     origen = `50% ${innerHeight - 90 - r.top}px`;
@@ -52,7 +73,7 @@
     const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches;
     await new Promise((fin) => setTimeout(fin, reducido ? 0 : 1250));
     try {
-      await api.germinar(carpetaId, ideaId);
+      await api.germinar(carpetaId, ideaId, forzado ? { forzar: true, ...forzado } : {});
       await cargar();
       verManuscrito = false;
       refrescar();
@@ -175,7 +196,7 @@
 
     <p class="estado">
       <span class="punto" class:late={enProceso} style:background={COLOR_ESTADO[idea.estado]}></span>
-      {ETIQUETA_ESTADO[idea.estado]}{#if idea.etiqueta && idea.estado === idea.veredicto}<span class="matiz">: {idea.etiqueta}</span>{/if}
+      {idea.eleccion && idea.estado === 'replica-pendiente' ? 'Camino elegido, sin analizar' : ETIQUETA_ESTADO[idea.estado]}{#if idea.etiqueta && idea.estado === idea.veredicto}<span class="matiz">: {idea.etiqueta}</span>{/if}
       {#if idea.estado === 'error' && idea.error}<span class="detalle">: {idea.error}</span>{/if}
       <span class="creada">Escrita el {fecha(idea.creada)}</span>
     </p>
@@ -202,12 +223,12 @@
           {/if}
         </section>
       {:else}
-        <Dictamen mensaje={m} {base} {glosas} bloqueado={enProceso} fecha={m === idea.hilo.findLast((x) => x.autor === 'claude') ? fecha(idea.ultimoVeredicto) : ''} />
+        <Dictamen mensaje={m} {base} {glosas} bloqueado={enProceso} {idea} vigente={m === ultimoDictamen && !germina} alElegirCamino={elegirCamino} fecha={m === idea.hilo.findLast((x) => x.autor === 'claude') ? fecha(idea.ultimoVeredicto) : ''} />
       {/if}
     {/each}
 
     {#if puedeGerminar && !enProceso}
-      <Brote alPulsar={comenzarGerminacion} ocupado={condensando} />
+      <Brote alPulsar={pulsarGerminar} ocupado={condensando} {veredicto} etiqueta={idea.etiqueta} />
     {/if}
 
     {#if hayDictamen && !enProceso && !germina}
@@ -223,6 +244,11 @@
           <button class="boton" disabled={!replica.trim() || enviando} onclick={enviarReplica}>Guardar réplica</button>
         </div>
       </section>
+    {/if}
+
+    {#if antesDeGerminar}
+      <AntesDeGerminar {idea} dictamen={ultimoDictamen} {base} alCerrar={() => (antesDeGerminar = false)}
+        alGerminar={(datos) => comenzarGerminacion(datos)} />
     {/if}
 
     {#if registros.length}

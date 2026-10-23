@@ -40,7 +40,9 @@ export const api = {
   glosas: (c, i) => pedir('GET', `${idea(c, i)}/glosas`),
   pedirGlosa: (c, i, datos) => pedir('POST', `${idea(c, i)}/glosas`, datos),
   seguirGlosa: (c, i, g, prompt) => pedir('POST', `${idea(c, i)}/glosas/${encodeURIComponent(g)}/seguir`, { prompt }),
-  germinar: (c, i, peticion = '') => pedir('POST', `${idea(c, i)}/germinar`, { peticion }),
+  // `datos`: la petición (texto) o { peticion, forzar, camino, comentario, cuerpo }.
+  germinar: (c, i, datos = {}) => pedir('POST', `${idea(c, i)}/germinar`, typeof datos === 'string' ? { peticion: datos } : datos),
+  elegirCamino: (c, i, datos) => pedir('POST', `${idea(c, i)}/camino`, datos),
   germinacion: (c, i) => pedir('GET', `${idea(c, i)}/germinacion`),
   responderDiagnostico: (c, i, respuestas) => pedir('PUT', `${idea(c, i)}/germinacion/respuestas`, { respuestas }),
   marcarNodo: (c, i, n, datos) => pedir('PATCH', `${idea(c, i)}/germinacion/nodos/${encodeURIComponent(n)}`, datos),

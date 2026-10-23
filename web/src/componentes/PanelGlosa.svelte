@@ -7,6 +7,7 @@
 
   let tipo = $state(null);
   let prompt = $state('');
+  let profundidad = $state('superficial');
   let campo = $state();
 
   const TEXTO = {
@@ -22,7 +23,7 @@
   const valido = $derived(tipo === 'explicar' || prompt.trim().length > 0);
 
   function enviar() {
-    if (valido) alEnviar({ tipo, prompt: prompt.trim() });
+    if (valido) alEnviar({ tipo, prompt: prompt.trim(), ...(tipo === 'explicar' && { profundidad }) });
   }
 
   function tecla(e) {
@@ -51,6 +52,14 @@
   {:else}
     <p class="titulo">{TEXTO[tipo].titulo}</p>
     <p class="cita">{vistaPrevia}</p>
+    {#if tipo === 'explicar'}
+      <div class="profundidad" role="radiogroup" aria-label="Profundidad">
+        <button role="radio" aria-checked={profundidad === 'superficial'} class:elegida={profundidad === 'superficial'}
+          onclick={() => (profundidad = 'superficial')}>Superficial<small>rápida, Sonnet</small></button>
+        <button role="radio" aria-checked={profundidad === 'profunda'} class:elegida={profundidad === 'profunda'}
+          onclick={() => (profundidad = 'profunda')}>Profunda<small>a fondo, Opus</small></button>
+      </div>
+    {/if}
     <textarea bind:this={campo} bind:value={prompt} rows="3" placeholder={TEXTO[tipo].marcador}></textarea>
     <footer>
       <span class="atajo">Ctrl + Enter</span>
@@ -148,6 +157,36 @@
     -webkit-line-clamp: 3;
     line-clamp: 3;
     -webkit-box-orient: vertical;
+  }
+  .profundidad {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3rem;
+    margin-bottom: 0.6rem;
+    padding: 0.2rem;
+    border: 1px solid var(--linea);
+    border-radius: 10px;
+    background: var(--humus-hondo);
+  }
+  .profundidad button {
+    display: grid;
+    padding: 0.35rem 0.5rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--liquen-tenue);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .profundidad small {
+    font-weight: 400;
+    font-size: 0.68rem;
+    color: var(--liquen-apagado);
+  }
+  .profundidad button.elegida {
+    background: var(--superficie-alta);
+    color: var(--explicar);
   }
   textarea {
     width: 100%;

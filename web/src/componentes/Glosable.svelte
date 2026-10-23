@@ -146,9 +146,9 @@
     if (p) abierta = p.glosa.id;
   }
 
-  async function enviar({ tipo, prompt }) {
+  async function enviar({ tipo, prompt, profundidad }) {
     const { rango } = panel;
-    const datos = { tipo, prompt, documento, ancla: crearAncla(contenido, rango), fragmento: serializar(contenido, rango) };
+    const datos = { tipo, prompt, profundidad, documento, ancla: crearAncla(contenido, rango), fragmento: serializar(contenido, rango) };
     panel = null;
     getSelection().removeAllRanges();
     try {

@@ -15,7 +15,7 @@
 <button class="tarjeta {glosa.tipo}" class:activa class:viva={glosa.estado === 'en-proceso'} class:error={glosa.estado === 'error'}
   onclick={alAbrir}>
   <span class="cabeza">
-    <span class="tipo">{ETIQUETA[glosa.tipo]}</span>
+    <span class="tipo">{ETIQUETA[glosa.tipo]}{#if glosa.profundidad} {glosa.profundidad}{/if}</span>
     {#if glosa.correccion}<span class="veredicto {glosa.correccion}">{VEREDICTO[glosa.correccion]}</span>{/if}
     {#if glosa.enmendado}<span class="enmienda">enmendado</span>{/if}
     {#if preguntas > 1}<span class="n">{preguntas} preguntas</span>{/if}

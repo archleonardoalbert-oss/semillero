@@ -41,7 +41,7 @@
 <button class="velo" aria-label="Cerrar la glosa" onclick={alCerrar} transition:fade={{ duration: 200 }}></button>
 <aside class="hoja {glosa.tipo}" transition:fly={{ x: 60, duration: 380, easing: cubicOut, opacity: 0 }} aria-label="Glosa">
   <header>
-    <span class="tipo">{ETIQUETA[glosa.tipo]}</span>
+    <span class="tipo">{ETIQUETA[glosa.tipo]}{#if glosa.profundidad} {glosa.profundidad}{/if}</span>
     <button class="cerrar" onclick={alCerrar} aria-label="Cerrar">×</button>
   </header>
 

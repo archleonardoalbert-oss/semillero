@@ -1,6 +1,10 @@
 <script>
   // La señal que aparece al pie de una idea aceptada: invitación a germinarla.
-  let { alPulsar, ocupado = false } = $props();
+  import { ETIQUETA_ESTADO } from '../lib/estados.js';
+
+  // `veredicto` distinto de aceptada: la señal avisa y el botón abre «Antes de germinar».
+  let { alPulsar, ocupado = false, veredicto = 'aceptada', etiqueta = null } = $props();
+  let aceptada = $derived(veredicto === 'aceptada');
 </script>
 
 <section class="brote">
@@ -11,7 +15,13 @@
     <path d="M0 2 C 8 4, 11 12, 0 20 C -11 12, -8 4, 0 2 Z" class="grano" />
   </svg>
   <div class="texto">
-    <h3>Esta idea merece crecer</h3>
+    <h3>{aceptada ? 'Esta idea merece crecer' : 'Puedes germinarla igualmente'}</h3>
+    {#if !aceptada}
+      <p class="matiz">
+        Claude no la aceptó tal cual (<strong>{ETIQUETA_ESTADO[veredicto]}</strong>{etiqueta ? `: ${etiqueta}` : ''}). Antes de
+        germinar te propondrá una última vez ajustarla o elegir uno de sus caminos.
+      </p>
+    {/if}
     <p>
       Al germinarla, la sesión te hará unas preguntas para saber de dónde partes. Después investigará a fondo y te
       trazará un mapa: qué estudiar y en qué orden, a qué incógnitas te enfrentas (algunas pueden ser problemas
@@ -92,6 +102,12 @@
     font-weight: 400;
     font-size: var(--t3);
     color: var(--aceptada);
+  }
+  .matiz {
+    color: var(--liquen);
+  }
+  .matiz strong {
+    color: var(--no-recomendada);
   }
   p {
     margin: 0 0 1.1rem;

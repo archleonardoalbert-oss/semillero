@@ -2,8 +2,10 @@
   import { renderizar } from '../lib/render.js';
   import { COLOR_ESTADO, ETIQUETA_ESTADO as SELLO } from '../lib/estados.js';
   import Glosable from './Glosable.svelte';
+  import Caminos from './Caminos.svelte';
 
-  let { mensaje, base, fecha, glosas, bloqueado = false } = $props();
+  // `idea` y `alElegirCamino` solo hacen falta si el dictamen propone caminos; `vigente`: es el último dictamen.
+  let { mensaje, base, fecha, glosas, bloqueado = false, idea = null, vigente = false, alElegirCamino } = $props();
 
   const ETAPA = { 1: 'Etapa 1: filtro', 2: 'Etapa 2: investigación profunda' };
   let meta = $derived(mensaje.meta);
@@ -27,6 +29,9 @@
     <p class="resumen">{meta.resumen}</p>
   {/if}
   <Glosable {html} documento="hilo/{mensaje.archivo}" autor="claude" {glosas} {base} {bloqueado} desfase={4.75} />
+  {#if mensaje.caminos?.length}
+    <Caminos caminos={mensaje.caminos} {base} {idea} dictamen={mensaje.archivo} activo={vigente && !bloqueado} alElegir={alElegirCamino} />
+  {/if}
 </article>
 
 <style>
