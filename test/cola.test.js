@@ -74,13 +74,23 @@ async function preparar(nIdeas = 1) {
     notificar: async (t, c) => notificaciones.push([t, c]),
   });
   const estado = async (n) => (await ideas.obtener('ia', refs[n].ideaId)).estado;
-  return { cfg, ideas, cola, refs, falso, notificaciones, estado };
+  // Espera a que arranquen n ejecuciones (por defecto, todas las que caben) en lugar de un tiempo fijo.
+  const arranque = (n = Math.min(nIdeas, 5)) => hasta(() => falso.llamadas.length >= n);
+  // Terminar espera a que la cola publique el estado final, no un tiempo fijo.
+  const terminarBase = falso.terminar;
+  falso.terminar = async (n, opciones) => {
+    await hasta(() => falso.llamadas[n]);
+    const id = falso.llamadas[n].rutaRegistro.match(/ideas\/([^/]+)\/registro/)[1];
+    await terminarBase(n, opciones);
+    await hasta(async () => (await ideas.obtener('ia', id)).estado !== 'en-proceso');
+  };
+  return { cfg, ideas, cola, refs, falso, notificaciones, estado, arranque };
 }
 
 test('lanzar 7 ejecuta 5 y encola 2', async () => {
-  const { cola, refs, falso } = await preparar(7);
+  const { cola, refs, falso, arranque } = await preparar(7);
   await cola.lanzar(refs);
-  await esperar();
+  await arranque();
   assert.equal(cola.estado().ejecutando.length, 5);
   assert.equal(cola.estado().enCola.length, 2);
   await falso.terminar(0);
@@ -90,9 +100,9 @@ test('lanzar 7 ejecuta 5 y encola 2', async () => {
 });
 
 test('un dictamen válido deja la idea aceptada con su resumen', async () => {
-  const { cola, refs, falso, ideas, estado } = await preparar();
+  const { cola, refs, falso, ideas, estado, arranque } = await preparar();
   await cola.lanzar(refs);
-  await esperar();
+  await arranque();
   assert.equal(await estado(0), 'en-proceso');
   await falso.terminar(0);
   const idea = await ideas.obtener('ia', refs[0].ideaId);
@@ -103,39 +113,39 @@ test('un dictamen válido deja la idea aceptada con su resumen', async () => {
 });
 
 test('la primera ejecución usa --session-id y el mensaje inicial', async () => {
-  const { cola, refs, falso } = await preparar();
+  const { cola, refs, falso, arranque } = await preparar();
   await cola.lanzar(refs);
-  await esperar();
+  await arranque();
   assert.ok(falso.llamadas[0].args.includes('--session-id'));
   assert.match(falso.llamadas[0].mensaje, /Escribe tu dictamen en carpetas\/ia\/ideas\/idea-0\/hilo\/002-claude\.md$/);
 });
 
 test('sin dictamen la idea queda en error, nunca aceptada', async () => {
-  const { cola, refs, falso, estado } = await preparar();
+  const { cola, refs, falso, estado, arranque } = await preparar();
   await cola.lanzar(refs);
-  await esperar();
+  await arranque();
   await falso.terminar(0, { dictamen: null });
   assert.equal(await estado(0), 'error');
 });
 
 test('dictamen con frontmatter inválido queda en error y se borra', async () => {
-  const { cfg, cola, refs, falso, estado } = await preparar();
+  const { cfg, cola, refs, falso, estado, arranque } = await preparar();
   await cola.lanzar(refs);
-  await esperar();
+  await arranque();
   await falso.terminar(0, { dictamen: 'texto sin frontmatter' });
   assert.equal(await estado(0), 'error');
   await assert.rejects(fs.access(path.join(cfg.datos, 'carpetas/ia/ideas/idea-0/hilo/002-claude.md')));
 });
 
 test('la réplica retoma la misma sesión con --resume', async () => {
-  const { cola, refs, falso, ideas } = await preparar();
+  const { cola, refs, falso, ideas, arranque } = await preparar();
   await cola.lanzar(refs);
-  await esperar();
+  await arranque();
   await falso.terminar(0);
   const sesion = (await ideas.obtener('ia', refs[0].ideaId)).sessionId;
   await ideas.responder('ia', refs[0].ideaId, '¿Y con dopamina?');
   await cola.lanzar(refs);
-  await esperar();
+  await hasta(() => falso.llamadas.length === 2);
   const args = falso.llamadas[1].args;
   assert.equal(args[args.indexOf('--resume') + 1], sesion);
   assert.match(falso.llamadas[1].mensaje, /¿Y con dopamina\?/);
@@ -143,21 +153,21 @@ test('la réplica retoma la misma sesión con --resume', async () => {
 });
 
 test('detener una idea en cola la devuelve a su estado previo', async () => {
-  const { cola, refs, estado } = await preparar(6);
+  const { cola, refs, estado, arranque } = await preparar(6);
   await cola.lanzar(refs);
-  await esperar();
+  await arranque();
   await cola.detener([refs[5]]);
-  await esperar();
+  await hasta(async () => (await estado(5)) === 'borrador');
   assert.equal(await estado(5), 'borrador');
   assert.equal(cola.estado().enCola.length, 0);
 });
 
 test('detener una idea en ejecución la deja detenida', async () => {
-  const { cola, refs, estado } = await preparar();
+  const { cola, refs, estado, arranque } = await preparar();
   await cola.lanzar(refs);
-  await esperar();
+  await arranque();
   await cola.detener(refs);
-  await esperar(80);
+  await hasta(async () => (await estado(0)) === 'detenida');
   assert.equal(await estado(0), 'detenida');
   assert.equal(cola.estado().ejecutando.length, 0);
 });
@@ -179,9 +189,9 @@ test('superar el 90 % de 5 h pausa las activas y desencola el resto', async () =
 });
 
 test('por debajo del umbral no se pausa', async () => {
-  const { cola, refs, falso, estado } = await preparar();
+  const { cola, refs, falso, estado, arranque } = await preparar();
   await cola.lanzar(refs);
-  await esperar();
+  await arranque();
   falso.cuota(0, 0.89);
   await esperar();
   assert.equal(await estado(0), 'en-proceso');
@@ -195,9 +205,9 @@ test('reanudar ignora ideas que no están pausadas', async () => {
 });
 
 test('reanudar una pausada continúa la sesión y no vuelve a pausar antes del reinicio', async () => {
-  const { cola, refs, falso, estado } = await preparar();
+  const { cola, refs, falso, estado, arranque } = await preparar();
   await cola.lanzar(refs);
-  await esperar();
+  await arranque();
   falso.cuota(0, 0.95);
   await hasta(async () => (await estado(0)) === 'pausada');
   assert.equal(await estado(0), 'pausada');
@@ -225,15 +235,15 @@ test('recuperar pasa a detenida lo que quedó en proceso y relanzar usa --resume
   await cola.recuperar();
   assert.equal(await estado(0), 'detenida');
   await cola.lanzar(refs);
-  await esperar();
+  await hasta(() => falso.llamadas.length === 1);
   const args = falso.llamadas[0].args;
   assert.equal(args[args.indexOf('--resume') + 1], 'abc');
 });
 
 test('lanzar ignora ideas que ya están en proceso', async () => {
-  const { cola, refs, falso } = await preparar();
+  const { cola, refs, falso, arranque } = await preparar();
   await cola.lanzar(refs);
-  await esperar();
+  await arranque();
   await cola.lanzar(refs);
   await esperar();
   assert.equal(falso.llamadas.length, 1);

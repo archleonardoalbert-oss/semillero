@@ -130,3 +130,13 @@ test('sirve assets creados después de arrancar (recompilar sin reiniciar)', asy
     await fs.rm(archivo);
   }
 });
+
+test('resumen cuenta las ideas en cambios', async () => {
+  const { pedir, cfg } = await conIdea();
+  const ruta = `${cfg.datos}/carpetas/ia/ideas/pesos-rapidos/idea.json`;
+  const fs = await import('node:fs/promises');
+  const idea = JSON.parse(await fs.readFile(ruta, 'utf8'));
+  await fs.writeFile(ruta, JSON.stringify({ ...idea, estado: 'cambios' }));
+  const r = (await pedir('GET', '/api/resumen')).json();
+  assert.equal(r.cambios, 1);
+});

@@ -52,3 +52,9 @@ test('argsClaude usa --resume para sesiones existentes', () => {
   assert.equal(a[a.indexOf('--resume') + 1], 'u1');
   assert.ok(!a.includes('--session-id'));
 });
+
+test('el prompt define Cambio sugerido', () => {
+  const p = promptSistema();
+  assert.ok(p.includes('cambios'));
+  assert.ok(p.includes('dirección correcta'));
+});

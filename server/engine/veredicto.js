@@ -1,4 +1,4 @@
-const VEREDICTOS = new Set(['aceptada', 'rechazada', 'aclaracion']);
+const VEREDICTOS = new Set(['aceptada', 'rechazada', 'aclaracion', 'cambios']);
 
 // Lee el frontmatter que cada sesión deja al principio de su dictamen.
 // Devuelve null ante cualquier forma inválida: el servidor nunca adivina un veredicto.

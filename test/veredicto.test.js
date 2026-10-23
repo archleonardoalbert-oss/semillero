@@ -31,3 +31,7 @@ test('resumen vacío devuelve null', () => {
 test('tolera CRLF y BOM', () => {
   assert.ok(parsearDictamen('﻿---\r\nveredicto: aceptada\r\netapa: 2\r\nresumen: ok\r\n---\r\ncuerpo'));
 });
+
+test('acepta cambios como veredicto', () => {
+  assert.equal(parsearDictamen('---\nveredicto: cambios\netapa: 2\nresumen: Buena, con dos cambios\n---\nx').meta.veredicto, 'cambios');
+});

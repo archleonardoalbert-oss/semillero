@@ -249,6 +249,15 @@
           ctx.moveTo(x, y - r);
           ctx.quadraticCurveTo(x + 5, y - r - 7, x + 7, y - r - 4);
           ctx.stroke();
+        } else if (e === 'cambios') {
+          // Va bien encaminada pero aún no ha brotado del todo: una sola hojita.
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(x, y - r);
+          ctx.quadraticCurveTo(x + 4, y - r - 6, x + 6, y - r - 3);
+          ctx.stroke();
         }
         ctx.restore();
       }

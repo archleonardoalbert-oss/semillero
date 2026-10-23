@@ -8,6 +8,7 @@
 
   const TITULOS = {
     aceptada: 'Ideas aceptadas',
+    cambios: 'Ideas con cambios sugeridos',
     rechazada: 'Ideas rechazadas',
     'en-proceso': 'Ideas en proceso',
     aclaracion: 'Ideas que necesitan tu aclaración',

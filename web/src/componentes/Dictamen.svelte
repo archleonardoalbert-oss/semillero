@@ -4,7 +4,7 @@
 
   let { mensaje, base, fecha } = $props();
 
-  const SELLO = { aceptada: 'Aceptada', rechazada: 'Rechazada', aclaracion: 'Necesita aclaración' };
+  const SELLO = { aceptada: 'Aceptada', cambios: 'Cambio sugerido', rechazada: 'Rechazada', aclaracion: 'Necesita aclaración' };
   const ETAPA = { 1: 'Etapa 1: filtro', 2: 'Etapa 2: investigación profunda' };
   let meta = $derived(mensaje.meta);
   let html = $derived(renderizar(mensaje.contenido, base));

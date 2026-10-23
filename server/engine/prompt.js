@@ -31,6 +31,12 @@ Si el veredicto es **rechazada**:
 - Por qué no vale la pena dedicarle tiempo.
 - Caminos alternativos parecidos y potencialmente mejores, si los hay.
 
+Si el veredicto es **cambios** (Cambio sugerido): la idea es realmente buena y va en la dirección correcta, pero necesita cambios concretos para merecer el tiempo del usuario. No es un rechazo suavizado ni una forma de evitar aceptar: si los cambios la convierten en otra idea, recházala; si no hace falta cambiar nada importante, acéptala. Debe incluir:
+- Qué está bien y por qué la dirección es correcta.
+- Cada cambio necesario, numerado: qué cambiar, por qué y cómo altera el impacto real.
+- Los próximos pasos concretos asumiendo que el usuario hace esos cambios.
+- Cómo se complementa con otras ideas **aceptadas** del usuario, si las hay.
+
 Si el veredicto es **aclaracion**: solo cuando de verdad no puedas juzgar con honestidad sin más datos (no es una forma de evitar un veredicto duro). Haz preguntas concretas y explica cómo cada respuesta cambiaría el veredicto.
 
 ## Formato del dictamen
@@ -39,7 +45,7 @@ Escribe el dictamen en el archivo que se te indique, en español, en Markdown. D
 
 \`\`\`
 ---
-veredicto: aceptada | rechazada | aclaracion
+veredicto: aceptada | cambios | rechazada | aclaracion
 etapa: 1 | 2
 resumen: una frase con el veredicto en firme
 ---

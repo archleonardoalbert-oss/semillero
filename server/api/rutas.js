@@ -81,7 +81,7 @@ export async function construirApp(cfg, { cola: colaInyectada } = {}) {
     const cuenta = (e) => todas.filter((i) => i.estado === e).length;
     return {
       aceptadas: cuenta('aceptada'), rechazadas: cuenta('rechazada'), enProceso: cuenta('en-proceso'),
-      aclaracion: cuenta('aclaracion'), pausadas: cuenta('pausada'), borradores: cuenta('borrador'),
+      aclaracion: cuenta('aclaracion'), cambios: cuenta('cambios'), pausadas: cuenta('pausada'), borradores: cuenta('borrador'),
       pendientes: todas.filter((i) => ['borrador', 'replica-pendiente', 'detenida', 'error'].includes(i.estado)).length,
       total: todas.length, cola: cola.estado(),
     };
