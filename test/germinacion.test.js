@@ -80,9 +80,9 @@ test('germinar una aceptada retoma la sesión principal con el prompt de germina
   assert.equal(idea.germinacion.fase, 'preparando');
 });
 
-test('germinar una no aceptada falla', async () => {
+test('germinar una rechazada rotundamente falla', async () => {
   const { cola, ref } = await preparar({ estado: 'rechazada' });
-  await assert.rejects(cola.germinar(ref, {}), /no-aceptada/);
+  await assert.rejects(cola.germinar(ref, {}), /no-germinable/);
 });
 
 test('un mapa válido deja la idea aceptada con su fase', async () => {
@@ -279,6 +279,42 @@ test('I6: la germinación avisa de documentos enmendados', async () => {
 
 test('menor: una petición sobre una idea no germinable no se guarda', async () => {
   const { cola, ref, germinacion } = await preparar({ estado: 'rechazada' });
-  await assert.rejects(cola.germinar(ref, { peticion: 'x' }), /no-aceptada/);
+  await assert.rejects(cola.germinar(ref, { peticion: 'x' }), /no-germinable/);
   assert.equal((await germinacion.leerProgreso(ref.carpetaId, ref.ideaId)).pendiente, null);
+});
+
+// --- Germinar fuera de «Aceptada» ---
+
+test('germinar forzado una no recomendada retoma la sesión con el contexto de la decisión', async () => {
+  const { cola, falso, ref, ideas, germinacion } = await preparar({ estado: 'no-recomendada' });
+  await ideas.actualizar(ref.carpetaId, ref.ideaId, { veredicto: 'no-recomendada', etiqueta: 'Resultados pobres' });
+  await cola.germinar(ref, { forzar: true, camino: { titulo: 'Usar el jacobiano ajustado' }, comentario: 'Solo la cabeza' });
+  await hasta(() => falso.llamadas[0]);
+  const m = falso.llamadas[0].mensaje;
+  assert.match(m, /No recomendado|no-recomendada/);
+  assert.match(m, /Usar el jacobiano ajustado/);
+  assert.match(m, /Solo la cabeza/);
+  assert.match(m, /versión aceptada/);
+  assert.equal((await germinacion.leerProgreso(ref.carpetaId, ref.ideaId)).pendiente !== null, true);
+});
+
+test('germinar forzado una rechazada rotundamente falla aunque tenga una réplica pendiente', async () => {
+  const { cola, ref, ideas } = await preparar({ estado: 'replica-pendiente' });
+  await ideas.actualizar(ref.carpetaId, ref.ideaId, { veredicto: 'rechazada' });
+  await assert.rejects(cola.germinar(ref, { forzar: true }), /no-germinable/);
+});
+
+test('sin forzar, una idea en cambio sugerido no germina', async () => {
+  const { cola, ref, ideas } = await preparar({ estado: 'cambios' });
+  await ideas.actualizar(ref.carpetaId, ref.ideaId, { veredicto: 'cambios' });
+  await assert.rejects(cola.germinar(ref, {}), /no-aceptada/);
+});
+
+test('germinar forzado con la idea modificada la guarda y pide releerla', async () => {
+  const { cola, falso, ref, ideas, cfg, rutaIdea } = await preparar({ estado: 'cambios' });
+  await ideas.actualizar(ref.carpetaId, ref.ideaId, { veredicto: 'cambios' });
+  await cola.germinar(ref, { forzar: true, cuerpo: 'Mi idea, acotada a la cabeza del gusano.' });
+  await hasta(() => falso.llamadas[0]);
+  assert.equal(await fs.readFile(path.join(cfg.datos, rutaIdea, 'hilo/001-usuario.md'), 'utf8'), 'Mi idea, acotada a la cabeza del gusano.');
+  assert.match(falso.llamadas[0].mensaje, /modificó su idea/);
 });

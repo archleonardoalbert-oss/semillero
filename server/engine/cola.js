@@ -6,6 +6,7 @@ import { ESTADOS_PENDIENTES } from '../store/ideas.js';
 import { ejecutar as ejecutarReal } from './runner.js';
 import { argsClaude, mensajeEjecucion, mensajeGerminacion, promptGerminacion } from './prompt.js';
 import { validarMapa } from './mapa.js';
+import { VEREDICTOS } from './veredicto.js';
 import { parsearDictamen } from './veredicto.js';
 import { notificar as notificarReal } from './notificar.js';
 
@@ -49,6 +50,11 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
   }
 
   const germinable = (idea) => idea.estado === 'aceptada' || (idea.trabajo === 'germinacion' && ['detenida', 'error'].includes(idea.estado));
+  const FORZABLES = new Set(['aceptada', 'cambios', 'no-recomendada', 'aclaracion', 'replica-pendiente']);
+  const NOMBRE_VEREDICTO = { aceptada: 'Aceptada', cambios: 'Cambio sugerido', 'no-recomendada': 'No recomendado', rechazada: 'Rechazada rotundamente', aclaracion: 'Necesita aclaración' };
+  // El último veredicto, aunque el estado esté ahora en «réplica pendiente».
+  const ultimoVeredicto = (idea) =>
+    idea.veredicto ?? (VEREDICTOS.has(idea.estado) ? idea.estado : idea.hilo?.findLast((m) => m.autor === 'claude')?.meta?.veredicto ?? null);
   // Una glosa de corrección que enmienda documentos de la germinación no debe coincidir con una ejecución que los reescribe.
   const corrigiendoGerminacion = (ref) => {
     const prefijo = `${ideas.relIdea(ref.carpetaId, ref.ideaId)}/germinacion/`;
@@ -62,13 +68,13 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
     return idea.estadoPrevio ?? 'borrador';
   }
 
-  async function encolar(ref, { soloPausadas, germinar = false }) {
+  async function encolar(ref, { soloPausadas, germinar = false, forzar = false }) {
     const k = clave(ref);
     if (ocupadas.has(k)) return;
     ocupadas.add(k);
     try {
       const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
-      const valida = (germinar ? germinable(idea) : soloPausadas ? idea.estado === 'pausada' : ESTADOS_PENDIENTES.has(idea.estado))
+      const valida = (germinar ? germinable(idea) || (forzar && FORZABLES.has(idea.estado)) : soloPausadas ? idea.estado === 'pausada' : ESTADOS_PENDIENTES.has(idea.estado))
         && !(idea.trabajo === 'germinacion' && corrigiendoGerminacion(ref));
       if (!valida) {
         ocupadas.delete(k);
@@ -77,7 +83,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
       }
       const parche = { estado: 'en-proceso', estadoPrevio: idea.estado };
       if (germinar && idea.trabajo !== 'germinacion') {
-        Object.assign(parche, { trabajo: 'germinacion', estadoPrevio: 'aceptada', germinacion: { fase: 'preparando', iniciada: new Date().toISOString() } });
+        Object.assign(parche, { trabajo: 'germinacion', estadoPrevio: idea.estado, germinacion: { fase: 'preparando', iniciada: new Date().toISOString() } });
       }
       cola.push({ ref, tipo: germinar ? (idea.sessionId && idea.interrumpida ? 'reanudar' : 'germinar') : tipoDe(idea, idea.hilo) });
       await cambiar(ref, parche);
@@ -95,13 +101,31 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
 
   // Germinar (o seguir germinando) una idea aceptada. La petición del usuario queda pendiente
   // en su progreso hasta que una ejecución termine con un mapa válido.
-  async function germinar(ref, { peticion } = {}) {
+  // `forzar`: germinar una idea que no fue aceptada (salvo rechazada rotundamente). Elegir un camino o
+  // modificar la idea equivale a aceptarla en esa versión: se germina sin reanalizar.
+  async function germinar(ref, { peticion, forzar = false, camino = null, comentario = '', cuerpo } = {}) {
     if (!germinacion) throw new Error('sin-germinacion');
-    const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
+    let idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
     if (idea.estado === 'en-proceso' || ocupadas.has(clave(ref)) || corrigiendoGerminacion(ref)) throw new Error('en-proceso');
-    if (!germinable(idea)) throw new Error('no-aceptada');
-    if (peticion?.trim()) await germinacion.ponerPeticion(ref.carpetaId, ref.ideaId, peticion);
-    await encolar(ref, { soloPausadas: false, germinar: true });
+    const veredicto = ultimoVeredicto(idea);
+    const forzable = forzar && idea.trabajo !== 'germinacion' && FORZABLES.has(idea.estado) && Boolean(veredicto);
+    if (veredicto === 'rechazada' && idea.trabajo !== 'germinacion') throw new Error('no-germinable');
+    if (!germinable(idea) && !forzable) throw new Error('no-aceptada');
+    const partes = [];
+    if (forzable && idea.estado !== 'aceptada') {
+      const original = idea.hilo.find((m) => m.n === 1)?.contenido;
+      const modificada = typeof cuerpo === 'string' && cuerpo !== original;
+      if (modificada) idea = await ideas.editarOriginal(ref.carpetaId, ref.ideaId, { cuerpo }).then(() => ideas.obtener(ref.carpetaId, ref.ideaId));
+      partes.push(
+        `El usuario decide germinar esta idea aunque tu último veredicto fue «${NOMBRE_VEREDICTO[veredicto]}»${idea.etiqueta ? ` (${idea.etiqueta})` : ''}.`
+          + (camino?.titulo ? ` Elige el camino «${camino.titulo}»${comentario?.trim() ? `: ${comentario.trim()}` : ''}.` : '')
+          + (modificada ? ` Además, el usuario modificó su idea: relee ${ideas.relIdea(ref.carpetaId, ref.ideaId)}/hilo/001-usuario.md.` : '')
+          + ' Toma esta como la versión aceptada de la idea y germínala.',
+      );
+    }
+    if (peticion?.trim()) partes.push(peticion.trim());
+    if (partes.length) await germinacion.ponerPeticion(ref.carpetaId, ref.ideaId, partes.join('\n\n'));
+    await encolar(ref, { soloPausadas: false, germinar: true, forzar: forzable });
     avisarCola();
     await bombear();
   }

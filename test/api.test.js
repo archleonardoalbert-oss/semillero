@@ -157,7 +157,10 @@ test('las glosas validan el documento y se listan', async () => {
 test('germinar pasa la petición a la cola y el progreso se guarda', async () => {
   const { pedir, cola } = await conIdea();
   await pedir('POST', '/api/carpetas/ia/ideas/pesos-rapidos/germinar', { peticion: 'Más ejemplos' });
-  assert.deepEqual(cola.llamadas.at(-1), ['germinar', { carpetaId: 'ia', ideaId: 'pesos-rapidos' }, { peticion: 'Más ejemplos' }]);
+  const [accion, ref, opciones] = cola.llamadas.at(-1);
+  assert.deepEqual([accion, ref], ['germinar', { carpetaId: 'ia', ideaId: 'pesos-rapidos' }]);
+  assert.equal(opciones.peticion, 'Más ejemplos');
+  assert.equal(opciones.forzar, false);
   const r = await pedir('PATCH', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion/nodos/e1', { estado: 'hecho' });
   assert.equal(r.statusCode, 200);
   const g = (await pedir('GET', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion')).json();

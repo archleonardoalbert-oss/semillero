@@ -29,7 +29,7 @@ const ESTADO_HTTP = {
   'ruta-invalida': 400, 'extension-invalida': 400, 'nombre-vacio': 400, 'titulo-vacio': 400, 'refs-invalidos': 400,
   'tipo-invalido': 400, 'documento-invalido': 400, 'prompt-vacio': 400, 'fragmento-vacio': 400,
   'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404, 'glosa-no-existe': 404, cuota: 409,
-  'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409,
+  'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409, 'no-germinable': 409,
   'respuestas-invalidas': 400, 'camino-invalido': 400, 'ya-analizada': 409, 'nodo-invalido': 400, 'estado-invalido': 400,
 };
 
@@ -170,7 +170,18 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa } =
 
   const refDe = (req) => ({ carpetaId: req.params.c, ideaId: req.params.i });
   app.post('/api/carpetas/:c/ideas/:i/germinar', async (req) => {
-    await cola.germinar(refDe(req), { peticion: String(req.body?.peticion ?? '') });
+    const { peticion, forzar, camino, comentario, cuerpo } = req.body ?? {};
+    // El camino se busca en el último dictamen: el cliente solo manda su id.
+    let elegido = null;
+    if (camino) {
+      const idea = await ideas.obtener(req.params.c, req.params.i);
+      elegido = idea.hilo.findLast((m) => m.autor === 'claude')?.caminos.find((x) => x.id === camino && x.tipo === 'variacion');
+      if (!elegido) throw new Error('camino-invalido');
+    }
+    await cola.germinar(refDe(req), {
+      peticion: String(peticion ?? ''), forzar: Boolean(forzar), camino: elegido, comentario: String(comentario ?? ''),
+      ...(typeof cuerpo === 'string' && { cuerpo }),
+    });
     return ideas.obtener(req.params.c, req.params.i);
   });
   app.get('/api/carpetas/:c/ideas/:i/germinacion', async (req) => {
