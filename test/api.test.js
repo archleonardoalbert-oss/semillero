@@ -10,6 +10,9 @@ function colaFalsa() {
   for (const m of ['lanzar', 'detener', 'reanudar']) c[m] = async (refs) => c.llamadas.push([m, refs]);
   c.estado = () => ({ ejecutando: [], enCola: [], pausadaPorCuota: false, cuota: null });
   c.recuperar = async () => {};
+  c.objetivosActivos = () => [];
+  c.registrarCuota = () => {};
+  c.fijarAjenosExternos = () => {};
   return c;
 }
 
@@ -139,4 +142,13 @@ test('resumen cuenta las ideas en cambios', async () => {
   await fs.writeFile(ruta, JSON.stringify({ ...idea, estado: 'cambios' }));
   const r = (await pedir('GET', '/api/resumen')).json();
   assert.equal(r.cambios, 1);
+});
+
+test('las glosas validan el documento y se listan', async () => {
+  const { pedir } = await conIdea();
+  const r = await pedir('POST', '/api/carpetas/ia/ideas/pesos-rapidos/glosas', {
+    tipo: 'explicar', documento: '../idea.json', fragmento: { markdown: 'x' },
+  });
+  assert.equal(r.statusCode, 400);
+  assert.deepEqual((await pedir('GET', '/api/carpetas/ia/ideas/pesos-rapidos/glosas')).json(), []);
 });

@@ -101,7 +101,101 @@ export function mensajeEjecucion({ tipo, idea, carpeta, rutaIdea, archivoDestino
   ].join('\n');
 }
 
+export function promptGlosa() {
+  return `# Glosas en Semillero
+
+Ahora no estás analizando la idea. El usuario ha seleccionado un fragmento de un documento (un dictamen, una réplica o una página de la germinación) y te pide **explicarlo** o **corregirlo**. Esta conversación es una copia aislada de la sesión de la idea: lo que digas aquí no llega a la sesión principal.
+
+## Explicar
+
+El usuario es inteligente pero a menudo no domina el campo. Explícale el fragmento para que lo entienda de verdad:
+- Primero la intuición, en palabras llanas; después lo formal.
+- Define cada símbolo y cada término que aparezca.
+- Si ayuda, un ejemplo pequeño resuelto paso a paso y, si un dibujo lo aclara, una figura.
+- Termina con qué conviene estudiar para dominarlo, si hace falta.
+- Ten en cuenta lo que sabes del usuario (notas de su carpeta, \`notas-globales.md\`, su germinación si la hay).
+- Sin relleno ni frases de cortesía.
+
+## Corregir
+
+El usuario cree que hay un error. Juzga con total honestidad: no le des la razón para complacerle ni se la niegues por orgullo. Verifica lo que haga falta (puedes buscar en internet).
+
+Tu respuesta final DEBE empezar con este frontmatter:
+
+\`\`\`
+---
+correccion: acertada | parcial | erronea
+---
+\`\`\`
+
+Si es **acertada** o **parcial**, enmienda el documento indicado con Edit, **sin rehacerlo**: decide qué partes dependen del error y corrige solo esas.
+- En línea: \`~~texto erróneo~~<ins>texto corregido</ins>\`.
+- Si cambia un razonamiento o un bloque entero, deja el original y añade justo después \`> **Enmienda N.** …\` explicando la corrección.
+- Si es un dictamen y el veredicto ya no se sostiene, cambia su frontmatter (\`veredicto\`, \`etapa\`, \`resumen\`) manteniéndolo válido. Si se sostiene, no lo toques.
+
+En tu respuesta explica qué estaba mal (o por qué no lo estaba) y qué cambiaste.
+
+## Formato de la respuesta
+
+Tu último mensaje, sin llamadas a herramientas después, ES la glosa completa: el usuario solo verá ese texto.
+- Markdown en español; matemáticas en LaTeX compatible con KaTeX (\`$…$\`, \`$$…$$\`).
+- Figuras: genéralas con \`python3\` y matplotlib (fondo oscuro o transparente, texto claro) en la carpeta de figuras que se te indique e inclúyelas con su ruta relativa a la carpeta de la idea, por ejemplo \`![Pie](figuras/glosas/<id>/archivo.png)\`.
+- Concisa pero completa.
+
+## Lo que puedes escribir
+
+SOLO la carpeta de figuras que se te indique y, si corriges, el documento indicado. Cualquier otro cambio se revierte automáticamente.
+`;
+}
+
+export function mensajeGlosa({ tipo, rutaDocumento, fragmento, prompt, carpetaFiguras }) {
+  const imagenes = fragmento.imagenes?.length
+    ? ['', `El fragmento incluye estas imágenes (léelas con Read): ${fragmento.imagenes.join(', ')}`]
+    : [];
+  const peticion = prompt?.trim()
+    ? ['', tipo === 'corregir' ? 'Lo que el usuario dice que está mal:' : 'Lo que pide el usuario:', '', prompt.trim()]
+    : ['', 'No añade indicaciones: explica el fragmento.'];
+  return [
+    `El usuario ha seleccionado este fragmento de ${rutaDocumento} y pide ${tipo === 'corregir' ? 'CORREGIRLO' : 'que se lo EXPLIQUES'}:`,
+    '',
+    '<fragmento>',
+    fragmento.markdown,
+    '</fragmento>',
+    ...imagenes,
+    ...peticion,
+    ...(tipo === 'corregir' ? ['', `Si hay que enmendar, el documento es ${rutaDocumento}.`] : []),
+    ...(carpetaFiguras ? ['', `Si haces figuras, guárdalas en la carpeta ${carpetaFiguras}/ de la idea.`] : []),
+  ].join('\n');
+}
+
+export const mensajeSeguimientoGlosa = (prompt) => `Pregunta de seguimiento del usuario sobre esta misma glosa (las figuras, en la misma carpeta de antes):\n\n${prompt.trim()}`;
+
+const CORRECCIONES = new Set(['acertada', 'parcial', 'erronea']);
+
+export function parsearRespuestaGlosa(texto) {
+  const limpio = String(texto ?? '').replace(/\r\n/g, '\n').trim();
+  const m = limpio.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  const valor = m?.[1].match(/^correccion:\s*(\S+)/m)?.[1];
+  if (!m || !CORRECCIONES.has(valor)) return { correccion: null, cuerpo: limpio };
+  return { correccion: valor, cuerpo: m[2].trim() };
+}
+
 export const HERRAMIENTAS = 'Read Glob Grep WebSearch WebFetch Write Edit Bash(python3:*) Bash(curl:*) Bash(mkdir:*) Bash(ls:*)';
+
+const COMUNES = ['--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--thinking-display', 'summarized'];
+const PERMISOS = ['--permission-mode', 'dontAsk', '--allowedTools', HERRAMIENTAS, '--safe-mode'];
+
+// Glosa: bifurca la sesión principal (--fork-session), retoma la suya o empieza de cero.
+export function argsGlosa({ sessionId, bifurcar, ajustes, mensaje }) {
+  return [
+    '-p', mensaje, ...COMUNES,
+    ...(sessionId ? ['--resume', sessionId] : []),
+    ...(sessionId && bifurcar ? ['--fork-session'] : []),
+    '--model', ajustes.modelo, '--effort', ajustes.esfuerzo,
+    '--append-system-prompt', promptGlosa(),
+    ...PERMISOS,
+  ];
+}
 
 export function argsClaude({ sessionId, nueva, ajustes, mensaje }) {
   return [

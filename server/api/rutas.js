@@ -10,6 +10,8 @@ import { crearCola } from '../engine/cola.js';
 import { crearAlmacenCarpetas } from '../store/carpetas.js';
 import { crearAlmacenIdeas } from '../store/ideas.js';
 import { crearAjustes } from '../store/ajustes.js';
+import { crearAlmacenGlosas } from '../store/glosas.js';
+import { crearMotorGlosas } from '../engine/glosas.js';
 import { rutaSegura, slugify } from '../store/fsutil.js';
 import { registrarWs } from './ws.js';
 
@@ -23,7 +25,8 @@ const MIME = {
 
 const ESTADO_HTTP = {
   'ruta-invalida': 400, 'extension-invalida': 400, 'nombre-vacio': 400, 'titulo-vacio': 400, 'refs-invalidos': 400,
-  'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404,
+  'tipo-invalido': 400, 'documento-invalido': 400, 'prompt-vacio': 400, 'fragmento-vacio': 400,
+  'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404, 'glosa-no-existe': 404, cuota: 409,
   'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409,
 };
 
@@ -36,7 +39,7 @@ function agrupar(carpetas, ideas, extra = () => ({})) {
     .filter((g) => g.ideas.length);
 }
 
-export async function construirApp(cfg, { cola: colaInyectada } = {}) {
+export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa } = {}) {
   const app = Fastify({ logger: false, bodyLimit: 2 * 1024 * 1024 });
   const guard = crearGuard(cfg);
   await guard.iniciar();
@@ -45,6 +48,9 @@ export async function construirApp(cfg, { cola: colaInyectada } = {}) {
   const ajustes = crearAjustes(cfg, { proteger: guard.proteger });
   const cola = colaInyectada ?? crearCola({ cfg, ideas, carpetas, ajustes, guard });
   app.decorate('cola', cola);
+  const glosas = crearAlmacenGlosas(cfg, { proteger: guard.proteger });
+  const motorGlosas = crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, ...(ejecutarGlosa && { ejecutar: ejecutarGlosa }) });
+  app.decorate('glosas', motorGlosas);
 
   // Solo esta máquina: Host contra DNS rebinding y Origin contra webs ajenas abiertas en el navegador.
   const hostsValidos = new Set([`127.0.0.1:${cfg.puerto}`, `localhost:${cfg.puerto}`]);
@@ -66,7 +72,7 @@ export async function construirApp(cfg, { cola: colaInyectada } = {}) {
     (req, body, done) => done(null, body));
 
   await app.register(fastifyWebsocket);
-  registrarWs(app, cola);
+  registrarWs(app, cola, motorGlosas);
 
   const refsDe = (body) => {
     const refs = body?.refs;
@@ -143,6 +149,15 @@ export async function construirApp(cfg, { cola: colaInyectada } = {}) {
     });
     return reply.type('application/x-ndjson').send(texto);
   });
+
+  app.get('/api/carpetas/:c/ideas/:i/glosas', async (req) => {
+    await ideas.obtener(req.params.c, req.params.i);
+    return glosas.listar(req.params.c, req.params.i);
+  });
+  app.post('/api/carpetas/:c/ideas/:i/glosas', async (req, reply) =>
+    reply.code(201).send(await motorGlosas.pedir({ carpetaId: req.params.c, ideaId: req.params.i }, req.body ?? {})));
+  app.post('/api/carpetas/:c/ideas/:i/glosas/:g/seguir', async (req) =>
+    motorGlosas.seguir({ carpetaId: req.params.c, ideaId: req.params.i }, req.params.g, req.body?.prompt));
 
   const agrupadas = async (filtro, extra) => agrupar(await carpetas.listar(), (await ideas.listar()).filter(filtro), extra);
   app.get('/api/pendientes', async () => ideas.pendientes());

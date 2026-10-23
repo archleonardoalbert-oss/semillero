@@ -3,6 +3,7 @@ import { construirApp } from './api/rutas.js';
 
 const cfg = crearConfig();
 const app = await construirApp(cfg);
+await app.glosas.recuperar(); // antes que la cola: deshace lo que dejaron a medias
 await app.cola.recuperar();
 await app.listen({ host: cfg.host, port: cfg.puerto });
 console.log(`Semillero en http://localhost:${cfg.puerto} · datos en ${cfg.datos}`);

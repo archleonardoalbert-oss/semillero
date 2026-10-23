@@ -1,5 +1,5 @@
 // Retransmite a todos los navegadores conectados lo que ocurre en la cola.
-export function registrarWs(app, cola) {
+export function registrarWs(app, cola, glosas) {
   const clientes = new Set();
   const enviar = (msg) => {
     const texto = JSON.stringify(msg);
@@ -10,6 +10,11 @@ export function registrarWs(app, cola) {
   cola.on('idea', ({ ref, idea }) => enviar({ tipo: 'idea', ref, idea }));
   cola.on('cola', (datos) => enviar({ tipo: 'cola', datos }));
   cola.on('pausa', (datos) => enviar({ tipo: 'pausa', datos }));
+  if (glosas) {
+    glosas.on('glosa', ({ ref, glosa }) => enviar({ tipo: 'glosa', ref, glosa }));
+    glosas.on('glosa-evento', ({ ref, id, ev }) => enviar({ tipo: 'glosa-evento', ref, id, ev }));
+    glosas.on('idea', ({ ref, idea }) => enviar({ tipo: 'idea', ref, idea }));
+  }
 
   app.get('/ws', { websocket: true }, (socket) => {
     clientes.add(socket);

@@ -23,6 +23,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
   let ignorarHastaConocerCuota = false; // reanudar sin cuota en memoria (p. ej. tras reiniciar)
   let reinicioVentanaPausa = null; // resetsAt de la ventana que provocó la última pausa
   let apagando = false;
+  let ajenosExternos = () => []; // objetivos de otras ejecuciones fuera de la cola (glosas)
 
   const estado = () => ({
     ejecutando: [...activas.values()].map((a) => a.ref),
@@ -142,7 +143,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
 
   async function cerrar(a, r, { nueva }) {
     const { ref } = a;
-    const otros = [...activas.values()].filter((o) => o !== a && o.archivoDestino).flatMap(objetivos);
+    const otros = [...[...activas.values()].filter((o) => o !== a && o.archivoDestino).flatMap(objetivos), ...ajenosExternos()];
     const propios = [...objetivos(a), 'notas-globales.md'];
     const { restaurados } = await guard.verificar({ propios, ajenosActivos: otros });
     if (restaurados.length) console.warn('[guard] restaurados', restaurados);
@@ -179,6 +180,11 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
 
   function alEvento(ref, ev) {
     emisor.emit('evento', { ref, ev });
+    registrarCuota(ev);
+  }
+
+  // También la alimentan ejecuciones fuera de la cola (glosas): la cuota es una sola.
+  function registrarCuota(ev) {
     if (ev.type !== 'rate_limit_event') return;
     const w = ev.rate_limit_info?.unifiedWindows ?? {};
     cuota = {
@@ -295,5 +301,14 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
     while (activas.size && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 50));
   }
 
-  return Object.assign(emisor, { lanzar, detener, reanudar, estado, recuperar, apagar });
+  // Lo que las ejecuciones en marcha pueden estar escribiendo ahora mismo.
+  function objetivosActivos() {
+    const enMarcha = [...activas.values()].filter((a) => a.archivoDestino);
+    return enMarcha.length ? [...enMarcha.flatMap(objetivos), 'notas-globales.md'] : [];
+  }
+
+  return Object.assign(emisor, {
+    lanzar, detener, reanudar, estado, recuperar, apagar, registrarCuota, objetivosActivos,
+    fijarAjenosExternos: (fn) => (ajenosExternos = fn),
+  });
 }

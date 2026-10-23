@@ -96,5 +96,17 @@ export function crearGuard(cfg) {
     });
   }
 
-  return { iniciar, commitear, proteger, verificar, cambios };
+  // Devuelve rutas (o carpetas con "/**") a lo commiteado y borra lo nuevo sin commitear.
+  function restaurar(rutas) {
+    return enSerie(async () => {
+      for (const r of rutas) {
+        const p = r.replace(/\/\*\*$/, '');
+        if ((await git('ls-files', '--', p)).stdout.trim()) await git('checkout', 'HEAD', '--', p);
+        else if (!r.endsWith('/**')) await fs.rm(path.join(cfg.datos, p), { force: true });
+        if (r.endsWith('/**')) await git('clean', '-fdq', '--', p);
+      }
+    });
+  }
+
+  return { iniciar, commitear, proteger, verificar, cambios, restaurar };
 }

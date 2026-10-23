@@ -102,3 +102,17 @@ test('una escritura protegida en curso nunca se revierte', async () => {
   assert.equal(await leer(`${Y}/idea.json`), '{"estado":"pausada"}');
   assert.deepEqual(await guard.cambios(), []);
 });
+
+test('restaurar devuelve a HEAD y borra lo no trackeado', async () => {
+  const cfg = await cfgTemporal();
+  const guard = crearGuard(cfg);
+  await guard.iniciar();
+  await fs.mkdir(path.join(cfg.datos, 'd/sub'), { recursive: true });
+  await fs.writeFile(path.join(cfg.datos, 'd/a.md'), 'original');
+  await guard.commitear('todo', 'base');
+  await fs.writeFile(path.join(cfg.datos, 'd/a.md'), 'cambiado');
+  await fs.writeFile(path.join(cfg.datos, 'd/sub/nuevo.png'), 'x');
+  await guard.restaurar(['d/a.md', 'd/sub/**']);
+  assert.equal(await fs.readFile(path.join(cfg.datos, 'd/a.md'), 'utf8'), 'original');
+  await assert.rejects(fs.access(path.join(cfg.datos, 'd/sub/nuevo.png')));
+});
