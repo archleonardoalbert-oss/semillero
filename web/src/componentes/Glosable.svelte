@@ -12,7 +12,7 @@
   // Un documento renderizado en el que se puede seleccionar cualquier cosa (texto, fórmulas, imágenes)
   // para pedir que Claude la explique o corregirla. Las glosas quedan ancladas al fragmento.
   // `desfase`: distancia (rem) del borde derecho de este bloque al margen de la página.
-  let { html, documento, autor, glosas, base, bloqueado = false, desfase = 2.5 } = $props();
+  let { html, documento, autor, glosas, base, bloqueado = false, desfase = 2.5, flotante = false } = $props();
 
   const yo = {};
   const ANCHO_MARGEN = '(min-width: 1710px)';
@@ -23,7 +23,8 @@
   let huerfanas = $state([]);
   let alturas = $state({});
   let abierta = $state(null);
-  let margen = $state(matchMedia(ANCHO_MARGEN).matches);
+  let anchoSuficiente = $state(matchMedia(ANCHO_MARGEN).matches);
+  let margen = $derived(anchoSuficiente && !flotante);
 
   let mias = $derived(glosas.estado.lista.filter((g) => g.documento === documento));
   let glosaAbierta = $derived(mias.find((g) => g.id === abierta) ?? null);
@@ -71,7 +72,7 @@
 
   onMount(() => {
     const mq = matchMedia(ANCHO_MARGEN);
-    const alCambiarAncho = () => (margen = mq.matches);
+    const alCambiarAncho = () => (anchoSuficiente = mq.matches);
     mq.addEventListener('change', alCambiarAncho);
     const ro = new ResizeObserver(() => ubicar());
     ro.observe(contenido);

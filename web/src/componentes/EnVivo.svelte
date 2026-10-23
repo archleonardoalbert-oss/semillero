@@ -5,7 +5,7 @@
   import { crearTranscripcion, fechaRegistro } from '../lib/eventos.js';
 
   // Sin `archivo`: retransmisión en directo. Con `archivo`: repaso de una ejecución pasada.
-  let { ref, archivo = null } = $props();
+  let { ref, archivo = null, etiqueta = 'Analizando en directo' } = $props();
 
   const trans = crearTranscripcion();
   let version = $state(0);
@@ -93,7 +93,7 @@
     {#if archivo}
       <span>Repaso del análisis del {inicio?.toLocaleString('es') ?? ''}</span>
     {:else}
-      <span class="directo"><span class="luz"></span>Analizando en directo</span>
+      <span class="directo"><span class="luz"></span>{etiqueta}</span>
       <span class="reloj">{transcurrido}</span>
     {/if}
   </header>

@@ -13,6 +13,8 @@
   import { crearAutoguardado } from '../lib/autoguardado.js';
   import { crearGlosas } from '../lib/glosas.svelte.js';
   import Glosable from '../componentes/Glosable.svelte';
+  import Brote from '../componentes/Brote.svelte';
+  import Germinacion from './Germinacion.svelte';
 
   let { carpetaId, ideaId } = $props();
   const ref = { carpetaId, ideaId };
@@ -29,12 +31,38 @@
   let enviando = $state(false);
   let registros = $state([]);
   let repaso = $state(null);
+  let verManuscrito = $state(false);
+  let condensando = $state(false);
+  let origen = $state('50% 100%');
 
   let carpeta = $derived(global.carpetas.find((c) => c.id === carpetaId));
   let hayDictamen = $derived(idea?.hilo.some((m) => m.autor === 'claude'));
   let enProceso = $derived(idea?.estado === 'en-proceso');
   let ultimo = $derived(idea?.hilo.at(-1));
   let replicaPendiente = $derived(ultimo?.autor === 'usuario' && ultimo.n > 1 ? ultimo : null);
+  let germina = $derived(Boolean(idea?.germinacion));
+  let puedeGerminar = $derived(idea?.estado === 'aceptada' && !germina);
+
+  // El manuscrito se condensa en una semilla que cae al pie de la pantalla; luego empieza la germinación.
+  async function comenzarGerminacion() {
+    const pagina = document.querySelector('.pagina');
+    const r = pagina.getBoundingClientRect();
+    origen = `50% ${innerHeight - 90 - r.top}px`;
+    condensando = true;
+    const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    await new Promise((fin) => setTimeout(fin, reducido ? 0 : 1250));
+    try {
+      await api.germinar(carpetaId, ideaId);
+      await cargar();
+      verManuscrito = false;
+      refrescar();
+      window.scrollTo({ top: 0 });
+    } catch (e) {
+      avisar(`No se pudo comenzar la germinación: ${e.message}`, 'error');
+    } finally {
+      condensando = false;
+    }
+  }
 
   async function cargar() {
     try {
@@ -125,8 +153,17 @@
 
 {#if error}
   <p class="error">{error}</p>
+{:else if idea && germina && !verManuscrito}
+  <Germinacion {idea} {ref} {base} {glosas} {carpeta} alVerManuscrito={() => (verManuscrito = true)} />
 {:else if idea}
-  <article class="pagina">
+  {#if condensando}<div class="semilla-cae" aria-hidden="true"></div>{/if}
+  <article class="pagina" class:condensando style:--origen={origen}>
+    {#if germina}
+      <button class="volver-arbol" onclick={() => ((verManuscrito = false), window.scrollTo({ top: 0 }))}>
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17V8m0 0C9 5 6 4 4 4.6 4.6 7.5 7 8.6 10 8m0 0c1-3 4-4 6-3.4-.6 2.9-3 4-6 3.4" /></svg>
+        Volver al árbol
+      </button>
+    {/if}
     <nav class="migas">
       <a href={enlace.carpeta(carpetaId)} onclick={(e) => (e.preventDefault(), ir(enlace.carpeta(carpetaId)))}>
         <span style:background={carpeta?.color}></span>{carpeta?.nombre ?? carpetaId}
@@ -169,7 +206,11 @@
       {/if}
     {/each}
 
-    {#if hayDictamen && !enProceso}
+    {#if puedeGerminar && !enProceso}
+      <Brote alPulsar={comenzarGerminacion} ocupado={condensando} />
+    {/if}
+
+    {#if hayDictamen && !enProceso && !germina}
       <section class="tu replica" class:urgente={idea.estado === 'aclaracion'}>
         <header>
           <span class="voz">{idea.estado === 'aclaracion' ? 'Claude necesita que le aclares esto' : replicaPendiente ? 'Añadir a tu réplica' : 'Responder al dictamen'}</span>
@@ -213,6 +254,76 @@
     max-width: 73.6rem;
     margin: 0 auto;
     padding: 2.5rem 0 6rem;
+  }
+  .pagina.condensando {
+    transform-origin: var(--origen);
+    animation: condensar 1.2s cubic-bezier(0.6, 0, 0.3, 1) forwards;
+    pointer-events: none;
+  }
+  @keyframes condensar {
+    60% {
+      opacity: 0.6;
+      filter: blur(2px);
+    }
+    to {
+      transform: scale(0.02);
+      opacity: 0;
+      filter: blur(8px);
+    }
+  }
+  .semilla-cae {
+    position: fixed;
+    left: 50%;
+    bottom: 90px;
+    z-index: 30;
+    width: 26px;
+    height: 34px;
+    margin-left: -13px;
+    border: 1.5px solid var(--claude);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    background: #8a6a3d;
+    animation: aparecer-semilla 1.25s var(--curva) both;
+  }
+  @keyframes aparecer-semilla {
+    0%,
+    55% {
+      opacity: 0;
+      transform: scale(0.2);
+    }
+    80% {
+      opacity: 1;
+      transform: scale(1.25);
+      box-shadow: 0 0 40px 6px rgb(240 180 90 / 0.6);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+      box-shadow: 0 0 22px 2px rgb(240 180 90 / 0.4);
+    }
+  }
+  .volver-arbol {
+    position: sticky;
+    top: 4.2rem;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+    padding: 0.45rem 0.9rem 0.45rem 0.6rem;
+    border: 1px solid rgb(111 227 165 / 0.4);
+    border-radius: 999px;
+    background: rgb(12 21 19 / 0.9);
+    backdrop-filter: blur(8px);
+    color: var(--aceptada);
+    cursor: pointer;
+  }
+  .volver-arbol svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
   }
   /* Con sitio de sobra, la columna deja a su derecha el margen de las glosas. */
   @media (min-width: 1710px) {
