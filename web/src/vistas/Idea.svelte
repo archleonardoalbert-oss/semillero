@@ -10,6 +10,7 @@
   import { ir, enlace } from '../lib/ruta.svelte.js';
   import { ETIQUETA_ESTADO, COLOR_ESTADO } from '../lib/estados.js';
   import { fechaRegistro } from '../lib/eventos.js';
+  import { crearAutoguardado } from '../lib/autoguardado.js';
 
   let { carpetaId, ideaId } = $props();
   const ref = { carpetaId, ideaId };
@@ -46,24 +47,32 @@
 
   const fecha = (iso) => (iso ? new Date(iso).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
 
-  // Autoguardado del texto original: 1,5 s después de dejar de escribir.
-  let temporizador;
+  // Autoguardado del texto original: 1,5 s después de dejar de escribir, o ya mismo al salir.
+  const autoguardado = crearAutoguardado(async (md) => {
+    try {
+      const nueva = await api.editarIdea(carpetaId, ideaId, { cuerpo: md });
+      if (idea) idea = { ...idea, estado: nueva.estado, editadaTrasDictamen: nueva.editadaTrasDictamen };
+      guardado = 'Guardado';
+      refrescar();
+    } catch (e) {
+      guardado = '';
+      avisar(`No se pudo guardar: ${e.message}`, 'error');
+    }
+  }, 1500);
   function alEditarOriginal(md) {
     guardado = 'Guardando…';
-    clearTimeout(temporizador);
-    temporizador = setTimeout(async () => {
-      try {
-        const nueva = await api.editarIdea(carpetaId, ideaId, { cuerpo: md });
-        idea = { ...idea, estado: nueva.estado, editadaTrasDictamen: nueva.editadaTrasDictamen };
-        guardado = 'Guardado';
-        refrescar();
-      } catch (e) {
-        guardado = '';
-        avisar(`No se pudo guardar: ${e.message}`, 'error');
-      }
-    }, 1500);
+    autoguardado.programar(md);
   }
-  onDestroy(() => clearTimeout(temporizador));
+  const alDescargar = (e) => {
+    if (!autoguardado.hayPendiente()) return;
+    autoguardado.vaciar();
+    e.preventDefault();
+  };
+  window.addEventListener('beforeunload', alDescargar);
+  onDestroy(() => {
+    window.removeEventListener('beforeunload', alDescargar);
+    autoguardado.vaciar();
+  });
 
   async function guardarTitulo() {
     const t = titulo.trim();

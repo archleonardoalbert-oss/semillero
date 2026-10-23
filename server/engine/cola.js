@@ -20,6 +20,9 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
   let cuota = null;
   let pausadaPorCuota = false;
   let ignorarUmbralHasta = 0;
+  let ignorarHastaConocerCuota = false; // reanudar sin cuota en memoria (p. ej. tras reiniciar)
+  let reinicioVentanaPausa = null; // resetsAt de la ventana que provocó la última pausa
+  let apagando = false;
 
   const estado = () => ({
     ejecutando: [...activas.values()].map((a) => a.ref),
@@ -69,12 +72,15 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
   async function reanudar(refs) {
     for (const ref of refs) await encolar(ref, { soloPausadas: true });
     // Reanudar es una decisión explícita: no se vuelve a pausar por umbral hasta el reinicio de la ventana.
-    if (cuota) ignorarUmbralHasta = Math.max(cuota.resetsAt5h ?? 0, cuota.resetsAt7d ?? 0);
+    if (reinicioVentanaPausa) ignorarUmbralHasta = Math.max(ignorarUmbralHasta, reinicioVentanaPausa);
+    else if (cuota) ignorarUmbralHasta = Math.max(ignorarUmbralHasta, cuota.resetsAt5h ?? 0);
+    else ignorarHastaConocerCuota = true;
     avisarCola();
     await bombear();
   }
 
   async function bombear() {
+    if (apagando) return;
     const { paralelo } = await ajustes.leer();
     while (activas.size < paralelo && cola.length) {
       const item = cola.shift();
@@ -90,7 +96,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
   async function iniciar({ ref, tipo }) {
     const k = clave(ref);
     const control = new AbortController();
-    const a = { ref, control, motivo: null, archivoDestino: null, rutaIdea: ideas.relIdea(ref.carpetaId, ref.ideaId) };
+    const a = { ref, control, motivo: null, archivoDestino: null, arranco: false, rutaIdea: ideas.relIdea(ref.carpetaId, ref.ideaId) };
     activas.set(k, a);
     let final;
     try {
@@ -99,7 +105,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
       a.archivoDestino = await ideas.siguienteArchivo(ref.carpetaId, ref.ideaId);
       const nueva = !idea.sessionId;
       const sessionId = idea.sessionId ?? crypto.randomUUID();
-      await cambiar(ref, { sessionId, interrumpida: true });
+      await cambiar(ref, { sessionId, interrumpida: true, archivoDestino: a.archivoDestino });
       const ultimo = idea.hilo.at(-1);
       const mensaje = mensajeEjecucion({
         tipo, idea, carpeta, rutaIdea: a.rutaIdea,
@@ -113,7 +119,10 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
         args: argsClaude({ sessionId, nueva, ajustes: await ajustes.leer(), mensaje }),
         cwd: cfg.datos,
         rutaRegistro: path.join(ideas.dirIdea(ref.carpetaId, ref.ideaId), 'registro', `${marca}.jsonl`),
-        alEvento: (ev) => alEvento(ref, ev),
+        alEvento: (ev) => {
+          if (ev.type === 'system' && ev.subtype === 'init') a.arranco = true;
+          alEvento(ref, ev);
+        },
         senal: control.signal,
       });
       final = await cerrar(a, r, { nueva });
@@ -148,20 +157,23 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
       await pausarPorCuota();
       a.motivo = a.motivo ?? 'pausa';
     }
-    if (dictamen) {
-      const m = dictamen.meta;
-      return {
-        estado: m.veredicto, etapa: m.etapa, resumen: m.resumen, ultimoVeredicto: new Date().toISOString(),
-        interrumpida: false, editadaTrasDictamen: false, error: null,
-      };
-    }
-    if (a.motivo === 'pausa') return { estado: 'pausada' };
-    if (a.motivo === 'detener') return { estado: 'detenida' };
-    const sinSesion = r.errorArranque || /No conversation found/i.test(r.stderr ?? '');
+    if (dictamen) return finalConDictamen(dictamen);
+    // Una sesión que claude nunca llegó a crear no se puede retomar: se olvida para empezar de cero.
+    const sinSesion = /No conversation found/i.test(r.stderr ?? '') || (nueva && !a.arranco);
+    const olvidar = sinSesion ? { sessionId: null, interrumpida: false } : {};
+    if (a.motivo === 'pausa') return { estado: 'pausada', ...olvidar };
+    if (a.motivo === 'detener') return { estado: 'detenida', ...olvidar };
     return {
       estado: 'error',
       error: r.errorArranque ?? (r.stderr?.trim().split('\n').at(-1) || 'La sesión terminó sin escribir un dictamen válido'),
-      ...(sinSesion && nueva ? { sessionId: null, interrumpida: false } : {}),
+      ...olvidar,
+    };
+  }
+
+  function finalConDictamen({ meta: m }) {
+    return {
+      estado: m.veredicto, etapa: m.etapa, resumen: m.resumen, ultimoVeredicto: new Date().toISOString(),
+      interrumpida: false, editadaTrasDictamen: false, error: null,
     };
   }
 
@@ -180,9 +192,17 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
   }
 
   async function comprobarUmbral() {
-    if (Date.now() / 1000 < ignorarUmbralHasta) return;
     const { umbral5h, umbral7d } = await ajustes.leer();
-    if ((cuota.cincoHoras ?? 0) >= umbral5h || (cuota.sieteDias ?? 0) >= umbral7d) await pausarPorCuota();
+    const pasadas = [];
+    if ((cuota.cincoHoras ?? 0) >= umbral5h) pasadas.push(cuota.resetsAt5h ?? 0);
+    if ((cuota.sieteDias ?? 0) >= umbral7d) pasadas.push(cuota.resetsAt7d ?? 0);
+    if (ignorarHastaConocerCuota) {
+      ignorarHastaConocerCuota = false;
+      ignorarUmbralHasta = Math.max(ignorarUmbralHasta, ...pasadas, 0);
+    }
+    if (!pasadas.length || Date.now() / 1000 < ignorarUmbralHasta) return;
+    reinicioVentanaPausa = Math.max(...pasadas);
+    await pausarPorCuota();
   }
 
   async function pausarPorCuota() {
@@ -234,12 +254,46 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
     avisarCola();
   }
 
+  // Al arrancar: lo que quedó en marcha se limpia como si la sesión hubiera terminado ahora.
   async function recuperar() {
-    for (const idea of await ideas.listar({ estado: 'en-proceso' })) {
-      await ideas.actualizar(idea.carpetaId, idea.id, { estado: 'detenida', interrumpida: Boolean(idea.sessionId) });
+    const cortadas = await ideas.listar({ estado: 'en-proceso' });
+    if (!cortadas.length) await guard.commitear('todo', 'cambios previos al arranque');
+    const propios = ['notas-globales.md'];
+    const finales = [];
+    for (const idea of cortadas) {
+      const rutaIdea = ideas.relIdea(idea.carpetaId, idea.id);
+      let final = { estado: 'detenida' };
+      if (idea.archivoDestino) {
+        const ruta = path.join(cfg.datos, rutaIdea, 'hilo', idea.archivoDestino);
+        const texto = await fs.readFile(ruta, 'utf8').catch(() => null);
+        const dictamen = texto && parsearDictamen(texto);
+        if (dictamen) final = finalConDictamen(dictamen);
+        else if (texto !== null) await fs.rm(ruta, { force: true });
+        propios.push(`${rutaIdea}/hilo/${idea.archivoDestino}`);
+      }
+      propios.push(`${rutaIdea}/figuras/**`, `carpetas/${idea.carpetaId}/notas.md`);
+      finales.push([idea, final]);
     }
+    if (cortadas.length) {
+      const { restaurados } = await guard.verificar({ propios, ajenosActivos: [] });
+      if (restaurados.length) console.warn('[guard] restaurados al arrancar', restaurados);
+      await guard.commitear(propios.map((p) => p.replace(/\/\*\*$/, '')), 'recuperación tras reinicio');
+    }
+    for (const [idea, final] of finales) await ideas.actualizar(idea.carpetaId, idea.id, final);
     pausadaPorCuota = (await ideas.listar({ estado: 'pausada' })).length > 0;
   }
 
-  return Object.assign(emisor, { lanzar, detener, reanudar, estado, recuperar });
+  // Cierre ordenado: las ejecuciones quedan detenidas (retomables) y la cola vuelve a su estado previo.
+  async function apagar(ms = 10000) {
+    apagando = true;
+    for (const a of activas.values()) {
+      a.motivo = 'detener';
+      a.control.abort();
+    }
+    await detener(cola.map((c) => c.ref));
+    const t0 = Date.now();
+    while (activas.size && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 50));
+  }
+
+  return Object.assign(emisor, { lanzar, detener, reanudar, estado, recuperar, apagar });
 }

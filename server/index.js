@@ -9,6 +9,7 @@ console.log(`Semillero en http://localhost:${cfg.puerto} · datos en ${cfg.datos
 
 for (const senal of ['SIGINT', 'SIGTERM']) {
   process.on(senal, async () => {
+    await app.cola.apagar();
     await app.close();
     process.exit(0);
   });

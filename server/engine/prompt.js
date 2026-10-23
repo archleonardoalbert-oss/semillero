@@ -90,6 +90,7 @@ export function mensajeEjecucion({ tipo, idea, carpeta, rutaIdea, archivoDestino
   return [
     `Tu ejecución sobre «${idea.titulo}» se interrumpió (pausa por cuota o parada). Sigue en ${rutaIdea}.`,
     'Revisa lo que ya hiciste y continúa donde la dejaste, sin repetir búsquedas innecesarias.',
+    ...(replica ? ['', 'Ten en cuenta la respuesta del usuario a la que estabas contestando:', '', replica, ''] : []),
     cierre,
   ].join('\n');
 }

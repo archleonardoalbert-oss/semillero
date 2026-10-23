@@ -27,6 +27,7 @@ function crearEjecutarFalso() {
     new Promise((resolve) => {
       const llamada = { ...op, resolve, mensaje: op.args[op.args.indexOf('-p') + 1] };
       llamadas.push(llamada);
+      op.alEvento({ type: 'system', subtype: 'init' }); // como claude real, antes de cualquier otra cosa
       if (op.senal.aborted) resolve({ codigo: 130, abortado: true });
       op.senal.addEventListener('abort', () => resolve({ codigo: 130, abortado: true }));
     });

@@ -42,7 +42,7 @@ export async function construirApp(cfg, { cola: colaInyectada } = {}) {
   await guard.iniciar();
   const carpetas = crearAlmacenCarpetas(cfg, { proteger: guard.proteger });
   const ideas = crearAlmacenIdeas(cfg, { proteger: guard.proteger });
-  const ajustes = crearAjustes(cfg);
+  const ajustes = crearAjustes(cfg, { proteger: guard.proteger });
   const cola = colaInyectada ?? crearCola({ cfg, ideas, carpetas, ajustes, guard });
   app.decorate('cola', cola);
 

@@ -26,14 +26,20 @@ export function crearGuard(cfg) {
   async function iniciar() {
     await fs.mkdir(cfg.datos, { recursive: true });
     await enSerie(async () => {
-      if (!(await existe(path.join(cfg.datos, '.git')))) {
+      const nuevo = !(await existe(path.join(cfg.datos, '.git')));
+      if (nuevo) {
         await git('init', '-q');
         await git('config', 'user.name', 'Semillero');
         await git('config', 'user.email', 'semillero@localhost');
         await git('config', 'core.quotepath', 'false');
       }
+      // Solo este servidor usa este repo: un lock al arrancar es de un cierre brusco anterior.
+      await fs.rm(path.join(cfg.datos, '.git/index.lock'), { force: true });
       await fs.writeFile(path.join(cfg.datos, '.gitignore'), '**/registro/\n*.tmp\n');
-      await git('add', '-A');
+      // En un repo existente NO se commitea todo: lo pendiente puede venir de una sesión cortada
+      // y cola.recuperar() decide qué es legítimo.
+      if (nuevo) await git('add', '-A');
+      else await git('add', '--', '.gitignore');
       await git('commit', '-q', '--allow-empty', '-m', 'inicio');
     });
   }
