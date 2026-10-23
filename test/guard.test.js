@@ -81,3 +81,24 @@ test('commitear todo deja el árbol limpio', async () => {
   await guard.commitear('todo', 'tras');
   assert.deepEqual(await guard.cambios(), []);
 });
+
+test('commitear ignora rutas que no existen y registra borrados', async () => {
+  const { cfg, guard, escribir } = await preparar();
+  await escribir('carpetas/ia/notas.md', 'nota');
+  await guard.commitear(['carpetas/ia/notas.md', `${X}/figuras`, 'no/existe.md'], 'tras');
+  await fs.rm(path.join(cfg.datos, Y), { recursive: true });
+  await guard.commitear([Y], 'borrar');
+  assert.deepEqual(await guard.cambios(), []);
+});
+
+test('una escritura protegida en curso nunca se revierte', async () => {
+  const { guard, escribir, leer } = await preparar();
+  const escritura = guard.proteger([`${Y}/idea.json`], async () => {
+    await escribir(`${Y}/idea.json`, '{"estado":"pausada"}');
+    await new Promise((r) => setTimeout(r, 50));
+  });
+  const verificacion = guard.verificar({ propios: [], ajenosActivos: [] });
+  await Promise.all([escritura, verificacion]);
+  assert.equal(await leer(`${Y}/idea.json`), '{"estado":"pausada"}');
+  assert.deepEqual(await guard.cambios(), []);
+});

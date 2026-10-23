@@ -48,18 +48,33 @@ export function crearGuard(cfg) {
 
   const cambios = () => enSerie(cambiosSinBloqueo);
 
-  function commitear(rutas, mensaje) {
-    return enSerie(async () => {
-      if (rutas === 'todo') await git('add', '-A');
-      else if (rutas.length) await git('add', '-A', '--', ...rutas);
-      else return;
-      try {
-        await git('diff', '--cached', '--quiet');
-      } catch {
-        await git('commit', '-q', '-m', mensaje);
+  async function commitearSinBloqueo(rutas, mensaje) {
+    if (rutas === 'todo') await git('add', '-A');
+    else {
+      // git add falla con rutas inexistentes; las borradas siguen contando si estaban trackeadas.
+      const validas = [];
+      for (const r of rutas) {
+        if ((await existe(path.join(cfg.datos, r))) || (await git('ls-files', '--', r)).stdout.trim()) validas.push(r);
       }
-    });
+      if (!validas.length) return;
+      await git('add', '-A', '--', ...validas);
+    }
+    try {
+      await git('diff', '--cached', '--quiet');
+    } catch {
+      await git('commit', '-q', '-m', mensaje);
+    }
   }
+
+  const commitear = (rutas, mensaje) => enSerie(() => commitearSinBloqueo(rutas, mensaje));
+
+  // Escritura del servidor + commit como una sola operación: verificar nunca ve el estado intermedio.
+  const proteger = (rutas, fn, mensaje = 'usuario') =>
+    enSerie(async () => {
+      const r = await fn();
+      await commitearSinBloqueo(typeof rutas === 'function' ? rutas(r) : rutas, mensaje);
+      return r;
+    });
 
   function verificar({ propios, ajenosActivos }) {
     return enSerie(async () => {
@@ -75,5 +90,5 @@ export function crearGuard(cfg) {
     });
   }
 
-  return { iniciar, commitear, verificar, cambios };
+  return { iniciar, commitear, proteger, verificar, cambios };
 }

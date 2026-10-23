@@ -8,8 +8,14 @@ export const ESTADOS_PENDIENTES = new Set(['borrador', 'replica-pendiente', 'det
 const EXTENSIONES = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']);
 const RE_MENSAJE = /^(\d{3})-(usuario|claude)\.md$/;
 
-export function crearAlmacenIdeas(cfg, { alEscribir = async () => {} } = {}) {
+export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: protegerOpcion } = {}) {
   const carpetas = crearAlmacenCarpetas(cfg);
+  // Cada escritura del usuario va con su commit en una sola operación (ver guard.proteger).
+  const proteger = protegerOpcion ?? (async (rutas, fn) => {
+    const r = await fn();
+    await alEscribir(typeof rutas === 'function' ? rutas(r) : rutas);
+    return r;
+  });
   const dirIdeas = (c) => path.join(cfg.datos, 'carpetas', slugify(c) === c ? c : '__invalida__', 'ideas');
   const dirIdea = (c, i) => path.join(dirIdeas(c), slugify(i) === i ? i : '__invalida__');
   const rel = (c, i, ...resto) => ['carpetas', c, 'ideas', i, ...resto].join('/');
@@ -42,24 +48,29 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {} } = {}) {
     await escribirJSON(path.join(dirIdea(idea.carpetaId, idea.id), 'idea.json'), idea);
   }
 
-  async function actualizar(c, i, parche) {
-    const idea = { ...(await leerIdea(c, i)), ...parche, id: i, carpetaId: c, actualizada: new Date().toISOString() };
-    await guardarIdea(idea);
-    await alEscribir([rel(c, i, 'idea.json')]);
-    return idea;
+  function actualizar(c, i, parche) {
+    return proteger([rel(c, i, 'idea.json')], async () => {
+      const idea = { ...(await leerIdea(c, i)), ...parche, id: i, carpetaId: c, actualizada: new Date().toISOString() };
+      await guardarIdea(idea);
+      return idea;
+    });
   }
 
   async function crear(c, { titulo, cuerpo = '' }) {
     await carpetas.obtener(c);
     if (!String(titulo ?? '').trim()) throw new Error('titulo-vacio');
-    await fs.mkdir(dirIdeas(c), { recursive: true });
-    const id = await slugUnico(dirIdeas(c), slugify(titulo));
-    const ahora = new Date().toISOString();
-    const idea = { id, carpetaId: c, titulo: titulo.trim(), creada: ahora, actualizada: ahora, estado: 'borrador' };
-    await guardarIdea(idea);
-    await escribirAtomico(path.join(dirIdea(c, id), 'hilo', '001-usuario.md'), cuerpo);
-    await alEscribir([rel(c, id, 'idea.json'), rel(c, id, 'hilo', '001-usuario.md')]);
-    return idea;
+    return proteger(
+      (idea) => [rel(c, idea.id, 'idea.json'), rel(c, idea.id, 'hilo', '001-usuario.md')],
+      async () => {
+        await fs.mkdir(dirIdeas(c), { recursive: true });
+        const id = await slugUnico(dirIdeas(c), slugify(titulo));
+        const ahora = new Date().toISOString();
+        const idea = { id, carpetaId: c, titulo: titulo.trim(), creada: ahora, actualizada: ahora, estado: 'borrador' };
+        await guardarIdea(idea);
+        await escribirAtomico(path.join(dirIdea(c, id), 'hilo', '001-usuario.md'), cuerpo);
+        return idea;
+      },
+    );
   }
 
   async function obtener(c, i) {
@@ -86,16 +97,17 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {} } = {}) {
       if (!String(titulo).trim()) throw new Error('titulo-vacio');
       parche.titulo = String(titulo).trim();
     }
-    const escritos = [];
     if (cuerpo !== undefined) {
-      await escribirAtomico(path.join(dirIdea(c, i), 'hilo', '001-usuario.md'), cuerpo);
-      escritos.push(rel(c, i, 'hilo', '001-usuario.md'));
       const idea = await leerIdea(c, i);
-      if (idea.estado !== 'en-proceso' && (await tieneDictamen(c, i))) {
+      if (idea.estado === 'en-proceso') throw new Error('en-proceso');
+      await proteger([rel(c, i, 'hilo', '001-usuario.md')], () =>
+        escribirAtomico(path.join(dirIdea(c, i), 'hilo', '001-usuario.md'), cuerpo),
+      );
+      const actual = (await mensajes(c, i)).find((m) => m.n === 1)?.contenido;
+      if (actual !== undefined && (await tieneDictamen(c, i))) {
         Object.assign(parche, { estado: 'replica-pendiente', editadaTrasDictamen: true });
       }
     }
-    await alEscribir(escritos);
     return actualizar(c, i, parche);
   }
 
@@ -119,8 +131,7 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {} } = {}) {
       ? ultimo.archivo
       : `${String(ultimo.n + 1).padStart(3, '0')}-usuario.md`;
     const texto = ultimo.autor === 'usuario' && ultimo.n > 1 ? `${ultimo.contenido}\n\n${cuerpo}` : cuerpo;
-    await escribirAtomico(path.join(dirIdea(c, i), 'hilo', archivo), texto);
-    await alEscribir([rel(c, i, 'hilo', archivo)]);
+    await proteger([rel(c, i, 'hilo', archivo)], () => escribirAtomico(path.join(dirIdea(c, i), 'hilo', archivo), texto));
     return actualizar(c, i, { estado: 'replica-pendiente' });
   }
 
@@ -145,18 +156,22 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {} } = {}) {
     const dir = path.join(dirIdea(c, i), 'adjuntos');
     await fs.mkdir(dir, { recursive: true });
     const raiz = slugify(path.basename(base, path.extname(base)));
-    let archivo = `${raiz}.${ext}`;
-    for (let n = 2; await fs.access(path.join(dir, archivo)).then(() => true, () => false); n++) archivo = `${raiz}-${n}.${ext}`;
-    await escribirAtomico(path.join(dir, archivo), buffer);
-    await alEscribir([rel(c, i, 'adjuntos', archivo)]);
+    const archivo = await proteger(
+      (a) => [rel(c, i, 'adjuntos', a)],
+      async () => {
+        let a = `${raiz}.${ext}`;
+        for (let n = 2; await fs.access(path.join(dir, a)).then(() => true, () => false); n++) a = `${raiz}-${n}.${ext}`;
+        await escribirAtomico(path.join(dir, a), buffer);
+        return a;
+      },
+    );
     return `adjuntos/${archivo}`;
   }
 
   async function borrar(c, i) {
     const idea = await leerIdea(c, i);
     if (idea.estado === 'en-proceso') throw new Error('en-proceso');
-    await fs.rm(dirIdea(c, i), { recursive: true, force: true });
-    await alEscribir([rel(c, i)]);
+    await proteger([rel(c, i)], () => fs.rm(dirIdea(c, i), { recursive: true, force: true }));
   }
 
   return {

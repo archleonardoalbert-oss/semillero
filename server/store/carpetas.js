@@ -7,7 +7,13 @@ export async function asegurarNotasGlobales(datos) {
   if (!(await existe(ruta))) await escribirAtomico(ruta, '# Notas globales\n\n');
 }
 
-export function crearAlmacenCarpetas(cfg, { alEscribir = async () => {} } = {}) {
+export function crearAlmacenCarpetas(cfg, { alEscribir = async () => {}, proteger: protegerOpcion } = {}) {
+  // Cada escritura del usuario va con su commit en una sola operación (ver guard.proteger).
+  const proteger = protegerOpcion ?? (async (rutas, fn) => {
+    const r = await fn();
+    await alEscribir(typeof rutas === 'function' ? rutas(r) : rutas);
+    return r;
+  });
   const raiz = path.join(cfg.datos, 'carpetas');
   const dirDe = (id) => path.join(raiz, slugify(id) === id ? id : '__invalida__');
   const rutaJson = (id) => path.join(dirDe(id), 'carpeta.json');
@@ -27,29 +33,34 @@ export function crearAlmacenCarpetas(cfg, { alEscribir = async () => {} } = {}) 
 
   async function crear({ nombre, color = '#7aa2ff' }) {
     if (!String(nombre ?? '').trim()) throw new Error('nombre-vacio');
-    await fs.mkdir(raiz, { recursive: true });
-    await asegurarNotasGlobales(cfg.datos);
-    const id = await slugUnico(raiz, slugify(nombre));
     const existentes = await listar();
-    const carpeta = {
-      id,
-      nombre: nombre.trim(),
-      color,
-      creada: new Date().toISOString(),
-      orden: existentes.reduce((m, c) => Math.max(m, c.orden), -1) + 1,
-    };
-    await escribirJSON(rutaJson(id), carpeta);
-    await escribirAtomico(path.join(dirDe(id), 'notas.md'), `# Notas de ${carpeta.nombre}\n\n`);
-    await fs.mkdir(path.join(dirDe(id), 'ideas'), { recursive: true });
-    await alEscribir([`carpetas/${id}/carpeta.json`, `carpetas/${id}/notas.md`, 'notas-globales.md']);
-    return carpeta;
+    return proteger(
+      (c) => [`carpetas/${c.id}/carpeta.json`, `carpetas/${c.id}/notas.md`, 'notas-globales.md'],
+      async () => {
+        await fs.mkdir(raiz, { recursive: true });
+        await asegurarNotasGlobales(cfg.datos);
+        const id = await slugUnico(raiz, slugify(nombre));
+        const carpeta = {
+          id,
+          nombre: nombre.trim(),
+          color,
+          creada: new Date().toISOString(),
+          orden: existentes.reduce((m, c) => Math.max(m, c.orden), -1) + 1,
+        };
+        await escribirJSON(rutaJson(id), carpeta);
+        await escribirAtomico(path.join(dirDe(id), 'notas.md'), `# Notas de ${carpeta.nombre}\n\n`);
+        await fs.mkdir(path.join(dirDe(id), 'ideas'), { recursive: true });
+        return carpeta;
+      },
+    );
   }
 
-  async function actualizar(id, parche) {
-    const carpeta = { ...(await obtener(id)), ...parche, id };
-    await escribirJSON(rutaJson(id), carpeta);
-    await alEscribir([`carpetas/${id}/carpeta.json`]);
-    return carpeta;
+  function actualizar(id, parche) {
+    return proteger([`carpetas/${id}/carpeta.json`], async () => {
+      const carpeta = { ...(await obtener(id)), ...parche, id };
+      await escribirJSON(rutaJson(id), carpeta);
+      return carpeta;
+    });
   }
 
   const renombrar = (id, nombre) => {
@@ -61,8 +72,7 @@ export function crearAlmacenCarpetas(cfg, { alEscribir = async () => {} } = {}) 
     await obtener(id);
     const ideas = await fs.readdir(path.join(dirDe(id), 'ideas')).catch(() => []);
     if (ideas.length) throw new Error('carpeta-no-vacia');
-    await fs.rm(dirDe(id), { recursive: true, force: true });
-    await alEscribir([`carpetas/${id}`]);
+    await proteger([`carpetas/${id}`], () => fs.rm(dirDe(id), { recursive: true, force: true }));
   }
 
   return { listar, obtener, crear, actualizar, renombrar, borrar };
