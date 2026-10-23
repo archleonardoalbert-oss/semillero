@@ -6,6 +6,9 @@ import { argsGlosa, mensajeGlosa, mensajeSeguimientoGlosa, parsearRespuestaGlosa
 import { parsearDictamen, VEREDICTOS } from './veredicto.js';
 
 const TIPOS = new Set(['explicar', 'corregir']);
+// Explicar: superficial con Sonnet (rápida) o profunda con Opus a esfuerzo medio (decisión del usuario).
+// Corregir siempre con el modelo y esfuerzo de Ajustes.
+const PROFUNDIDAD = { superficial: { modelo: 'sonnet', esfuerzo: 'low' }, profunda: { modelo: 'opus', esfuerzo: 'medium' } };
 const RE_DOCUMENTO = /^(hilo\/\d{3}-(claude|usuario)\.md|germinacion\/nodos\/[a-z0-9-]+\.md)$/;
 const RE_DICTAMEN = /^hilo\/\d{3}-claude\.md$/;
 const MAX_FRAGMENTO = 20000;
@@ -63,6 +66,7 @@ export function crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, eje
     const prompt = String(datos.prompt ?? '').trim();
     const g = await glosas.crear(ref.carpetaId, ref.ideaId, {
       tipo: datos.tipo,
+      ...(datos.tipo === 'explicar' && { profundidad: datos.profundidad === 'superficial' ? 'superficial' : 'profunda' }),
       documento: datos.documento,
       ancla: datos.ancla ?? {},
       fragmento,
@@ -128,7 +132,7 @@ export function crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, eje
         const marca = new Date().toISOString().replace(/[:.]/g, '-');
         return ejecutar({
           cfg,
-          args: argsGlosa({ sessionId: sesion, bifurcar, ajustes: await ajustes.leer(), mensaje }),
+          args: argsGlosa({ sessionId: sesion, bifurcar, ajustes: { ...(await ajustes.leer()), ...PROFUNDIDAD[g.profundidad] }, mensaje }),
           cwd: cfg.datos,
           rutaRegistro: path.join(ideas.dirIdea(ref.carpetaId, ref.ideaId), 'registro', 'glosas', `${g.id}-${marca}.jsonl`),
           alEvento: (ev) => {

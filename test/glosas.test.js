@@ -265,3 +265,32 @@ test('menor: dos «seguir» simultáneos solo lanzan una ejecución', async () =
   const r = await Promise.allSettled([motor.seguir(ref, g.id, 'a'), motor.seguir(ref, g.id, 'b')]);
   assert.equal(r.filter((x) => x.status === 'fulfilled').length, 1);
 });
+
+// --- Profundidad de las explicaciones ---
+const modeloYEsfuerzo = (args) => [args[args.indexOf('--model') + 1], args[args.indexOf('--effort') + 1]];
+
+test('una explicación superficial usa Sonnet con esfuerzo bajo', async () => {
+  const { motor, falso, ref, pedido } = await preparar();
+  const g = await motor.pedir(ref, pedido({ profundidad: 'superficial' }));
+  await hasta(() => falso.llamadas[0]);
+  assert.deepEqual(modeloYEsfuerzo(falso.llamadas[0].args), ['sonnet', 'low']);
+  assert.equal(g.profundidad, 'superficial');
+});
+
+test('una explicación profunda usa Opus con esfuerzo medio, y seguir la hereda', async () => {
+  const { motor, falso, ref, pedido, lista } = await preparar();
+  const g = await motor.pedir(ref, pedido({ profundidad: 'profunda' }));
+  await falso.responder(0, 'Uno');
+  await lista(g.id);
+  assert.deepEqual(modeloYEsfuerzo(falso.llamadas[0].args), ['opus', 'medium']);
+  await motor.seguir(ref, g.id, 'más');
+  await hasta(() => falso.llamadas[1]);
+  assert.deepEqual(modeloYEsfuerzo(falso.llamadas[1].args), ['opus', 'medium']);
+});
+
+test('corregir usa el modelo y esfuerzo de Ajustes', async () => {
+  const { motor, falso, ref, pedido } = await preparar();
+  await motor.pedir(ref, pedido({ tipo: 'corregir', prompt: 'mal', profundidad: 'superficial' }));
+  await hasta(() => falso.llamadas[0]);
+  assert.deepEqual(modeloYEsfuerzo(falso.llamadas[0].args), ['opus', 'high']);
+});
