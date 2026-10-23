@@ -168,7 +168,7 @@ test('superar el 90 % de 5 h pausa las activas y desencola el resto', async () =
   await cola.lanzar(refs);
   await esperar();
   falso.cuota(0, 0.95);
-  await hasta(async () => (await estado(4)) === 'pausada' && (await estado(0)) === 'pausada');
+  await hasta(async () => (await Promise.all([0, 1, 2, 3, 4].map(estado))).every((e) => e === 'pausada'));
   await hasta(async () => (await estado(5)) === 'borrador');
   for (let n = 0; n < 5; n++) assert.equal(await estado(n), 'pausada');
   assert.equal(await estado(5), 'borrador');
