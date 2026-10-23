@@ -7,7 +7,7 @@ import { cfgTemporal } from './helpers.js';
 function colaFalsa() {
   const c = new EventEmitter();
   c.llamadas = [];
-  for (const m of ['lanzar', 'detener', 'reanudar']) c[m] = async (refs) => c.llamadas.push([m, refs]);
+  for (const m of ['lanzar', 'detener', 'reanudar', 'germinar']) c[m] = async (refs, o) => c.llamadas.push(o === undefined ? [m, refs] : [m, refs, o]);
   c.estado = () => ({ ejecutando: [], enCola: [], pausadaPorCuota: false, cuota: null });
   c.recuperar = async () => {};
   c.objetivosActivos = () => [];
@@ -151,4 +151,16 @@ test('las glosas validan el documento y se listan', async () => {
   });
   assert.equal(r.statusCode, 400);
   assert.deepEqual((await pedir('GET', '/api/carpetas/ia/ideas/pesos-rapidos/glosas')).json(), []);
+});
+
+test('germinar pasa la petición a la cola y el progreso se guarda', async () => {
+  const { pedir, cola } = await conIdea();
+  await pedir('POST', '/api/carpetas/ia/ideas/pesos-rapidos/germinar', { peticion: 'Más ejemplos' });
+  assert.deepEqual(cola.llamadas.at(-1), ['germinar', { carpetaId: 'ia', ideaId: 'pesos-rapidos' }, { peticion: 'Más ejemplos' }]);
+  const r = await pedir('PATCH', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion/nodos/e1', { estado: 'hecho' });
+  assert.equal(r.statusCode, 200);
+  const g = (await pedir('GET', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion')).json();
+  assert.equal(g.mapa, null);
+  assert.equal(g.progreso.nodos.e1.estado, 'hecho');
+  assert.equal((await pedir('PATCH', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion/nodos/e1', { estado: 'x' })).statusCode, 400);
 });

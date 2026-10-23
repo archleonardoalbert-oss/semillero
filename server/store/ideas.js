@@ -141,7 +141,8 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
       const ideas = [];
       for (const idea of await listar({ carpetaId: carpeta.id })) {
         if (!ESTADOS_PENDIENTES.has(idea.estado)) continue;
-        ideas.push({ ...idea, etiqueta: (await tieneDictamen(carpeta.id, idea.id)) ? 'ANALIZADA' : 'NUEVA' });
+        const etiqueta = idea.trabajo === 'germinacion' ? 'GERMINACIÓN' : (await tieneDictamen(carpeta.id, idea.id)) ? 'ANALIZADA' : 'NUEVA';
+        ideas.push({ ...idea, etiqueta });
       }
       if (ideas.length) grupos.push({ carpeta, ideas });
     }

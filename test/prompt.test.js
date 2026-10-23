@@ -63,3 +63,11 @@ test('la réplica avisa de dictámenes enmendados sin contar la glosa', () => {
   const m = mensajeEjecucion({ tipo: 'replica', ...base, idea: { ...base.idea, enmendados: ['002-claude.md'] }, replica: 'Hola' });
   assert.match(m, /002-claude\.md fue enmendado/);
 });
+
+test('el prompt de germinación fija el formato, las descargas legales y no inventar consecuencias', async () => {
+  const { promptGerminacion } = await import('../server/engine/prompt.js');
+  const p = promptGerminacion();
+  for (const s of ['mapa.json', '"fase": "diagnostico | mapa"', 'legalmente accesible', 'Sci-Hub', 'NUNCA inventes', 'progreso.json', 'incognita']) {
+    assert.ok(p.includes(s), `falta ${s}`);
+  }
+});

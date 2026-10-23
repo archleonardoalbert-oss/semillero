@@ -4,7 +4,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ESTADOS_PENDIENTES } from '../store/ideas.js';
 import { ejecutar as ejecutarReal } from './runner.js';
-import { argsClaude, mensajeEjecucion } from './prompt.js';
+import { argsClaude, mensajeEjecucion, mensajeGerminacion, promptGerminacion } from './prompt.js';
+import { validarMapa } from './mapa.js';
 import { parsearDictamen } from './veredicto.js';
 import { notificar as notificarReal } from './notificar.js';
 
@@ -12,7 +13,7 @@ const clave = (r) => `${r.carpetaId}/${r.ideaId}`;
 const RE_LIMITE = /usage limit|rate limit|limit reached|límite/i;
 
 // Gestiona las ejecuciones: máximo `paralelo` a la vez, el resto en cola.
-export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = ejecutarReal, notificar = notificarReal }) {
+export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = null, ejecutar = ejecutarReal, notificar = notificarReal }) {
   const emisor = new EventEmitter();
   const activas = new Map(); // clave → { ref, control, motivo, archivoDestino, rutaIdea }
   let cola = []; // { ref, tipo }
@@ -40,24 +41,33 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
   }
 
   function tipoDe(idea, hilo) {
+    // Una idea que ya germina nunca vuelve al análisis: todo lo que se lance sobre ella es germinación.
+    if (idea.trabajo === 'germinacion') return idea.sessionId && idea.interrumpida ? 'reanudar' : 'germinar';
     if (idea.sessionId && idea.interrumpida) return 'reanudar';
     if (!hilo.some((m) => m.autor === 'claude')) return 'inicial';
     return 'replica';
   }
 
-  async function encolar(ref, { soloPausadas }) {
+  async function encolar(ref, { soloPausadas, germinar = false }) {
     const k = clave(ref);
     if (ocupadas.has(k)) return;
     ocupadas.add(k);
     try {
       const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
-      const valida = soloPausadas ? idea.estado === 'pausada' : ESTADOS_PENDIENTES.has(idea.estado);
+      const valida = germinar
+        ? idea.estado === 'aceptada' || (idea.trabajo === 'germinacion' && ['detenida', 'error'].includes(idea.estado))
+        : soloPausadas ? idea.estado === 'pausada' : ESTADOS_PENDIENTES.has(idea.estado);
       if (!valida) {
         ocupadas.delete(k);
+        if (germinar) throw new Error(idea.estado === 'en-proceso' ? 'en-proceso' : 'no-aceptada');
         return;
       }
-      cola.push({ ref, tipo: tipoDe(idea, idea.hilo) });
-      await cambiar(ref, { estado: 'en-proceso', estadoPrevio: idea.estado });
+      const parche = { estado: 'en-proceso', estadoPrevio: idea.estado };
+      if (germinar && idea.trabajo !== 'germinacion') {
+        Object.assign(parche, { trabajo: 'germinacion', estadoPrevio: 'aceptada', germinacion: { fase: 'preparando', iniciada: new Date().toISOString() } });
+      }
+      cola.push({ ref, tipo: germinar ? (idea.sessionId && idea.interrumpida ? 'reanudar' : 'germinar') : tipoDe(idea, idea.hilo) });
+      await cambiar(ref, parche);
     } catch (e) {
       ocupadas.delete(k);
       throw e;
@@ -66,6 +76,18 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
 
   async function lanzar(refs) {
     for (const ref of refs) await encolar(ref, { soloPausadas: false });
+    avisarCola();
+    await bombear();
+  }
+
+  // Germinar (o seguir germinando) una idea aceptada. La petición del usuario queda pendiente
+  // en su progreso hasta que una ejecución termine con un mapa válido.
+  async function germinar(ref, { peticion } = {}) {
+    if (!germinacion) throw new Error('sin-germinacion');
+    const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
+    if (idea.estado === 'en-proceso' || ocupadas.has(clave(ref))) throw new Error('en-proceso');
+    if (peticion?.trim()) await germinacion.ponerPeticion(ref.carpetaId, ref.ideaId, peticion);
+    await encolar(ref, { soloPausadas: false, germinar: true });
     avisarCola();
     await bombear();
   }
@@ -91,7 +113,40 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
   }
 
   function objetivos(a) {
-    return [`${a.rutaIdea}/hilo/${a.archivoDestino}`, `${a.rutaIdea}/figuras/**`, `carpetas/${a.ref.carpetaId}/notas.md`];
+    return a.objetivos ?? [];
+  }
+
+  const objetivosGerminacion = (rutaIdea, carpetaId) => [
+    `${rutaIdea}/germinacion/mapa.json`, `${rutaIdea}/germinacion/nodos/**`, `${rutaIdea}/germinacion/recursos/**`,
+    `${rutaIdea}/figuras/**`, `carpetas/${carpetaId}/notas.md`,
+  ];
+
+  // Prepara la ejecución: qué puede escribir, con qué prompt y qué mensaje.
+  async function preparar(a, idea, carpeta, tipo) {
+    const { ref, rutaIdea } = a;
+    if (idea.trabajo === 'germinacion') {
+      a.germinacion = true;
+      a.objetivos = objetivosGerminacion(rutaIdea, ref.carpetaId);
+      a.mapaAntes = await germinacion.leerMapa(ref.carpetaId, ref.ideaId);
+      const progreso = await germinacion.leerProgreso(ref.carpetaId, ref.ideaId);
+      const cambios = await germinacion.cambiosDesdeEnvio(ref.carpetaId, ref.ideaId, a.mapaAntes);
+      await cambiar(ref, { interrumpida: true, archivoDestino: null });
+      return {
+        sistema: promptGerminacion(),
+        mensaje: mensajeGerminacion({ idea, carpeta, rutaIdea, mapa: a.mapaAntes, progreso, cambios, reanudar: tipo === 'reanudar' }),
+      };
+    }
+    a.archivoDestino = await ideas.siguienteArchivo(ref.carpetaId, ref.ideaId);
+    a.objetivos = [`${rutaIdea}/hilo/${a.archivoDestino}`, `${rutaIdea}/figuras/**`, `carpetas/${ref.carpetaId}/notas.md`];
+    await cambiar(ref, { interrumpida: true, archivoDestino: a.archivoDestino });
+    const ultimo = idea.hilo.at(-1);
+    return {
+      mensaje: mensajeEjecucion({
+        tipo, idea, carpeta, rutaIdea,
+        archivoDestino: `${rutaIdea}/hilo/${a.archivoDestino}`,
+        replica: ultimo?.autor === 'usuario' && ultimo.n > 1 ? ultimo.contenido : '',
+      }),
+    };
   }
 
   async function iniciar({ ref, tipo }) {
@@ -103,21 +158,15 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
     try {
       const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
       const carpeta = await carpetas.obtener(ref.carpetaId);
-      a.archivoDestino = await ideas.siguienteArchivo(ref.carpetaId, ref.ideaId);
       const nueva = !idea.sessionId;
       const sessionId = idea.sessionId ?? crypto.randomUUID();
-      await cambiar(ref, { sessionId, interrumpida: true, archivoDestino: a.archivoDestino });
-      const ultimo = idea.hilo.at(-1);
-      const mensaje = mensajeEjecucion({
-        tipo, idea, carpeta, rutaIdea: a.rutaIdea,
-        archivoDestino: `${a.rutaIdea}/hilo/${a.archivoDestino}`,
-        replica: ultimo?.autor === 'usuario' && ultimo.n > 1 ? ultimo.contenido : '',
-      });
+      if (nueva) await cambiar(ref, { sessionId });
+      const { mensaje, sistema } = await preparar(a, idea, carpeta, tipo);
       const marca = new Date().toISOString().replace(/[:.]/g, '-');
       // Pausada o detenida mientras se preparaba: no llega a lanzar claude.
       const r = control.signal.aborted ? { codigo: null, abortado: true } : await ejecutar({
         cfg,
-        args: argsClaude({ sessionId, nueva, ajustes: await ajustes.leer(), mensaje }),
+        args: argsClaude({ sessionId, nueva, ajustes: await ajustes.leer(), mensaje, ...(sistema && { sistema }) }),
         cwd: cfg.datos,
         rutaRegistro: path.join(ideas.dirIdea(ref.carpetaId, ref.ideaId), 'registro', `${marca}.jsonl`),
         alEvento: (ev) => {
@@ -143,10 +192,11 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
 
   async function cerrar(a, r, { nueva }) {
     const { ref } = a;
-    const otros = [...[...activas.values()].filter((o) => o !== a && o.archivoDestino).flatMap(objetivos), ...ajenosExternos()];
+    const otros = [...[...activas.values()].filter((o) => o !== a).flatMap(objetivos), ...ajenosExternos()];
     const propios = [...objetivos(a), 'notas-globales.md'];
     const { restaurados } = await guard.verificar({ propios, ajenosActivos: otros });
     if (restaurados.length) console.warn('[guard] restaurados', restaurados);
+    if (a.germinacion) return cerrarGerminacion(a, r, propios);
 
     const ruta = path.join(cfg.datos, a.rutaIdea, 'hilo', a.archivoDestino);
     const texto = await fs.readFile(ruta, 'utf8').catch(() => null);
@@ -168,6 +218,39 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
       estado: 'error',
       error: r.errorArranque ?? (r.stderr?.trim().split('\n').at(-1) || 'La sesión terminó sin escribir un dictamen válido'),
       ...olvidar,
+    };
+  }
+
+  // Acaba una ejecución de germinación: el mapa nuevo solo se acepta si es válido.
+  async function cerrarGerminacion(a, r, propios) {
+    const { ref } = a;
+    const rutaMapa = `${a.rutaIdea}/germinacion/mapa.json`;
+    const texto = await fs.readFile(path.join(cfg.datos, rutaMapa), 'utf8').catch(() => null);
+    let v = null;
+    if (texto !== null) {
+      try {
+        v = validarMapa(JSON.parse(texto));
+      } catch (e) {
+        v = { ok: false, motivo: `JSON mal formado (${e.message})` };
+      }
+    }
+    if (v && !v.ok) await guard.restaurar([rutaMapa]);
+    await guard.commitear(propios.map((p) => p.replace(/\/\*\*$/, '')), `germinación ${clave(ref)}`);
+    if (r.resultado?.is_error && RE_LIMITE.test(String(r.resultado.result ?? ''))) {
+      await pausarPorCuota();
+      a.motivo = a.motivo ?? 'pausa';
+    }
+    if (a.motivo === 'pausa') return { estado: 'pausada' };
+    if (a.motivo === 'detener') return { estado: 'detenida' };
+    if (!v || !v.ok) {
+      const motivo = v ? `Mapa inválido: ${v.motivo}` : 'La sesión terminó sin escribir germinacion/mapa.json';
+      return { estado: 'error', error: r.errorArranque ?? motivo, interrumpida: false };
+    }
+    await germinacion.marcarEnviado(ref.carpetaId, ref.ideaId);
+    const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
+    return {
+      estado: 'aceptada', interrumpida: false, error: null,
+      germinacion: { ...idea.germinacion, fase: v.mapa.fase, ultima: new Date().toISOString() },
     };
   }
 
@@ -269,6 +352,21 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
     for (const idea of cortadas) {
       const rutaIdea = ideas.relIdea(idea.carpetaId, idea.id);
       let final = { estado: 'detenida' };
+      if (idea.trabajo === 'germinacion') {
+        // Un mapa a medio escribir no se conserva; documentos y descargas sí, para retomarla.
+        const rutaMapa = `${rutaIdea}/germinacion/mapa.json`;
+        const texto = await fs.readFile(path.join(cfg.datos, rutaMapa), 'utf8').catch(() => null);
+        let valido = false;
+        try {
+          valido = texto !== null && validarMapa(JSON.parse(texto)).ok;
+        } catch {
+          valido = false;
+        }
+        if (texto !== null && !valido) await guard.restaurar([rutaMapa]);
+        propios.push(...objetivosGerminacion(rutaIdea, idea.carpetaId));
+        finales.push([idea, final]);
+        continue;
+      }
       if (idea.archivoDestino) {
         const ruta = path.join(cfg.datos, rutaIdea, 'hilo', idea.archivoDestino);
         const texto = await fs.readFile(ruta, 'utf8').catch(() => null);
@@ -303,12 +401,12 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
 
   // Lo que las ejecuciones en marcha pueden estar escribiendo ahora mismo.
   function objetivosActivos() {
-    const enMarcha = [...activas.values()].filter((a) => a.archivoDestino);
+    const enMarcha = [...activas.values()].filter((a) => a.objetivos);
     return enMarcha.length ? [...enMarcha.flatMap(objetivos), 'notas-globales.md'] : [];
   }
 
   return Object.assign(emisor, {
-    lanzar, detener, reanudar, estado, recuperar, apagar, registrarCuota, objetivosActivos,
+    lanzar, detener, reanudar, germinar, estado, recuperar, apagar, registrarCuota, objetivosActivos,
     fijarAjenosExternos: (fn) => (ajenosExternos = fn),
   });
 }

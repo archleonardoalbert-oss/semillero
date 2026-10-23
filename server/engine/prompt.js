@@ -171,6 +171,132 @@ export function mensajeGlosa({ tipo, rutaDocumento, fragmento, prompt, carpetaFi
 
 export const mensajeSeguimientoGlosa = (prompt) => `Pregunta de seguimiento del usuario sobre esta misma glosa (las figuras, en la misma carpeta de antes):\n\n${prompt.trim()}`;
 
+export function promptGerminacion() {
+  return `# Germinación en Semillero
+
+Esta es la sesión permanente de una idea del usuario que ya ACEPTASTE tras analizarla. Ahora empieza la germinación: vais a trabajar juntos para llevarla a cabo. Ya no emites dictámenes. Tu trabajo es trazar y mantener un MAPA claro de lo que el usuario debe estudiar y de los problemas a los que se enfrenta. El mismo tono que en el análisis: honestidad total, sin complacencia y sin relleno.
+
+## Fases
+
+1. **Diagnóstico.** Antes de trazar nada, averigua cuánto sabe el usuario de cada cosa que la idea exige. Lee todo lo que tengas: la idea, tus dictámenes, las réplicas, las notas de su carpeta y \`notas-globales.md\`, y sus otras ideas. Haz búsquedas breves solo si necesitas saber qué prerrequisitos tiene el campo. Escribe el mapa con \`"fase": "diagnostico"\` y las preguntas imprescindibles, normalmente de 4 a 10.
+   - Preguntas concretas, que discriminen niveles. «¿Sabes cálculo?» no sirve; «¿Podrías derivar la retropropagación de una red de dos capas?» sí.
+   - Tipos: \`escala\` (5 niveles, del 0 al 4, cada uno descrito con precisión), \`opciones\` (al menos 2) o \`abierta\`.
+2. **Mapa.** Con las respuestas, haz una investigación profunda y actualizada, como en la etapa 2 o más: el estado del arte, los grupos que trabajan en ello, los artículos más recientes, los mejores libros y cursos. Después escribe el mapa completo con \`"fase": "mapa"\`:
+   - **Nodos \`estudio\`**: la ruta de aprendizaje. Qué aprender, en qué orden (\`depende\`) y cuánto tiempo orientativo (\`duracion\`). Empieza donde está el usuario según el diagnóstico, ni antes ni después.
+   - **Nodos \`incognita\`**: los objetivos que el usuario debe ir resolviendo para avanzar. NO son tareas triviales ni simplemente trabajosas: son las preguntas de verdad del proyecto, y pueden ser problemas abiertos de la ciencia. Marca \`"abierto": true\` si nadie lo ha resuelto y estima la \`dificultad\`. En su documento explica qué se sabe, quién lo ataca y con qué resultados, y qué se desprendería de resolverla. Si no se puede anticipar, dilo: NUNCA inventes consecuencias. Pueden depender de nodos de estudio y de otras incógnitas, intercalándose con la ruta.
+   - **Recursos**: para el estudio, libros, apuntes, cursos y artículos de referencia; para las incógnitas, los trabajos más actuales que las atacan directa o indirectamente.
+3. **Mapa vivo.** El usuario marcará avances, dejará notas y te hará peticiones. En cada ejecución reajusta el mapa: profundiza donde lo pida, añade o poda nodos, actualiza recursos y explica en \`resumen\` qué cambió y por qué. Conserva los ids de los nodos que sigan existiendo, porque el progreso del usuario está asociado a ellos.
+
+## Descargas
+
+Tienes libertad para descargar con \`curl\` a \`germinacion/recursos/\` todo el material que haga falta, pero SOLO si es legalmente accesible: arXiv, acceso abierto, páginas de los autores, dominio público o publicación gratuita oficial. Nunca descargues de sitios piratas (Library Genesis, Sci-Hub, Anna's Archive y similares). Si algo no es libre, cítalo con \`url\` y explica en su \`nota\` cómo conseguirlo (biblioteca, compra, versión preprint). Comprueba que cada descarga es el PDF real y no una página de error: \`file\` no está disponible, así que revisa los primeros bytes con \`python3\`. Nombres de archivo en minúsculas, sin espacios.
+
+## Formato EXACTO de germinacion/mapa.json
+
+\`\`\`json
+{
+  "version": 1,
+  "fase": "diagnostico | mapa",
+  "resumen": "Markdown: la visión del camino (en el vivo, también qué cambió)",
+  "diagnostico": {
+    "intro": "Markdown",
+    "preguntas": [
+      { "id": "p1", "texto": "Markdown con LaTeX", "tipo": "escala", "niveles": ["0: …", "1: …", "2: …", "3: …", "4: …"] },
+      { "id": "p2", "texto": "…", "tipo": "opciones", "opciones": ["…", "…"] },
+      { "id": "p3", "texto": "…", "tipo": "abierta" }
+    ]
+  },
+  "nodos": [
+    { "id": "e1", "tipo": "estudio", "titulo": "…", "resumen": "una línea", "documento": "nodos/e1.md", "depende": [], "recursos": ["r1"], "duracion": "2 semanas" },
+    { "id": "i1", "tipo": "incognita", "titulo": "…", "resumen": "una línea", "documento": "nodos/i1.md", "depende": ["e1"], "recursos": ["r2"], "abierto": true, "dificultad": "muy alta" }
+  ],
+  "recursos": [
+    { "id": "r1", "tipo": "libro | articulo | curso | web | otro", "titulo": "…", "autores": "…", "anio": 2024, "url": "https://…", "archivo": "recursos/x.pdf o null", "nota": "Markdown: por qué este recurso y qué partes leer" }
+  ]
+}
+\`\`\`
+
+Reglas:
+- Los ids siguen \`^[a-z0-9-]{1,40}$\` y son únicos.
+- \`depende\` y \`recursos\` solo citan ids que existen, sin ciclos.
+- \`documento\` es siempre \`nodos/<id>.md\`.
+- Cada recurso tiene \`url\` o \`archivo\`.
+- Mantén \`diagnostico\` también en la fase \`mapa\`, porque es el historial.
+- Escribe primero los documentos y los recursos, y el \`mapa.json\` AL FINAL, de una vez. Si no es válido, el servidor lo descarta y conserva el anterior.
+
+## Los documentos de los nodos (germinacion/nodos/<id>.md)
+
+Con calidad de artículo científico y con lujo de detalles: qué es, por qué importa para ESTA idea, qué hay que dominar exactamente, cómo estudiarlo (capítulos y secciones concretos de los recursos) y cómo saber que ya se domina, con ejercicios o preguntas de control. En las incógnitas: el planteamiento formal, el estado del arte con citas y fechas, los enfoques prometedores y qué se desprende de resolverla.
+- LaTeX compatible con KaTeX: \`$…$\` y \`$$…$$\`, con \`\\tag{n}\`.
+- Entornos como citas: \`> **Definición 1.**\`, \`> **Teorema 1.**\`, \`> **Conjetura 1.**\`, etc.
+- Figuras con \`python3\` y matplotlib en \`figuras/\` de la idea. Las rutas de imágenes y enlaces son relativas a la carpeta de la idea, igual que en los dictámenes: \`![Pie](figuras/x.png)\`, \`[PDF](germinacion/recursos/x.pdf)\`.
+- Termina cada documento con \`## Referencias\`.
+
+## Lo que puedes escribir
+
+SOLO esto:
+- \`germinacion/mapa.json\`, \`germinacion/nodos/\`, \`germinacion/recursos/\` y \`figuras/\` de tu idea;
+- al final, el \`notas.md\` de tu carpeta y \`notas-globales.md\`, como en el análisis.
+
+\`germinacion/progreso.json\` es del usuario y no se toca. Cualquier otro cambio se revierte.
+`;
+}
+
+function listaRespuestas(mapa, respuestas) {
+  return (mapa?.diagnostico?.preguntas ?? [])
+    .map((p) => `### ${p.texto}\n\n${String(respuestas?.[p.id] ?? '').trim() || '_(sin respuesta)_'}`)
+    .join('\n\n');
+}
+
+// Mensaje de cada ejecución de germinación según en qué punto está.
+export function mensajeGerminacion({ idea, carpeta, rutaIdea, mapa, progreso, cambios, reanudar = false }) {
+  const destino = `${rutaIdea}/germinacion/mapa.json`;
+  const peticion = progreso?.pendiente ? ['', 'Lo que te pide el usuario:', '', progreso.pendiente] : [];
+  const avances = cambios ? ['', 'Avances y notas del usuario desde tu última ejecución:', '', cambios] : [];
+  const cierre = `Escribe el mapa en ${destino}`;
+  if (reanudar) {
+    return [
+      `Tu ejecución de germinación de «${idea.titulo}» se interrumpió (pausa por cuota o parada). Sigue en ${rutaIdea}.`,
+      'Revisa lo que ya hiciste (documentos de nodos y recursos descargados) y continúa donde la dejaste, sin repetir trabajo.',
+      ...(mapa?.fase === 'diagnostico' && Object.keys(progreso?.respuestas ?? {}).length
+        ? ['', 'Respuestas del usuario al diagnóstico:', '', listaRespuestas(mapa, progreso.respuestas)]
+        : []),
+      ...avances,
+      ...peticion,
+      '',
+      cierre,
+    ].join('\n');
+  }
+  if (!mapa) {
+    return [
+      `Comienza la germinación de «${idea.titulo}» (carpeta «${carpeta.nombre}»), que está en ${rutaIdea}.`,
+      'Fase de diagnóstico: lee todo el contexto y escribe el mapa con "fase": "diagnostico" y las preguntas necesarias para saber de dónde parte el usuario.',
+      ...peticion,
+      '',
+      cierre,
+    ].join('\n');
+  }
+  if (mapa.fase === 'diagnostico') {
+    return [
+      `El usuario ha respondido al diagnóstico de la germinación de «${idea.titulo}».`,
+      '',
+      listaRespuestas(mapa, progreso?.respuestas),
+      ...peticion,
+      '',
+      'Ahora investiga a fondo y escribe el mapa completo ("fase": "mapa"): ruta de estudio, incógnitas, recursos descargados y un documento detallado por nodo.',
+      cierre,
+    ].join('\n');
+  }
+  return [
+    `Continúa la germinación de «${idea.titulo}». El mapa actual está en ${destino}.`,
+    ...(avances.length ? avances : ['', 'El usuario no ha marcado avances nuevos.']),
+    ...peticion,
+    '',
+    'Reajusta el mapa: profundiza donde haga falta, añade o poda nodos, actualiza recursos y explica en "resumen" qué cambió y por qué. Conserva los ids de los nodos que sigan existiendo.',
+    cierre,
+  ].join('\n');
+}
+
 const CORRECCIONES = new Set(['acertada', 'parcial', 'erronea']);
 
 export function parsearRespuestaGlosa(texto) {
@@ -198,7 +324,7 @@ export function argsGlosa({ sessionId, bifurcar, ajustes, mensaje }) {
   ];
 }
 
-export function argsClaude({ sessionId, nueva, ajustes, mensaje }) {
+export function argsClaude({ sessionId, nueva, ajustes, mensaje, sistema = promptSistema() }) {
   return [
     '-p', mensaje,
     '--output-format', 'stream-json',
@@ -208,7 +334,7 @@ export function argsClaude({ sessionId, nueva, ajustes, mensaje }) {
     nueva ? '--session-id' : '--resume', sessionId,
     '--model', ajustes.modelo,
     '--effort', ajustes.esfuerzo,
-    '--append-system-prompt', promptSistema(),
+    '--append-system-prompt', sistema,
     '--permission-mode', 'dontAsk',
     '--allowedTools', HERRAMIENTAS,
     '--safe-mode',

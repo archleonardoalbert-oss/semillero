@@ -11,6 +11,7 @@ import { crearAlmacenCarpetas } from '../store/carpetas.js';
 import { crearAlmacenIdeas } from '../store/ideas.js';
 import { crearAjustes } from '../store/ajustes.js';
 import { crearAlmacenGlosas } from '../store/glosas.js';
+import { crearAlmacenGerminacion } from '../store/germinacion.js';
 import { crearMotorGlosas } from '../engine/glosas.js';
 import { rutaSegura, slugify } from '../store/fsutil.js';
 import { registrarWs } from './ws.js';
@@ -27,7 +28,8 @@ const ESTADO_HTTP = {
   'ruta-invalida': 400, 'extension-invalida': 400, 'nombre-vacio': 400, 'titulo-vacio': 400, 'refs-invalidos': 400,
   'tipo-invalido': 400, 'documento-invalido': 400, 'prompt-vacio': 400, 'fragmento-vacio': 400,
   'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404, 'glosa-no-existe': 404, cuota: 409,
-  'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409,
+  'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409,
+  'respuestas-invalidas': 400, 'nodo-invalido': 400, 'estado-invalido': 400,
 };
 
 function agrupar(carpetas, ideas, extra = () => ({})) {
@@ -46,7 +48,8 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa } =
   const carpetas = crearAlmacenCarpetas(cfg, { proteger: guard.proteger });
   const ideas = crearAlmacenIdeas(cfg, { proteger: guard.proteger });
   const ajustes = crearAjustes(cfg, { proteger: guard.proteger });
-  const cola = colaInyectada ?? crearCola({ cfg, ideas, carpetas, ajustes, guard });
+  const germinacion = crearAlmacenGerminacion(cfg, { proteger: guard.proteger });
+  const cola = colaInyectada ?? crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion });
   app.decorate('cola', cola);
   const glosas = crearAlmacenGlosas(cfg, { proteger: guard.proteger });
   const motorGlosas = crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, ...(ejecutarGlosa && { ejecutar: ejecutarGlosa }) });
@@ -158,6 +161,29 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa } =
     reply.code(201).send(await motorGlosas.pedir({ carpetaId: req.params.c, ideaId: req.params.i }, req.body ?? {})));
   app.post('/api/carpetas/:c/ideas/:i/glosas/:g/seguir', async (req) =>
     motorGlosas.seguir({ carpetaId: req.params.c, ideaId: req.params.i }, req.params.g, req.body?.prompt));
+
+  const refDe = (req) => ({ carpetaId: req.params.c, ideaId: req.params.i });
+  app.post('/api/carpetas/:c/ideas/:i/germinar', async (req) => {
+    await cola.germinar(refDe(req), { peticion: String(req.body?.peticion ?? '') });
+    return ideas.obtener(req.params.c, req.params.i);
+  });
+  app.get('/api/carpetas/:c/ideas/:i/germinacion', async (req) => {
+    await ideas.obtener(req.params.c, req.params.i);
+    const [mapa, progreso] = await Promise.all([
+      germinacion.leerMapa(req.params.c, req.params.i),
+      germinacion.leerProgreso(req.params.c, req.params.i),
+    ]);
+    return { mapa, progreso };
+  });
+  app.put('/api/carpetas/:c/ideas/:i/germinacion/respuestas', async (req) => {
+    await ideas.obtener(req.params.c, req.params.i);
+    return germinacion.guardarRespuestas(req.params.c, req.params.i, req.body?.respuestas);
+  });
+  app.patch('/api/carpetas/:c/ideas/:i/germinacion/nodos/:n', async (req) => {
+    await ideas.obtener(req.params.c, req.params.i);
+    const { estado, notas } = req.body ?? {};
+    return germinacion.marcarNodo(req.params.c, req.params.i, req.params.n, { estado, notas });
+  });
 
   const agrupadas = async (filtro, extra) => agrupar(await carpetas.listar(), (await ideas.listar()).filter(filtro), extra);
   app.get('/api/pendientes', async () => ideas.pendientes());
