@@ -54,7 +54,7 @@ function conectar() {
     else if (msg.tipo === 'idea') {
       refrescar();
       for (const fn of oyentes.get(clave(msg.ref)) ?? []) fn(msg);
-    } else if (msg.tipo === 'evento') {
+    } else if (msg.tipo === 'evento' || msg.tipo === 'glosa' || msg.tipo === 'glosa-evento') {
       for (const fn of oyentes.get(clave(msg.ref)) ?? []) fn(msg);
     } else if (msg.tipo === 'pausa') {
       const pct = Math.round(100 * Math.max(msg.datos.cuota?.cincoHoras ?? 0, msg.datos.cuota?.sieteDias ?? 0));

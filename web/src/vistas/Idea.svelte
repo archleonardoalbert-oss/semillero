@@ -11,10 +11,14 @@
   import { ETIQUETA_ESTADO, COLOR_ESTADO } from '../lib/estados.js';
   import { fechaRegistro } from '../lib/eventos.js';
   import { crearAutoguardado } from '../lib/autoguardado.js';
+  import { crearGlosas } from '../lib/glosas.svelte.js';
+  import Glosable from '../componentes/Glosable.svelte';
 
   let { carpetaId, ideaId } = $props();
   const ref = { carpetaId, ideaId };
   const base = rutaIdea(carpetaId, ideaId);
+  const glosas = crearGlosas(ref);
+  onDestroy(glosas.destruir);
 
   let idea = $state(null);
   let error = $state(null);
@@ -154,14 +158,14 @@
             <Editor valor={m.contenido} {base} soloLectura={enProceso} alCambiar={alEditarOriginal} alSubirImagen={subir}
               autofoco={!m.contenido} marcador="Describe tu idea con todo el detalle que puedas: qué es, por qué se te ocurrió, cómo crees que funcionaría…" />
           {:else}
-            <div class="manuscrito">{@html renderizar(m.contenido, base)}</div>
+            <Glosable html={renderizar(m.contenido, base)} documento="hilo/{m.archivo}" autor="usuario" {glosas} {base} bloqueado={enProceso} />
             {#if m === replicaPendiente && !enProceso}
               <p class="espera">Pendiente de análisis: se enviará a la sesión al pulsar «Comenzar Análisis».</p>
             {/if}
           {/if}
         </section>
       {:else}
-        <Dictamen mensaje={m} {base} fecha={m === idea.hilo.findLast((x) => x.autor === 'claude') ? fecha(idea.ultimoVeredicto) : ''} />
+        <Dictamen mensaje={m} {base} {glosas} bloqueado={enProceso} fecha={m === idea.hilo.findLast((x) => x.autor === 'claude') ? fecha(idea.ultimoVeredicto) : ''} />
       {/if}
     {/each}
 
@@ -209,6 +213,13 @@
     max-width: 73.6rem;
     margin: 0 auto;
     padding: 2.5rem 0 6rem;
+  }
+  /* Con sitio de sobra, la columna deja a su derecha el margen de las glosas. */
+  @media (min-width: 1710px) {
+    .pagina {
+      max-width: calc(73.6rem + 22.5rem);
+      padding-right: 22.5rem;
+    }
   }
   .migas a {
     display: inline-flex;

@@ -20,6 +20,10 @@
   /* Estados de una idea. */
   --aceptada: #6fe3a5;
   --cambios: #cfe36a;
+
+  /* Glosas: explicar ilumina, corregir señala. */
+  --explicar: #5ee0e0;
+  --corregir: #ff8f7a;
   --rechazada: #c46a5a;
   --aclaracion: #b39cff;
   --proceso: #5ee0e0;

@@ -1,8 +1,9 @@
 <script>
   import { renderizar } from '../lib/render.js';
   import { COLOR_ESTADO } from '../lib/estados.js';
+  import Glosable from './Glosable.svelte';
 
-  let { mensaje, base, fecha } = $props();
+  let { mensaje, base, fecha, glosas, bloqueado = false } = $props();
 
   const SELLO = { aceptada: 'Aceptada', cambios: 'Cambio sugerido', rechazada: 'Rechazada', aclaracion: 'Necesita aclaración' };
   const ETAPA = { 1: 'Etapa 1: filtro', 2: 'Etapa 2: investigación profunda' };
@@ -23,7 +24,7 @@
   {#if meta?.resumen}
     <p class="resumen">{meta.resumen}</p>
   {/if}
-  <div class="manuscrito">{@html html}</div>
+  <Glosable {html} documento="hilo/{mensaje.archivo}" autor="claude" {glosas} {base} {bloqueado} desfase={4.75} />
 </article>
 
 <style>

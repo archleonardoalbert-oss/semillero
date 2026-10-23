@@ -96,3 +96,9 @@
 .manuscrito ins { text-decoration: none; color: var(--liquen); background: rgb(207 227 106 / 0.12); border-bottom: 1px solid var(--cambios); padding: 0 0.15em; border-radius: 2px; }
 .manuscrito .entorno-enmienda { border-left-color: var(--cambios); background: linear-gradient(90deg, rgb(207 227 106 / 0.07), transparent 70%); }
 .manuscrito .entorno-enmienda > p:first-child > strong:first-child { color: var(--cambios); }
+
+/* Fragmentos glosados (CSS Custom Highlight API). */
+::highlight(glosa-explicar) { background-color: rgb(94 224 224 / 0.13); text-decoration: underline 1px rgb(94 224 224 / 0.7); text-underline-offset: 0.22em; }
+::highlight(glosa-corregir) { background-color: rgb(255 143 122 / 0.13); text-decoration: underline 1px rgb(255 143 122 / 0.75); text-underline-offset: 0.22em; }
+::highlight(glosa-viva) { background-color: rgb(230 200 110 / 0.16); text-decoration: underline dotted 1.5px rgb(230 200 110 / 0.8); text-underline-offset: 0.22em; }
+::highlight(glosa-foco) { background-color: rgb(216 226 220 / 0.2); }
