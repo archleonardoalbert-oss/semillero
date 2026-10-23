@@ -175,7 +175,7 @@
 
     <p class="estado">
       <span class="punto" class:late={enProceso} style:background={COLOR_ESTADO[idea.estado]}></span>
-      {ETIQUETA_ESTADO[idea.estado]}
+      {ETIQUETA_ESTADO[idea.estado]}{#if idea.etiqueta && idea.estado === idea.veredicto}<span class="matiz">: {idea.etiqueta}</span>{/if}
       {#if idea.estado === 'error' && idea.error}<span class="detalle">: {idea.error}</span>{/if}
       <span class="creada">Escrita el {fecha(idea.creada)}</span>
     </p>
@@ -388,6 +388,10 @@
   }
   .detalle {
     color: var(--rechazada);
+  }
+  .matiz {
+    margin-left: -0.3rem;
+    color: var(--liquen);
   }
   .creada {
     margin-left: auto;

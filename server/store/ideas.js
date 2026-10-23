@@ -37,6 +37,7 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
         if (autor === 'claude') {
           const p = parsearDictamen(contenido);
           m.meta = p?.meta ?? null;
+          m.caminos = p?.caminos ?? [];
           if (p) m.contenido = p.cuerpo;
         }
         return m;

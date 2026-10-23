@@ -286,7 +286,8 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
 
   function finalConDictamen({ meta: m }) {
     return {
-      estado: m.veredicto, etapa: m.etapa, resumen: m.resumen, ultimoVeredicto: new Date().toISOString(),
+      estado: m.veredicto, veredicto: m.veredicto, etiqueta: m.etiqueta, etapa: m.etapa, resumen: m.resumen,
+      ultimoVeredicto: new Date().toISOString(), eleccion: null,
       interrumpida: false, editadaTrasDictamen: false, error: null,
     };
   }

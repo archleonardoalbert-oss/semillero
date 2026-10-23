@@ -3,12 +3,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ejecutar as ejecutarReal } from './runner.js';
 import { argsGlosa, mensajeGlosa, mensajeSeguimientoGlosa, parsearRespuestaGlosa } from './prompt.js';
-import { parsearDictamen } from './veredicto.js';
+import { parsearDictamen, VEREDICTOS } from './veredicto.js';
 
 const TIPOS = new Set(['explicar', 'corregir']);
 const RE_DOCUMENTO = /^(hilo\/\d{3}-(claude|usuario)\.md|germinacion\/nodos\/[a-z0-9-]+\.md)$/;
 const RE_DICTAMEN = /^hilo\/\d{3}-claude\.md$/;
-const VEREDICTOS = new Set(['aceptada', 'rechazada', 'aclaracion', 'cambios']);
 const MAX_FRAGMENTO = 20000;
 
 const clave = (r) => `${r.carpetaId}/${r.ideaId}`;
@@ -199,7 +198,7 @@ export function crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, eje
       const ultimo = idea.hilo.at(-1)?.archivo === g.documento.replace(/^hilo\//, '');
       if (dictamen && ultimo && VEREDICTOS.has(idea.estado) && idea.trabajo !== 'germinacion') {
         const { meta } = parsearDictamen(despues);
-        Object.assign(parche, { estado: meta.veredicto, etapa: meta.etapa, resumen: meta.resumen });
+        Object.assign(parche, { estado: meta.veredicto, veredicto: meta.veredicto, etiqueta: meta.etiqueta, etapa: meta.etapa, resumen: meta.resumen });
       }
       emisor.emit('idea', { ref, idea: await ideas.actualizar(ref.carpetaId, ref.ideaId, parche) });
     }

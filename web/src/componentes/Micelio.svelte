@@ -228,10 +228,10 @@
           r *= 1 + latido * 0.5;
           brillo = 14 + latido * 18;
         }
-        if (e === 'rechazada') brillo = 0;
+        if (e === 'rechazada' || e === 'no-recomendada') brillo = 0;
         const enfocado = foco?.nodo === n;
         ctx.save();
-        ctx.globalAlpha = e === 'rechazada' ? 0.55 : 1;
+        ctx.globalAlpha = e === 'rechazada' ? 0.55 : e === 'no-recomendada' ? 0.75 : 1;
         ctx.shadowColor = color;
         ctx.shadowBlur = enfocado ? 26 : brillo;
         ctx.fillStyle = color;

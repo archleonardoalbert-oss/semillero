@@ -257,3 +257,14 @@ test('tras un dictamen nuevo se vacía enmendados', async () => {
   await falso.terminar(0);
   assert.deepEqual((await ideas.obtener('ia', refs[0].ideaId)).enmendados, []);
 });
+
+test('la idea guarda el veredicto y la etiqueta del dictamen', async () => {
+  const { cola, refs, falso, ideas, arranque } = await preparar();
+  await cola.lanzar(refs);
+  await arranque();
+  await falso.terminar(0, { dictamen: '---\nveredicto: no-recomendada\netapa: 2\nresumen: Pobre\netiqueta: Resultados pobres\n---\nx' });
+  const idea = await ideas.obtener('ia', refs[0].ideaId);
+  assert.equal(idea.estado, 'no-recomendada');
+  assert.equal(idea.veredicto, 'no-recomendada');
+  assert.equal(idea.etiqueta, 'Resultados pobres');
+});

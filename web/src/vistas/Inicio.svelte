@@ -18,7 +18,8 @@
   let contadores = $derived([
     { estado: 'aceptada', n: r?.aceptadas ?? 0, texto: (n) => (n === 1 ? 'aceptada' : 'aceptadas') },
     { estado: 'cambios', n: r?.cambios ?? 0, texto: (n) => (n === 1 ? 'cambio sugerido' : 'cambios sugeridos') },
-    { estado: 'rechazada', n: r?.rechazadas ?? 0, texto: (n) => (n === 1 ? 'rechazada' : 'rechazadas') },
+    { estado: 'no-recomendada', n: r?.noRecomendadas ?? 0, texto: (n) => (n === 1 ? 'no recomendada' : 'no recomendadas') },
+    { estado: 'rechazada', n: r?.rechazadas ?? 0, texto: (n) => (n === 1 ? 'rechazada rotundamente' : 'rechazadas rotundamente') },
     { estado: 'en-proceso', n: r?.enProceso ?? 0, texto: () => 'en proceso' },
     { estado: 'aclaracion', n: r?.aclaracion ?? 0, texto: (n) => (n === 1 ? 'necesita aclaración' : 'necesitan aclaración') },
   ]);

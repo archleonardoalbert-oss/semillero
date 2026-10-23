@@ -80,3 +80,8 @@ test('cada ejecución usa su prompt de sistema: sin snapshot al reanudar', async
   const g = argsGlosa({ sessionId: 'S', bifurcar: true, ajustes: AJUSTES_POR_DEFECTO, mensaje: 'm' });
   assert.equal(g[g.indexOf('--system-prompt-snapshot') + 1], 'off');
 });
+
+test('el prompt define las cinco categorías, la etiqueta y los caminos', () => {
+  const p = promptSistema();
+  for (const s of ['no-recomendada', 'Rechazada rotundamente', 'etiqueta:', 'semillero-caminos', 'idea-nueva', 'variacion']) assert.ok(p.includes(s), `falta ${s}`);
+});

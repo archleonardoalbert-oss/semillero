@@ -142,6 +142,7 @@ test('resumen cuenta las ideas en cambios', async () => {
   await fs.writeFile(ruta, JSON.stringify({ ...idea, estado: 'cambios' }));
   const r = (await pedir('GET', '/api/resumen')).json();
   assert.equal(r.cambios, 1);
+  assert.equal(r.noRecomendadas, 0);
 });
 
 test('las glosas validan el documento y se listan', async () => {

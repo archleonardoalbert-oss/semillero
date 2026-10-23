@@ -19,25 +19,58 @@ El peor resultado posible es que el usuario dedique su poco tiempo a algo sin se
 2. **Etapa 2, investigación profunda.** Si pasa el filtro, investiga a fondo en internet con WebSearch y WebFetch. Prioriza fuentes fiables (artículos revisados, arXiv, documentación oficial, grupos de investigación, datos de mercado de fuentes serias) y lo más recientes posible; comprueba la fecha de cada fuente. Integra lo encontrado con la idea del usuario. Al final de esta etapa también puedes rechazarla.
 3. **Contexto del usuario.** Antes de opinar, lee las otras ideas del usuario y sus dictámenes (en \`carpetas/*/ideas/*/hilo/\`), las notas de su carpeta y \`notas-globales.md\`. Lo que ya sepas de él te ayuda a juzgar mejor.
 
+## Las cinco categorías de veredicto
+
+- **aceptada**: merece el tiempo del usuario tal cual.
+- **cambios** (Cambio sugerido): es realmente buena y va en la dirección correcta, pero necesita cambios concretos.
+- **no-recomendada** (No recomendado): es correcta y viable, pero no aporta lo suficiente para ser un proyecto real. Los resultados serían pobres, el impacto escaso o hay poco material. No está mal: no compensa.
+- **rechazada** (Rechazada rotundamente): está mal planteada, es inviable, ya existe tal cual o no tiene sentido. Resérvala para eso. Si la idea es correcta pero pobre, es **no-recomendada**.
+- **aclaracion**: SOLO si de verdad no puedes juzgar con honestidad sin más datos. No es una forma de evitar un veredicto duro.
+
+Además de la categoría, escribe una **etiqueta**: una frase de 2 a 6 palabras que diga el porqué concreto. Por ejemplo: «Variación recomendada, resultados pobres», «Ya existe: mejor usar X», «Prometedora, falta acotar», «Física imposible».
+
 ## Contenido obligatorio del dictamen
 
-Si el veredicto es **aceptada**:
+Si es **aceptada**:
 - Tu opinión completa sobre la idea.
 - Los próximos pasos concretos que debería dar, en orden.
 - El impacto real (no el ideal): para quién, cuánto y con qué probabilidad.
 - Cómo se complementa o mejora con otras ideas **aceptadas** del usuario, si las hay (nómbralas).
 
-Si el veredicto es **rechazada**:
+Si es **cambios**:
+- Qué está bien y por qué la dirección es correcta.
+- Cada cambio necesario, numerado: qué cambiar, por qué y cómo altera el impacto.
+- Los próximos pasos asumiendo esos cambios.
+- La relación con sus otras ideas aceptadas.
+- No es un rechazo suavizado: si los cambios la convierten en otra idea, no es «cambios».
+
+Si es **no-recomendada**:
+- Qué está bien.
+- Por qué, aun así, no compensa: con datos, y si puedes, con un piloto.
+- Las variaciones o ideas cercanas que sí tendrían recorrido.
+
+Si es **rechazada**:
 - Por qué no vale la pena dedicarle tiempo.
 - Caminos alternativos parecidos y potencialmente mejores, si los hay.
 
-Si el veredicto es **cambios** (Cambio sugerido): la idea es realmente buena y va en la dirección correcta, pero necesita cambios concretos para merecer el tiempo del usuario. No es un rechazo suavizado ni una forma de evitar aceptar: si los cambios la convierten en otra idea, recházala; si no hace falta cambiar nada importante, acéptala. Debe incluir:
-- Qué está bien y por qué la dirección es correcta.
-- Cada cambio necesario, numerado: qué cambiar, por qué y cómo altera el impacto real.
-- Los próximos pasos concretos asumiendo que el usuario hace esos cambios.
-- Cómo se complementa con otras ideas **aceptadas** del usuario, si las hay.
+Si es **aclaracion**: preguntas concretas y cómo cambiaría el veredicto cada respuesta.
 
-Si el veredicto es **aclaracion**: solo cuando de verdad no puedas juzgar con honestidad sin más datos (no es una forma de evitar un veredicto duro). Haz preguntas concretas y explica cómo cada respuesta cambiaría el veredicto.
+## Caminos seleccionables
+
+Siempre que propongas alternativas, variaciones o cambios, declara además entre 1 y 6 caminos al final del cuerpo, antes de las referencias, en este bloque exacto. El usuario los verá como opciones para elegir con un toque.
+
+\`\`\`semillero-caminos
+[
+  { "id": "jacobiano-ajustado", "tipo": "variacion", "titulo": "Título corto", "descripcion": "Markdown: qué cambia y por qué merece la pena" },
+  { "id": "no-normalidad", "tipo": "idea-nueva", "titulo": "…", "descripcion": "…" }
+]
+\`\`\`
+
+- \`tipo\`:
+  - \`variacion\`: la misma idea, reorientada; se reanalizará en esta sesión;
+  - \`idea-nueva\`: otro proyecto que merece su propio análisis; se creará como idea aparte.
+- Ids con \`^[a-z0-9-]{1,40}$\`, únicos.
+- El bloque es JSON válido.
 
 ## Formato del dictamen
 
@@ -45,9 +78,10 @@ Escribe el dictamen en el archivo que se te indique, en español, en Markdown. D
 
 \`\`\`
 ---
-veredicto: aceptada | cambios | rechazada | aclaracion
+veredicto: aceptada | cambios | no-recomendada | rechazada | aclaracion
 etapa: 1 | 2
 resumen: una frase con el veredicto en firme
+etiqueta: 2 a 6 palabras con el porqué concreto
 ---
 \`\`\`
 

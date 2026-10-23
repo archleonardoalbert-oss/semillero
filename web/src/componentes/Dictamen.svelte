@@ -1,11 +1,10 @@
 <script>
   import { renderizar } from '../lib/render.js';
-  import { COLOR_ESTADO } from '../lib/estados.js';
+  import { COLOR_ESTADO, ETIQUETA_ESTADO as SELLO } from '../lib/estados.js';
   import Glosable from './Glosable.svelte';
 
   let { mensaje, base, fecha, glosas, bloqueado = false } = $props();
 
-  const SELLO = { aceptada: 'Aceptada', cambios: 'Cambio sugerido', rechazada: 'Rechazada', aclaracion: 'Necesita aclaración' };
   const ETAPA = { 1: 'Etapa 1: filtro', 2: 'Etapa 2: investigación profunda' };
   let meta = $derived(mensaje.meta);
   let html = $derived(renderizar(mensaje.contenido, base));
@@ -18,7 +17,10 @@
       <p>{meta ? ETAPA[meta.etapa] : 'Sin veredicto legible'}{fecha ? `, ${fecha}` : ''}</p>
     </div>
     {#if meta}
-      <div class="sello" aria-label="Veredicto: {SELLO[meta.veredicto]}">{SELLO[meta.veredicto]}</div>
+      <div class="veredicto">
+        <div class="sello" aria-label="Veredicto: {SELLO[meta.veredicto]}">{SELLO[meta.veredicto]}</div>
+        {#if meta.etiqueta}<p class="etiqueta">{meta.etiqueta}</p>{/if}
+      </div>
     {/if}
   </header>
   {#if meta?.resumen}
@@ -86,6 +88,22 @@
       opacity: 0;
       transform: rotate(-14deg) scale(1.8);
     }
+  }
+  .veredicto {
+    display: grid;
+    justify-items: end;
+    gap: 0.7rem;
+    flex: none;
+    max-width: 16rem;
+  }
+  .etiqueta {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-1);
+    font-weight: 600;
+    text-align: right;
+    color: var(--sello);
+    line-height: 1.3;
   }
   .resumen {
     margin: 1.4rem 0 0.6rem;
