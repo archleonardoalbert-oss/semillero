@@ -10,7 +10,7 @@ async function pedir(metodo, url, cuerpo, { tipo } = {}) {
   }
   const r = await fetch(url, opciones);
   if (r.status === 204) return null;
-  const esJson = r.headers.get('content-type')?.includes('json');
+  const esJson = r.headers.get('content-type')?.startsWith('application/json');
   const datos = esJson ? await r.json() : await r.text();
   if (!r.ok) throw Object.assign(new Error(datos?.error ?? `HTTP ${r.status}`), { codigo: r.status });
   return datos;

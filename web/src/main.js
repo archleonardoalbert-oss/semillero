@@ -7,6 +7,7 @@ import '@fontsource/jetbrains-mono/400.css';
 import 'katex/dist/katex.min.css';
 import './estilos/tokens.css';
 import './estilos/base.css';
+import './estilos/manuscrito.css';
 import { mount } from 'svelte';
 import App from './App.svelte';
 

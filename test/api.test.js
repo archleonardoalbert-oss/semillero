@@ -69,6 +69,7 @@ test('adjunto con nombre malicioso queda dentro de adjuntos y se puede servir', 
   const f = await pedir('GET', '/archivos/carpetas/ia/ideas/pesos-rapidos/adjuntos/x.png');
   assert.equal(f.statusCode, 200);
   assert.equal(f.headers['content-type'], 'image/png');
+  assert.equal(f.body, 'png');
 });
 
 test('lanzar pasa los refs a la cola', async () => {
@@ -111,4 +112,21 @@ test('ajustes se leen y se guardan', async () => {
   const { pedir } = await preparar();
   assert.equal((await pedir('GET', '/api/ajustes')).json().modelo, 'opus');
   assert.equal((await pedir('PUT', '/api/ajustes', { umbral5h: 0.8 })).json().umbral5h, 0.8);
+});
+
+test('sirve assets creados después de arrancar (recompilar sin reiniciar)', async () => {
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const dist = path.join(process.cwd(), 'web/dist/assets');
+  await fs.mkdir(dist, { recursive: true });
+  const { pedir } = await preparar();
+  const archivo = path.join(dist, `prueba-${Date.now()}.js`);
+  await fs.writeFile(archivo, 'export {}');
+  try {
+    const r = await pedir('GET', `/assets/${path.basename(archivo)}`);
+    assert.equal(r.statusCode, 200);
+    assert.match(r.headers['content-type'], /javascript/);
+  } finally {
+    await fs.rm(archivo);
+  }
 });

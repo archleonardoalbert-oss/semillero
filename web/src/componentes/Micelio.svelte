@@ -26,6 +26,7 @@
     const nodos = [];
     const hubs = [];
     const hilos = [];
+    const hifas = [];
     const n = cs.length;
     const cx = w / 2;
     const cy = h / 2;
@@ -34,17 +35,27 @@
       const ang = -Math.PI / 2 + (k / Math.max(n, 1)) * Math.PI * 2 + (azar() - 0.5) * 0.4;
       const rx = n === 1 ? 0 : w * 0.34;
       const ry = n === 1 ? 0 : h * 0.3;
-      const hub = { carpeta: c, x: cx + Math.cos(ang) * rx, y: cy + Math.sin(ang) * ry, fase: azar() * 6.28 };
+      const hub = { carpeta: c, x: cx + Math.cos(ang) * rx, y: cy + Math.sin(ang) * ry, fase: azar() * 6.28, prof: 1 };
       hubs.push(hub);
-      const escala = Math.min(1, (Math.min(w, h) / 520) * (n > 4 ? 0.8 : 1));
+      const escala = Math.min(1.15, (Math.min(w, h) / 560) * (n > 4 ? 0.8 : 1));
+      // Hifas: filamentos finos que no llevan a ninguna idea; dan cuerpo al bancal.
+      for (let k = 0; k < 9; k++) {
+        const a = azar() * Math.PI * 2;
+        const largo = (70 + azar() * 110) * escala;
+        const fin = { x: hub.x + Math.cos(a) * largo, y: hub.y + Math.sin(a) * largo * 0.8, prof: 0.8 };
+        hifas.push({ a: hub, b: fin, curva: (azar() - 0.5) * 0.8 });
+        const a2 = a + (azar() - 0.5) * 1.6;
+        const l2 = largo * (0.3 + azar() * 0.4);
+        hifas.push({ a: fin, b: { x: fin.x + Math.cos(a2) * l2, y: fin.y + Math.sin(a2) * l2, prof: 0.7 }, curva: (azar() - 0.5) * 0.8 });
+      }
       c.ideas.forEach((idea, j) => {
         const az = semilla(`${c.id}/${idea.id}`);
-        const a = j * 2.39996 + az() * 0.5;
-        const d = (34 + 20 * Math.sqrt(j + 1)) * escala;
+        const a = j * 2.39996 + az() * 0.5 + 0.6;
+        const d = (52 + 26 * Math.sqrt(j + 1)) * escala;
         const nodo = {
-          idea, carpeta: c, hub,
-          x: hub.x + Math.cos(a) * d, y: hub.y + Math.sin(a) * d * 0.82,
-          fase: az() * 6.28, r: 3.2 + az() * 1.6,
+          idea, carpeta: c, hub, prof: 0.6,
+          x: hub.x + Math.cos(a) * d, y: hub.y + Math.sin(a) * d * 0.8,
+          fase: az() * 6.28, r: 3.4 + az() * 1.8,
         };
         nodos.push(nodo);
         hilos.push({ a: hub, b: nodo, curva: (az() - 0.5) * 0.6, fase: az(), estado: idea.estado });
@@ -71,7 +82,21 @@
         hilos.push({ a: hub, b: sig, curva: 0.35, fase: hub.fase / 6.28, largo: true });
       });
     }
-    return { nodos, hubs, hilos };
+    // Ideas aceptadas de bancales distintos: el filamento ámbar sugiere que pueden complementarse.
+    const aceptadas = nodos.filter((x) => x.idea.estado === 'aceptada');
+    for (const x of aceptadas) {
+      let mejor = null;
+      let dist = Infinity;
+      for (const y of aceptadas) {
+        if (y.carpeta === x.carpeta) continue;
+        const d = (y.x - x.x) ** 2 + (y.y - x.y) ** 2;
+        if (d < dist) [dist, mejor] = [d, y];
+      }
+      if (mejor && aceptadas.indexOf(mejor) > aceptadas.indexOf(x)) {
+        hilos.push({ a: x, b: mejor, curva: -0.22, fase: x.fase / 6.28, complemento: true });
+      }
+    }
+    return { nodos, hubs, hilos, hifas };
   }
 
   let red = $derived(construirRed(carpetas, ancho, alto));
@@ -84,10 +109,10 @@
 
   function punto(h, t, desp) {
     const { a, b } = h;
-    const ax = a.x + desp.x * (a.hub ? 1 : 0.6);
-    const ay = a.y + desp.y * (a.hub ? 1 : 0.6);
-    const bx = b.x + desp.x * (b.hub ? 1 : 0.6);
-    const by = b.y + desp.y * (b.hub ? 1 : 0.6);
+    const ax = a.x + desp.x * a.prof;
+    const ay = a.y + desp.y * a.prof;
+    const bx = b.x + desp.x * b.prof;
+    const by = b.y + desp.y * b.prof;
     const mx = (ax + bx) / 2 - (by - ay) * h.curva;
     const my = (ay + by) / 2 + (bx - ax) * h.curva;
     const u = 1 - t;
@@ -120,7 +145,7 @@
       }
       if (mejor) foco = { tipo: 'idea', x: mejor.x, y: mejor.y, nodo: mejor };
       else {
-        const hub = red.hubs.find((h) => Math.abs(h.x - px) < 70 && Math.abs(h.y + 2 - py) < 16);
+        const hub = red.hubs.find((h) => Math.abs(h.x - px) < 70 && py > h.y - 26 && py < h.y + 8);
         foco = hub ? { tipo: 'carpeta', x: hub.x, y: hub.y, hub } : null;
       }
     }
@@ -140,6 +165,19 @@
       const crecer = 1 - (1 - brote) ** 3;
       const desp = { x: raton.x * -14, y: raton.y * -10 };
 
+      for (const h of red.hifas) {
+        const pasos = 14;
+        const hasta = Math.max(1, Math.round(pasos * crecer));
+        ctx.beginPath();
+        for (let s = 0; s <= hasta; s++) {
+          const [x, y] = punto(h, s / pasos, desp);
+          s === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = 'rgb(147 166 158 / 0.07)';
+        ctx.lineWidth = 0.7;
+        ctx.stroke();
+      }
+
       // Filamentos: crecen desde los bancales al entrar y llevan pulsos de savia.
       for (const h of red.hilos) {
         const activo = h.estado === 'en-proceso';
@@ -151,7 +189,13 @@
           const ond = quieto ? 0 : Math.sin(t * 0.8 + s * 0.5 + h.fase * 6) * 0.6;
           s === 0 ? ctx.moveTo(x, y + ond) : ctx.lineTo(x, y + ond);
         }
-        ctx.strokeStyle = activo ? 'rgb(94 224 224 / 0.35)' : h.largo ? 'rgb(147 166 158 / 0.10)' : 'rgb(147 166 158 / 0.16)';
+        ctx.strokeStyle = activo
+          ? 'rgb(94 224 224 / 0.4)'
+          : h.complemento
+            ? 'rgb(240 180 90 / 0.22)'
+            : h.largo
+              ? 'rgb(147 166 158 / 0.12)'
+              : 'rgb(147 166 158 / 0.2)';
         ctx.lineWidth = h.fino ? 0.6 : h.largo ? 0.8 : 1;
         ctx.stroke();
 
@@ -216,11 +260,14 @@
         const enf = foco?.hub === hub;
         ctx.globalAlpha = crecer;
         ctx.fillStyle = enf ? '#d8e2dc' : '#93a69e';
-        ctx.fillText(hub.carpeta.nombre, hub.x + desp.x, hub.y + desp.y + 4);
+        ctx.fillText(hub.carpeta.nombre, hub.x + desp.x, hub.y + desp.y - 12);
         ctx.fillStyle = hub.carpeta.color;
+        ctx.shadowColor = hub.carpeta.color;
+        ctx.shadowBlur = 12;
         ctx.beginPath();
-        ctx.arc(hub.x + desp.x, hub.y + desp.y - 12, 2.2, 0, 6.29);
+        ctx.arc(hub.x + desp.x, hub.y + desp.y, 3, 0, 6.29);
         ctx.fill();
+        ctx.shadowBlur = 0;
       }
       ctx.globalAlpha = 1;
 

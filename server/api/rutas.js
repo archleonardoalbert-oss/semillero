@@ -100,7 +100,7 @@ export async function construirApp(cfg, { cola: colaInyectada } = {}) {
   });
   app.delete('/api/carpetas/:c', async (req, reply) => {
     await carpetas.borrar(req.params.c);
-    reply.code(204).send();
+    return reply.code(204).send();
   });
   app.get('/api/carpetas/:c/notas', async (req) => {
     await carpetas.obtener(req.params.c);
@@ -120,7 +120,7 @@ export async function construirApp(cfg, { cola: colaInyectada } = {}) {
   });
   app.delete('/api/carpetas/:c/ideas/:i', async (req, reply) => {
     await ideas.borrar(req.params.c, req.params.i);
-    reply.code(204).send();
+    return reply.code(204).send();
   });
   app.post('/api/carpetas/:c/ideas/:i/replica', async (req) => {
     await ideas.responder(req.params.c, req.params.i, String(req.body?.cuerpo ?? ''));
@@ -129,7 +129,7 @@ export async function construirApp(cfg, { cola: colaInyectada } = {}) {
   app.post('/api/carpetas/:c/ideas/:i/adjuntos', async (req, reply) => {
     if (!Buffer.isBuffer(req.body)) throw new Error('extension-invalida');
     const ruta = await ideas.guardarAdjunto(req.params.c, req.params.i, String(req.query.nombre ?? ''), req.body);
-    reply.code(201).send({ ruta });
+    return reply.code(201).send({ ruta });
   });
 
   app.get('/api/carpetas/:c/ideas/:i/registros', async (req) => {
@@ -141,7 +141,7 @@ export async function construirApp(cfg, { cola: colaInyectada } = {}) {
     const texto = await fsp.readFile(rutaSegura(dir, req.params.archivo), 'utf8').catch((e) => {
       throw new Error(e.message === 'ruta-invalida' ? e.message : 'registro-no-existe');
     });
-    reply.type('application/x-ndjson').send(texto);
+    return reply.type('application/x-ndjson').send(texto);
   });
 
   const agrupadas = async (filtro, extra) => agrupar(await carpetas.listar(), (await ideas.listar()).filter(filtro), extra);
@@ -178,11 +178,11 @@ export async function construirApp(cfg, { cola: colaInyectada } = {}) {
     const ext = path.extname(ruta).slice(1).toLowerCase();
     reply.header('cache-control', 'no-cache');
     if (ext === 'svg') reply.header('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'");
-    reply.type(MIME[ext] ?? 'application/octet-stream').send(fs.createReadStream(ruta));
+    return reply.type(MIME[ext] ?? 'application/octet-stream').send(fs.createReadStream(ruta));
   });
 
   if (fs.existsSync(DIST)) {
-    await app.register(fastifyStatic, { root: DIST, wildcard: false });
+    await app.register(fastifyStatic, { root: DIST });
     app.setNotFoundHandler((req, reply) => {
       if (req.method === 'GET' && !req.url.startsWith('/api/')) return reply.sendFile('index.html');
       reply.code(404).send({ error: 'no-existe' });

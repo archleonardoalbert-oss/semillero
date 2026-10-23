@@ -1,0 +1,92 @@
+/* Tipografía de artículo científico para todo lo renderizado desde Markdown. */
+.manuscrito {
+  font-family: var(--serif);
+  font-size: 1.12rem;
+  line-height: 1.65;
+  hyphens: auto;
+  font-variant-numeric: oldstyle-nums;
+}
+.manuscrito > :first-child { margin-top: 0.6rem; }
+.manuscrito :is(h1, h2, h3, h4) {
+  margin: 2rem 0 0.6rem;
+  font-family: var(--serif);
+  font-weight: 500;
+  line-height: 1.2;
+}
+.manuscrito h1 { font-size: var(--t3); }
+.manuscrito h2 { font-size: var(--t2); }
+.manuscrito h3 { font-size: var(--t1); font-style: italic; }
+.manuscrito p { margin: 0 0 0.9em; }
+.manuscrito a { color: var(--tu); text-decoration-thickness: 1px; text-underline-offset: 0.15em; }
+.manuscrito strong { font-weight: 600; }
+.manuscrito ul, .manuscrito ol { padding-left: 1.4em; }
+.manuscrito li { margin: 0.25em 0; }
+.manuscrito li::marker { color: var(--liquen-tenue); }
+.manuscrito blockquote {
+  margin: 1.2rem 0;
+  padding: 0.1rem 0 0.1rem 1.2rem;
+  border-left: 2px solid var(--linea-viva);
+  color: var(--liquen-tenue);
+  font-style: italic;
+}
+.manuscrito code {
+  font-family: var(--mono);
+  font-size: 0.82em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--superficie-alta);
+}
+.manuscrito pre {
+  overflow-x: auto;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-s);
+  background: var(--humus-hondo);
+}
+.manuscrito pre code { padding: 0; background: none; font-size: 0.85rem; }
+.manuscrito table {
+  width: 100%;
+  margin: 1.4rem 0;
+  border-collapse: collapse;
+  font-size: 0.98rem;
+}
+.manuscrito th, .manuscrito td { padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--linea); text-align: left; }
+.manuscrito th { border-bottom-color: var(--linea-viva); font-weight: 600; }
+.manuscrito hr { border: 0; border-top: 1px solid var(--linea); margin: 2rem 0; }
+
+/* Ecuaciones: centradas, con desbordamiento horizontal y el número a la derecha. */
+.manuscrito .katex-display { margin: 1.3rem 0; overflow-x: auto; overflow-y: hidden; padding: 0.2rem 0; }
+.manuscrito .katex { font-size: 1.08em; }
+
+/* Entornos formales: definición, teorema, lema… */
+.manuscrito .entorno {
+  margin: 1.5rem 0;
+  padding: 0.9rem 1.2rem;
+  border-left: 3px solid var(--claude);
+  background: var(--claude-velo);
+  border-radius: 0 var(--radio-s) var(--radio-s) 0;
+}
+.manuscrito .entorno p:last-child { margin-bottom: 0; }
+.manuscrito .entorno > p:first-child > strong:first-child { font-variant: small-caps; letter-spacing: 0.04em; color: var(--claude); }
+.manuscrito :is(.entorno-teorema, .entorno-lema, .entorno-proposicion, .entorno-corolario, .entorno-conjetura) { font-style: italic; }
+.manuscrito :is(.entorno-teorema, .entorno-lema, .entorno-proposicion, .entorno-corolario) strong { font-style: normal; }
+.manuscrito .entorno-definicion { border-left-color: var(--tu); background: var(--tu-velo); }
+.manuscrito .entorno-definicion > p:first-child > strong:first-child { color: var(--tu); }
+.manuscrito .entorno-observacion, .manuscrito .entorno-ejemplo { border-left-color: var(--liquen-apagado); background: transparent; }
+.manuscrito .entorno-observacion > p:first-child > strong:first-child,
+.manuscrito .entorno-ejemplo > p:first-child > strong:first-child { color: var(--liquen-tenue); }
+
+.manuscrito figure { margin: 2rem 0; text-align: center; }
+.manuscrito figure img { max-width: 100%; max-height: 70vh; border-radius: var(--radio-s); }
+.manuscrito figcaption {
+  max-width: 36rem;
+  margin: 0.6rem auto 0;
+  font-family: var(--sans);
+  font-size: var(--t-1);
+  line-height: 1.45;
+  color: var(--liquen-tenue);
+}
+.manuscrito img { max-width: 100%; }
+
+/* Las referencias, como bibliografía: más pequeñas y apretadas. */
+.manuscrito h2:has(+ :is(ol, ul)):last-of-type + :is(ol, ul) { font-size: 0.95rem; line-height: 1.5; }

@@ -13,6 +13,7 @@ body {
   font-family: var(--sans);
   font-size: var(--t0);
   line-height: 1.5;
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -37,6 +38,7 @@ button { font: inherit; color: inherit; }
 
 .boton {
   display: inline-flex;
+  white-space: nowrap;
   align-items: center;
   gap: 0.5em;
   padding: 0.55em 1.1em;
