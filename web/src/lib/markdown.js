@@ -1,7 +1,7 @@
 import { Marked } from 'marked';
 import katex from 'katex';
 
-const ENTORNOS = /^\*\*(Definición|Teorema|Lema|Proposición|Corolario|Observación|Ejemplo|Demostración|Conjetura|Hipótesis)\b/;
+const ENTORNOS = /^\*\*(Definición|Teorema|Lema|Proposición|Corolario|Observación|Ejemplo|Demostración|Conjetura|Hipótesis|Enmienda)\b/;
 const sinTildes = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const escapar = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 

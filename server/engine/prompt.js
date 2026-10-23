@@ -85,6 +85,7 @@ export function mensajeEjecucion({ tipo, idea, carpeta, rutaIdea, archivoDestino
       idea.editadaTrasDictamen
         ? `Además, el usuario modificó la idea original: vuelve a leer ${rutaIdea}/hilo/001-usuario.md.`
         : '',
+      ...(idea.enmendados ?? []).map((a) => `Ojo: ${a} fue enmendado tras una corrección; reléelo (${rutaIdea}/hilo/${a}) antes de responder.`),
       'Su respuesta:',
       '',
       replica ?? '',

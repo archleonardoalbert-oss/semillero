@@ -248,3 +248,12 @@ test('lanzar ignora ideas que ya están en proceso', async () => {
   await esperar();
   assert.equal(falso.llamadas.length, 1);
 });
+
+test('tras un dictamen nuevo se vacía enmendados', async () => {
+  const { cola, refs, falso, ideas, arranque } = await preparar();
+  await ideas.actualizar('ia', refs[0].ideaId, { enmendados: ['002-claude.md'] });
+  await cola.lanzar(refs);
+  await arranque();
+  await falso.terminar(0);
+  assert.deepEqual((await ideas.obtener('ia', refs[0].ideaId)).enmendados, []);
+});

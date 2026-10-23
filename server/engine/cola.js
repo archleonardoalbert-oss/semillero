@@ -174,7 +174,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, ejecutar = eje
   function finalConDictamen({ meta: m }) {
     return {
       estado: m.veredicto, etapa: m.etapa, resumen: m.resumen, ultimoVeredicto: new Date().toISOString(),
-      interrumpida: false, editadaTrasDictamen: false, error: null,
+      interrumpida: false, editadaTrasDictamen: false, enmendados: [], error: null,
     };
   }
 

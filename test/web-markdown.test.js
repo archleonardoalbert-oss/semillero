@@ -58,3 +58,13 @@ test('normalizarParaEditor convierte $$…$$ de una línea en bloque', async () 
   const { normalizarParaEditor } = await import('../web/src/lib/markdown.js');
   assert.equal(normalizarParaEditor('a\n\n$$x=1\\tag{1}$$\n\nb $y$'), 'a\n\n$$\nx=1\\tag{1}\n$$\n\nb $y$');
 });
+
+test('enmienda como entorno', () => {
+  assert.match(render('> **Enmienda 1.** Era cuadrática.', BASE), /class="entorno entorno-enmienda"/);
+});
+
+test('del e ins se conservan', () => {
+  const html = render('Es ~~lineal~~<ins>cuadrática</ins>.', BASE);
+  assert.match(html, /<del>lineal<\/del>/);
+  assert.match(html, /<ins>cuadrática<\/ins>/);
+});

@@ -58,3 +58,8 @@ test('el prompt define Cambio sugerido', () => {
   assert.ok(p.includes('cambios'));
   assert.ok(p.includes('dirección correcta'));
 });
+
+test('la réplica avisa de dictámenes enmendados sin contar la glosa', () => {
+  const m = mensajeEjecucion({ tipo: 'replica', ...base, idea: { ...base.idea, enmendados: ['002-claude.md'] }, replica: 'Hola' });
+  assert.match(m, /002-claude\.md fue enmendado/);
+});

@@ -90,3 +90,9 @@
 
 /* Las referencias, como bibliografía: más pequeñas y apretadas. */
 .manuscrito h2:has(+ :is(ol, ul)):last-of-type + :is(ol, ul) { font-size: 0.95rem; line-height: 1.5; }
+
+/* Enmiendas: lo que Claude corrigió tras una glosa. Lo tachado sigue legible. */
+.manuscrito del { color: var(--liquen-apagado); text-decoration-color: rgb(196 106 90 / 0.8); text-decoration-thickness: 1.5px; }
+.manuscrito ins { text-decoration: none; color: var(--liquen); background: rgb(207 227 106 / 0.12); border-bottom: 1px solid var(--cambios); padding: 0 0.15em; border-radius: 2px; }
+.manuscrito .entorno-enmienda { border-left-color: var(--cambios); background: linear-gradient(90deg, rgb(207 227 106 / 0.07), transparent 70%); }
+.manuscrito .entorno-enmienda > p:first-child > strong:first-child { color: var(--cambios); }
