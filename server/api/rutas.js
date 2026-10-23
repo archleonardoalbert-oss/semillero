@@ -13,6 +13,7 @@ import { crearAjustes } from '../store/ajustes.js';
 import { crearAlmacenGlosas } from '../store/glosas.js';
 import { crearAlmacenGerminacion } from '../store/germinacion.js';
 import { crearMotorGlosas } from '../engine/glosas.js';
+import { validarMapa } from '../engine/mapa.js';
 import { rutaSegura, slugify } from '../store/fsutil.js';
 import { registrarWs } from './ws.js';
 
@@ -169,11 +170,21 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa } =
   });
   app.get('/api/carpetas/:c/ideas/:i/germinacion', async (req) => {
     await ideas.obtener(req.params.c, req.params.i);
-    const [mapa, progreso] = await Promise.all([
+    const [enDisco, progreso] = await Promise.all([
       germinacion.leerMapa(req.params.c, req.params.i),
       germinacion.leerProgreso(req.params.c, req.params.i),
     ]);
-    return { mapa, progreso };
+    // Mientras una sesión escribe, el mapa en disco puede estar a medias: se sirve el último bueno.
+    let v = enDisco && validarMapa(enDisco);
+    if (!v?.ok) {
+      const texto = await guard.commiteado(`carpetas/${req.params.c}/ideas/${req.params.i}/germinacion/mapa.json`);
+      try {
+        v = texto && validarMapa(JSON.parse(texto));
+      } catch {
+        v = null;
+      }
+    }
+    return { mapa: v?.ok ? v.mapa : null, progreso };
   });
   app.put('/api/carpetas/:c/ideas/:i/germinacion/respuestas', async (req) => {
     await ideas.obtener(req.params.c, req.params.i);

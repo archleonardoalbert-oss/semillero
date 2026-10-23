@@ -108,5 +108,14 @@ export function crearGuard(cfg) {
     });
   }
 
-  return { iniciar, commitear, proteger, verificar, cambios, restaurar };
+  // Contenido de una ruta en el último commit, o null.
+  async function commiteado(ruta) {
+    try {
+      return (await git('show', `HEAD:${ruta}`)).stdout;
+    } catch {
+      return null;
+    }
+  }
+
+  return { iniciar, commitear, proteger, verificar, cambios, restaurar, commiteado };
 }

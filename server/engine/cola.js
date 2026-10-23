@@ -48,15 +48,28 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
     return 'replica';
   }
 
+  const germinable = (idea) => idea.estado === 'aceptada' || (idea.trabajo === 'germinacion' && ['detenida', 'error'].includes(idea.estado));
+  // Una glosa de corrección que enmienda documentos de la germinación no debe coincidir con una ejecución que los reescribe.
+  const corrigiendoGerminacion = (ref) => {
+    const prefijo = `${ideas.relIdea(ref.carpetaId, ref.ideaId)}/germinacion/`;
+    return ajenosExternos().some((o) => o.startsWith(prefijo));
+  };
+
+  // Estado al que vuelve una idea que esperaba en cola y se descarta (parada, pausa o apagado).
+  async function estadoAlDescartar(ref, idea) {
+    // Una germinación sin mapa volvería a «aceptada» con la plántula y ninguna acción posible: queda retomable.
+    if (idea.trabajo === 'germinacion' && !(await germinacion?.leerMapa(ref.carpetaId, ref.ideaId))) return 'detenida';
+    return idea.estadoPrevio ?? 'borrador';
+  }
+
   async function encolar(ref, { soloPausadas, germinar = false }) {
     const k = clave(ref);
     if (ocupadas.has(k)) return;
     ocupadas.add(k);
     try {
       const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
-      const valida = germinar
-        ? idea.estado === 'aceptada' || (idea.trabajo === 'germinacion' && ['detenida', 'error'].includes(idea.estado))
-        : soloPausadas ? idea.estado === 'pausada' : ESTADOS_PENDIENTES.has(idea.estado);
+      const valida = (germinar ? germinable(idea) : soloPausadas ? idea.estado === 'pausada' : ESTADOS_PENDIENTES.has(idea.estado))
+        && !(idea.trabajo === 'germinacion' && corrigiendoGerminacion(ref));
       if (!valida) {
         ocupadas.delete(k);
         if (germinar) throw new Error(idea.estado === 'en-proceso' ? 'en-proceso' : 'no-aceptada');
@@ -85,7 +98,8 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
   async function germinar(ref, { peticion } = {}) {
     if (!germinacion) throw new Error('sin-germinacion');
     const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
-    if (idea.estado === 'en-proceso' || ocupadas.has(clave(ref))) throw new Error('en-proceso');
+    if (idea.estado === 'en-proceso' || ocupadas.has(clave(ref)) || corrigiendoGerminacion(ref)) throw new Error('en-proceso');
+    if (!germinable(idea)) throw new Error('no-aceptada');
     if (peticion?.trim()) await germinacion.ponerPeticion(ref.carpetaId, ref.ideaId, peticion);
     await encolar(ref, { soloPausadas: false, germinar: true });
     avisarCola();
@@ -129,6 +143,9 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
       a.objetivos = objetivosGerminacion(rutaIdea, ref.carpetaId);
       a.mapaAntes = await germinacion.leerMapa(ref.carpetaId, ref.ideaId);
       const progreso = await germinacion.leerProgreso(ref.carpetaId, ref.ideaId);
+      // Lo que se comunica es lo de este momento: lo que el usuario cambie durante la ejecución queda pendiente.
+      a.instantanea = structuredClone({ respuestas: progreso.respuestas, nodos: progreso.nodos });
+      a.enmendadosEnviados = idea.enmendados ?? [];
       const cambios = await germinacion.cambiosDesdeEnvio(ref.carpetaId, ref.ideaId, a.mapaAntes);
       await cambiar(ref, { interrumpida: true, archivoDestino: null });
       return {
@@ -136,6 +153,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
         mensaje: mensajeGerminacion({ idea, carpeta, rutaIdea, mapa: a.mapaAntes, progreso, cambios, reanudar: tipo === 'reanudar' }),
       };
     }
+    a.enmendadosEnviados = idea.enmendados ?? [];
     a.archivoDestino = await ideas.siguienteArchivo(ref.carpetaId, ref.ideaId);
     a.objetivos = [`${rutaIdea}/hilo/${a.archivoDestino}`, `${rutaIdea}/figuras/**`, `carpetas/${ref.carpetaId}/notas.md`];
     await cambiar(ref, { interrumpida: true, archivoDestino: a.archivoDestino });
@@ -208,7 +226,10 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
       await pausarPorCuota();
       a.motivo = a.motivo ?? 'pausa';
     }
-    if (dictamen) return finalConDictamen(dictamen);
+    if (dictamen) {
+      const actual = await ideas.obtener(ref.carpetaId, ref.ideaId);
+      return { ...finalConDictamen(dictamen), enmendados: (actual.enmendados ?? []).filter((d) => !a.enmendadosEnviados.includes(d)) };
+    }
     // Una sesión que claude nunca llegó a crear no se puede retomar: se olvida para empezar de cero.
     const sinSesion = /No conversation found/i.test(r.stderr ?? '') || (nueva && !a.arranco);
     const olvidar = sinSesion ? { sessionId: null, interrumpida: false } : {};
@@ -235,6 +256,8 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
       }
     }
     if (v && !v.ok) await guard.restaurar([rutaMapa]);
+    // El mapa aceptado se guarda normalizado: la web lo lee tal cual.
+    else if (v?.ok) await fs.writeFile(path.join(cfg.datos, rutaMapa), `${JSON.stringify(v.mapa, null, 2)}\n`);
     await guard.commitear(propios.map((p) => p.replace(/\/\*\*$/, '')), `germinación ${clave(ref)}`);
     if (r.resultado?.is_error && RE_LIMITE.test(String(r.resultado.result ?? ''))) {
       await pausarPorCuota();
@@ -242,14 +265,21 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
     }
     if (a.motivo === 'pausa') return { estado: 'pausada' };
     if (a.motivo === 'detener') return { estado: 'detenida' };
+    // Una sesión que ya no existe (Claude borra las antiguas) se olvida: la siguiente empieza de cero.
+    const olvidar = /No conversation found/i.test(r.stderr ?? '') ? { sessionId: null } : {};
+    const fallo = r.errorArranque ?? (r.resultado?.is_error || !r.resultado
+      ? String(r.resultado?.result || r.stderr?.trim().split('\n').at(-1) || 'La sesión terminó sin responder')
+      : null);
+    if (fallo) return { estado: 'error', error: fallo, interrumpida: false, ...olvidar };
     if (!v || !v.ok) {
       const motivo = v ? `Mapa inválido: ${v.motivo}` : 'La sesión terminó sin escribir germinacion/mapa.json';
-      return { estado: 'error', error: r.errorArranque ?? motivo, interrumpida: false };
+      return { estado: 'error', error: motivo, interrumpida: false };
     }
-    await germinacion.marcarEnviado(ref.carpetaId, ref.ideaId);
+    await germinacion.marcarEnviado(ref.carpetaId, ref.ideaId, a.instantanea);
     const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
     return {
       estado: 'aceptada', interrumpida: false, error: null,
+      enmendados: (idea.enmendados ?? []).filter((d) => !a.enmendadosEnviados.includes(d)),
       germinacion: { ...idea.germinacion, fase: v.mapa.fase, ultima: new Date().toISOString() },
     };
   }
@@ -257,7 +287,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
   function finalConDictamen({ meta: m }) {
     return {
       estado: m.veredicto, etapa: m.etapa, resumen: m.resumen, ultimoVeredicto: new Date().toISOString(),
-      interrumpida: false, editadaTrasDictamen: false, enmendados: [], error: null,
+      interrumpida: false, editadaTrasDictamen: false, error: null,
     };
   }
 
@@ -306,7 +336,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
     }
     for (const { ref } of enEspera) {
       const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
-      await cambiar(ref, { estado: idea.estadoPrevio ?? 'borrador' });
+      await cambiar(ref, { estado: await estadoAlDescartar(ref, idea) });
       ocupadas.delete(clave(ref));
     }
     const pct = Math.round(100 * Math.max(cuota?.cincoHoras ?? 0, cuota?.sieteDias ?? 0));
@@ -338,7 +368,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
       cola.splice(i, 1);
       ocupadas.delete(k);
       const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
-      await cambiar(ref, { estado: idea.estadoPrevio ?? 'borrador' });
+      await cambiar(ref, { estado: await estadoAlDescartar(ref, idea) });
     }
     avisarCola();
   }

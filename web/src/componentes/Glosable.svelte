@@ -42,6 +42,7 @@
   function ubicar() {
     if (!contenido) return;
     const origen = contenido.getBoundingClientRect();
+    for (const img of contenido.querySelectorAll('img.glosada')) img.classList.remove('glosada');
     const ps = [];
     const hs = [];
     const res = { 'glosa-explicar': [], 'glosa-corregir': [], 'glosa-viva': [], 'glosa-foco': [] };

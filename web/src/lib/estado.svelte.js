@@ -43,6 +43,8 @@ function conectar() {
   ws.onopen = () => {
     global.conectado = true;
     refrescar();
+    // Lo ocurrido mientras no había conexión no llegó por el WebSocket: cada vista recarga lo suyo.
+    for (const fns of oyentes.values()) for (const fn of fns) fn({ tipo: 'reconexion' });
   };
   ws.onclose = () => {
     global.conectado = false;

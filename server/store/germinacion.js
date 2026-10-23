@@ -83,9 +83,10 @@ export function crearAlmacenGerminacion(cfg, { proteger }) {
     return lineas.join('\n');
   }
 
-  function marcarEnviado(c, i) {
+  // `instantanea`: lo que se comunicó al empezar la ejecución (por defecto, el progreso actual).
+  function marcarEnviado(c, i, instantanea) {
     return modificar(c, i, (p) => {
-      p.enviado = structuredClone({ respuestas: p.respuestas, nodos: p.nodos });
+      p.enviado = structuredClone(instantanea ?? { respuestas: p.respuestas, nodos: p.nodos });
       p.pendiente = null;
     });
   }

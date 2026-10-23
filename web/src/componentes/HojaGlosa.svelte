@@ -21,7 +21,7 @@
   let enCurso = $derived(glosa.estado === 'en-proceso');
 
   async function seguir() {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || enviando || glosa.estado === 'en-proceso') return;
     enviando = true;
     try {
       await glosas.seguir(glosa.id, prompt);

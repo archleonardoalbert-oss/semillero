@@ -63,7 +63,7 @@
           <p class="descripcion">{nivelDe(p) >= 0 ? p.niveles[nivelDe(p)] : 'Elige el nivel que mejor te describa.'}</p>
         {:else if p.tipo === 'opciones'}
           <div class="opciones">
-            {#each p.opciones as o (o)}
+            {#each p.opciones as o, k (k)}
               <button class:elegido={respuestas[p.id] === o} onclick={() => poner(p.id, o)}>{o}</button>
             {/each}
           </div>

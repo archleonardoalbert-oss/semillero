@@ -164,3 +164,18 @@ test('germinar pasa la petición a la cola y el progreso se guarda', async () =>
   assert.equal(g.progreso.nodos.e1.estado, 'hecho');
   assert.equal((await pedir('PATCH', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion/nodos/e1', { estado: 'x' })).statusCode, 400);
 });
+
+test('I1: la ruta de germinación nunca sirve un mapa a medio escribir', async () => {
+  const { pedir, cfg } = await conIdea();
+  const { execFileSync } = await import('node:child_process');
+  const fsp = await import('node:fs/promises');
+  const { MAPA } = await import('./fixtures/mapas.js');
+  const dir = `${cfg.datos}/carpetas/ia/ideas/pesos-rapidos/germinacion`;
+  await fsp.mkdir(dir, { recursive: true });
+  await fsp.writeFile(`${dir}/mapa.json`, JSON.stringify(MAPA));
+  execFileSync('git', ['add', '-A'], { cwd: cfg.datos });
+  execFileSync('git', ['commit', '-qm', 'mapa'], { cwd: cfg.datos });
+  await fsp.writeFile(`${dir}/mapa.json`, '{"version": 1, "fase": "mapa", "nod');
+  const g = (await pedir('GET', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion')).json();
+  assert.equal(g.mapa.nodos.length, 3);
+});

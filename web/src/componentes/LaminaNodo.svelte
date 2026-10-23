@@ -133,7 +133,7 @@
                   {#if r.autores}<span class="autores">{r.autores}{r.anio ? `, ${r.anio}` : ''}</span>{/if}
                   {#if r.nota}<div class="nota manuscrito">{@html renderizar(r.nota, base)}</div>{/if}
                   <span class="acciones">
-                    {#if r.archivo}<a class="boton" href="/archivos/{base}/germinacion/{r.archivo}" target="_blank" rel="noopener">Abrir PDF</a>{/if}
+                    {#if r.archivo}<a class="boton" href="/archivos/{base}/germinacion/{r.archivo.split('/').map(encodeURIComponent).join('/')}" target="_blank" rel="noopener">Abrir PDF</a>{/if}
                     {#if r.url}<a class="boton discreto" href={r.url} target="_blank" rel="noopener noreferrer">Fuente original</a>{/if}
                   </span>
                 </li>

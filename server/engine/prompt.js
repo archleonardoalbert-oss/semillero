@@ -85,7 +85,7 @@ export function mensajeEjecucion({ tipo, idea, carpeta, rutaIdea, archivoDestino
       idea.editadaTrasDictamen
         ? `Además, el usuario modificó la idea original: vuelve a leer ${rutaIdea}/hilo/001-usuario.md.`
         : '',
-      ...(idea.enmendados ?? []).map((a) => `Ojo: ${a} fue enmendado tras una corrección; reléelo (${rutaIdea}/hilo/${a}) antes de responder.`),
+      ...(idea.enmendados ?? []).map((a) => `Ojo: ${a} fue enmendado tras una corrección; reléelo (${rutaIdea}/${a}) antes de responder.`),
       'Su respuesta:',
       '',
       replica ?? '',
@@ -254,7 +254,10 @@ export function mensajeGerminacion({ idea, carpeta, rutaIdea, mapa, progreso, ca
   const rechazo = /^Mapa inválido: /.test(idea.error ?? '')
     ? `\n\nOjo: tu último mapa.json fue rechazado: ${idea.error.replace(/^Mapa inválido: /, '')}. Sigue al pie de la letra el formato EXACTO de tus instrucciones.`
     : '';
-  const peticion = progreso?.pendiente ? ['', 'Lo que te pide el usuario:', '', progreso.pendiente] : [];
+  const peticion = [
+    ...(idea.enmendados ?? []).map((d) => `\nOjo: ${d} fue enmendado tras una corrección del usuario; reléelo (${rutaIdea}/${d}) y no deshagas la enmienda.`),
+    ...(progreso?.pendiente ? ['', 'Lo que te pide el usuario:', '', progreso.pendiente] : []),
+  ];
   const avances = cambios ? ['', 'Avances y notas del usuario desde tu última ejecución:', '', cambios] : [];
   const cierre = `${rechazo ? `${rechazo.trim()}\n` : ''}Escribe el mapa en ${destino}`;
   if (reanudar) {

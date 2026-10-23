@@ -76,8 +76,21 @@
   }
 
   async function enviarRespuestas(respuestas) {
-    await api.responderDiagnostico(ref.carpetaId, ref.ideaId, respuestas);
+    try {
+      await api.responderDiagnostico(ref.carpetaId, ref.ideaId, respuestas);
+    } catch (e) {
+      avisar(`No se pudieron guardar tus respuestas: ${e.message}`, 'error');
+      return;
+    }
     await germinar();
+  }
+
+  let avisadoGuardado = false;
+  function guardarRespuestas(r) {
+    return api.responderDiagnostico(ref.carpetaId, ref.ideaId, r).catch((e) => {
+      if (!avisadoGuardado) avisar(`No se están guardando tus respuestas: ${e.message}`, 'error');
+      avisadoGuardado = true;
+    });
   }
 
   async function enviarAvances() {
@@ -125,7 +138,7 @@
         {fase === 'mapa' ? 'Germinando: mapa vivo' : fase === 'diagnostico' ? 'Germinando: diagnóstico' : 'Germinando: preparando'}
       </p>
       {#if estadoTexto}<p class="estado" class:error={idea.estado === 'error'}>{estadoTexto}</p>{/if}
-      {#if idea.estado === 'error' || idea.estado === 'detenida'}
+      {#if idea.estado === 'error' || idea.estado === 'detenida' || (!enProceso && !mapa && datos && idea.estado !== 'pausada')}
         <button class="boton" disabled={enviando} onclick={() => germinar()}>Retomar la germinación</button>
       {/if}
     </header>
@@ -177,14 +190,14 @@
   {#if diagnosticando && mapa?.diagnostico}
     <div class="diagnostico">
       <Cuestionario diagnostico={mapa.diagnostico} respuestas={progreso?.respuestas ?? {}} {base}
-        alGuardar={(r) => api.responderDiagnostico(ref.carpetaId, ref.ideaId, r).catch(() => {})} alEnviar={enviarRespuestas} />
+        alGuardar={guardarRespuestas} alEnviar={enviarRespuestas} />
     </div>
   {/if}
 </section>
 
 {#if laminaAbierta && lamina}
   {#key lamina.nodo.id}
-    <LaminaNodo nodo={lamina.nodo} desde={lamina.desde} {mapa} {progreso} {ref} {base} {glosas} bloqueado={enProceso}
+    <LaminaNodo nodo={mapa?.nodos.find((n) => n.id === lamina.nodo.id) ?? lamina.nodo} desde={lamina.desde} {mapa} {progreso} {ref} {base} {glosas} bloqueado={enProceso}
       alCerrar={() => (laminaAbierta = false)} alIrA={irANodo} alCambiar={cargar} />
   {/key}
 {/if}

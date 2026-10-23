@@ -74,7 +74,7 @@
     }
   }
   cargar();
-  const quitar = suscribir(ref, (msg) => msg.tipo === 'idea' && cargar());
+  const quitar = suscribir(ref, (msg) => (msg.tipo === 'idea' || msg.tipo === 'reconexion') && cargar());
   onDestroy(quitar);
 
   const fecha = (iso) => (iso ? new Date(iso).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' }) : '');

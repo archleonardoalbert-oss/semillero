@@ -45,7 +45,8 @@ async function preparar({ estado = 'aceptada' } = {}) {
   await ideas.actualizar('ia', idea.id, { estado, sessionId: 'S', resumen: 'Sí' });
   const germinacion = crearAlmacenGerminacion(cfg, { proteger: guard.proteger });
   const falso = crearFalso();
-  const cola = crearCola({ cfg, ideas, carpetas, ajustes: crearAjustes(cfg), guard, germinacion, ejecutar: falso.ejecutar, notificar: async () => {} });
+  const ajustes = crearAjustes(cfg);
+  const cola = crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion, ejecutar: falso.ejecutar, notificar: async () => {} });
   const ref = { carpetaId: 'ia', ideaId: idea.id };
   const dir = path.join(cfg.datos, rutaIdea, 'germinacion');
   // La sesión falsa escribe el mapa (y lo que se le pida) y termina.
@@ -61,7 +62,7 @@ async function preparar({ estado = 'aceptada' } = {}) {
     await hasta(async () => (await ideas.obtener('ia', idea.id)).estado !== 'en-proceso');
   }
   const obtener = () => ideas.obtener('ia', idea.id);
-  return { cfg, cola, ideas, germinacion, falso, ref, dir, rutaIdea, terminar, obtener };
+  return { cfg, cola, ideas, germinacion, falso, ref, dir, rutaIdea, terminar, obtener, ajustes };
 }
 
 test('germinar una aceptada retoma la sesión principal con el prompt de germinación', async () => {
@@ -196,4 +197,88 @@ test('al retomar tras un mapa inválido la sesión recibe el motivo', async () =
   await cola.germinar(ref, {});
   await hasta(() => falso.llamadas[1]);
   assert.match(falso.llamadas[1].mensaje, /rechazado: version debe ser 1/);
+});
+
+// --- Revisión final ---
+
+test('C1: una ejecución fallida con el mapa anterior intacto queda en error y conserva la petición', async () => {
+  const { cola, falso, ref, terminar, obtener, germinacion } = await preparar();
+  await cola.germinar(ref, {});
+  await terminar(0, { mapa: copia(MAPA) });
+  await cola.germinar(ref, { peticion: 'Más ejercicios' });
+  await hasta(() => falso.llamadas[1]);
+  falso.llamadas[1].resolve({ codigo: 1, abortado: false, resultado: { is_error: true, result: 'API Error: 500' } });
+  await hasta(async () => (await obtener()).estado !== 'en-proceso');
+  const idea = await obtener();
+  assert.equal(idea.estado, 'error');
+  assert.match(idea.error, /500/);
+  assert.match((await germinacion.leerProgreso(ref.carpetaId, ref.ideaId)).pendiente, /Más ejercicios/);
+});
+
+test('C2: detener una germinación sin mapa que espera en cola la deja detenida y retomable', async () => {
+  const { cola, falso, ref, obtener, ideas, ajustes } = await preparar();
+  await ajustes.guardar({ paralelo: 1 });
+  const otra = await ideas.crear('ia', { titulo: 'Otra', cuerpo: 'y' });
+  await cola.lanzar([{ carpetaId: 'ia', ideaId: otra.id }]);
+  await hasta(() => falso.llamadas[0]);
+  await cola.germinar(ref, {});
+  assert.equal(cola.estado().enCola.length, 1);
+  await cola.detener([ref]);
+  await hasta(async () => (await obtener()).estado !== 'en-proceso');
+  assert.equal((await obtener()).estado, 'detenida');
+});
+
+test('I2: lo que el usuario cambia durante la ejecución sigue pendiente de comunicar', async () => {
+  const { cola, falso, ref, terminar, germinacion } = await preparar();
+  await cola.germinar(ref, {});
+  await terminar(0, { mapa: copia(MAPA) });
+  await cola.germinar(ref, {});
+  await hasta(() => falso.llamadas[1]);
+  await germinacion.marcarNodo(ref.carpetaId, ref.ideaId, 'e2', { estado: 'hecho' });
+  await terminar(1, { mapa: copia(MAPA) });
+  assert.match(await germinacion.cambiosDesdeEnvio(ref.carpetaId, ref.ideaId, copia(MAPA)), /Transformers/);
+});
+
+test('I1: el mapa aceptado se guarda normalizado', async () => {
+  const { cola, ref, terminar, germinacion } = await preparar();
+  const m = copia(MAPA);
+  delete m.nodos[0].depende;
+  delete m.nodos[0].recursos;
+  await cola.germinar(ref, {});
+  await terminar(0, { mapa: m });
+  const guardado = await germinacion.leerMapa(ref.carpetaId, ref.ideaId);
+  assert.deepEqual(guardado.nodos[0].depende, []);
+  assert.deepEqual(guardado.nodos[0].recursos, []);
+});
+
+test('I7: si la sesión ya no existe, la germinación la olvida para poder empezar de nuevo', async () => {
+  const { cola, falso, ref, obtener } = await preparar();
+  await cola.germinar(ref, {});
+  await hasta(() => falso.llamadas[0]);
+  falso.llamadas[0].resolve({ codigo: 1, abortado: false, stderr: 'No conversation found with session ID: S' });
+  await hasta(async () => (await obtener()).estado !== 'en-proceso');
+  assert.equal((await obtener()).sessionId, null);
+  await cola.germinar(ref, {});
+  await hasta(() => falso.llamadas[1]);
+  assert.ok(falso.llamadas[1].args.includes('--session-id'));
+});
+
+test('I5: no se germina mientras una corrección escribe en la germinación', async () => {
+  const { cola, ref, rutaIdea } = await preparar();
+  cola.fijarAjenosExternos(() => [`${rutaIdea}/germinacion/nodos/e1.md`]);
+  await assert.rejects(cola.germinar(ref, {}), /en-proceso/);
+});
+
+test('I6: la germinación avisa de documentos enmendados', async () => {
+  const { cola, falso, ref, ideas } = await preparar();
+  await ideas.actualizar(ref.carpetaId, ref.ideaId, { enmendados: ['germinacion/nodos/e1.md'] });
+  await cola.germinar(ref, {});
+  await hasta(() => falso.llamadas[0]);
+  assert.match(falso.llamadas[0].mensaje, /germinacion\/nodos\/e1\.md fue enmendado/);
+});
+
+test('menor: una petición sobre una idea no germinable no se guarda', async () => {
+  const { cola, ref, germinacion } = await preparar({ estado: 'rechazada' });
+  await assert.rejects(cola.germinar(ref, { peticion: 'x' }), /no-aceptada/);
+  assert.equal((await germinacion.leerProgreso(ref.carpetaId, ref.ideaId)).pendiente, null);
 });

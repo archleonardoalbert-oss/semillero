@@ -7,7 +7,8 @@ import { parsearDictamen } from './veredicto.js';
 
 const TIPOS = new Set(['explicar', 'corregir']);
 const RE_DOCUMENTO = /^(hilo\/\d{3}-(claude|usuario)\.md|germinacion\/nodos\/[a-z0-9-]+\.md)$/;
-const RE_DICTAMEN = /^hilo\/(\d{3}-claude\.md)$/;
+const RE_DICTAMEN = /^hilo\/\d{3}-claude\.md$/;
+const VEREDICTOS = new Set(['aceptada', 'rechazada', 'aclaracion', 'cambios']);
 const MAX_FRAGMENTO = 20000;
 
 const clave = (r) => `${r.carpetaId}/${r.ideaId}`;
@@ -17,9 +18,10 @@ const sinComodin = (p) => p.replace(/\/\*\*$/, '');
 // de la sesión de la idea (--fork-session), sin ocupar hueco en la cola de análisis.
 export function crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, ejecutar = ejecutarReal }) {
   const emisor = new EventEmitter();
-  const activas = new Map(); // 'c/i/id' → objetivos
+  const activas = new Map(); // 'c/i/id' → { objetivos, documento, tipo }
+  const reservadas = new Set(); // seguimientos aceptados que aún no han arrancado
 
-  const objetivosActivos = () => [...activas.values()].flat();
+  const objetivosActivos = () => [...activas.values()].flatMap((x) => x.objetivos);
   cola.fijarAjenosExternos(objetivosActivos);
 
   const objetivosDe = (rutaIdea, g) => [
@@ -49,6 +51,11 @@ export function crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, eje
 
   async function pedir(ref, datos) {
     const fragmento = validar(datos);
+    // Dos correcciones a la vez sobre el mismo documento se pisarían las enmiendas.
+    const prefijo = `${clave(ref)}/`;
+    if (datos.tipo === 'corregir' && [...activas].some(([k, x]) => k.startsWith(prefijo) && x.tipo === 'corregir' && x.documento === datos.documento)) {
+      throw new Error('en-proceso');
+    }
     const idea = await comprobarIdea(ref);
     const rutaIdea = ideas.relIdea(ref.carpetaId, ref.ideaId);
     await fs.access(path.join(cfg.datos, rutaIdea, datos.documento)).catch(() => {
@@ -71,9 +78,21 @@ export function crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, eje
   async function seguir(ref, id, prompt) {
     const texto = String(prompt ?? '').trim();
     if (!texto) throw new Error('prompt-vacio');
+    const k = `${clave(ref)}/${id}`;
+    // Reserva síncrona: dos «seguir» casi simultáneos no deben lanzar dos ejecuciones sobre la misma copia.
+    if (activas.has(k) || reservadas.has(k)) throw new Error('en-proceso');
+    reservadas.add(k);
+    try {
+      return await seguirReservada(ref, id, texto, k);
+    } finally {
+      reservadas.delete(k);
+    }
+  }
+
+  async function seguirReservada(ref, id, texto) {
     const idea = await comprobarIdea(ref);
     const previa = await glosas.obtener(ref.carpetaId, ref.ideaId, id);
-    if (previa.estado === 'en-proceso' || activas.has(`${clave(ref)}/${id}`)) throw new Error('en-proceso');
+    if (previa.estado === 'en-proceso') throw new Error('en-proceso');
     const g = await glosas.actualizar(ref.carpetaId, ref.ideaId, id, (x) => ({
       estado: 'en-proceso',
       error: null,
@@ -100,26 +119,35 @@ export function crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, eje
     const k = `${clave(ref)}/${g.id}`;
     const rutaIdea = ideas.relIdea(ref.carpetaId, ref.ideaId);
     const objetivos = objetivosDe(rutaIdea, g);
-    activas.set(k, objetivos);
+    activas.set(k, { objetivos, documento: g.documento, tipo: g.tipo });
     const rutaDoc = path.join(cfg.datos, rutaIdea, g.documento);
     const antes = g.tipo === 'corregir' ? await fs.readFile(rutaDoc, 'utf8').catch(() => null) : null;
     let sesionNueva = null;
     let final;
     try {
-      const marca = new Date().toISOString().replace(/[:.]/g, '-');
-      const r = await ejecutar({
-        cfg,
-        args: argsGlosa({ sessionId, bifurcar, ajustes: await ajustes.leer(), mensaje }),
-        cwd: cfg.datos,
-        rutaRegistro: path.join(ideas.dirIdea(ref.carpetaId, ref.ideaId), 'registro', 'glosas', `${g.id}-${marca}.jsonl`),
-        alEvento: (ev) => {
-          if (ev.type === 'system' && ev.subtype === 'init' && ev.session_id) sesionNueva = ev.session_id;
-          emisor.emit('glosa-evento', { ref, id: g.id, ev });
-          cola.registrarCuota(ev);
-        },
-        senal: new AbortController().signal,
-      });
-      const ajenos = [...cola.objetivosActivos(), ...[...activas].filter(([x]) => x !== k).flatMap(([, o]) => o)];
+      const lanzar = async (sesion) => {
+        const marca = new Date().toISOString().replace(/[:.]/g, '-');
+        return ejecutar({
+          cfg,
+          args: argsGlosa({ sessionId: sesion, bifurcar, ajustes: await ajustes.leer(), mensaje }),
+          cwd: cfg.datos,
+          rutaRegistro: path.join(ideas.dirIdea(ref.carpetaId, ref.ideaId), 'registro', 'glosas', `${g.id}-${marca}.jsonl`),
+          alEvento: (ev) => {
+            if (ev.type === 'system' && ev.subtype === 'init' && ev.session_id) sesionNueva = ev.session_id;
+            emisor.emit('glosa-evento', { ref, id: g.id, ev });
+            cola.registrarCuota(ev);
+          },
+          senal: new AbortController().signal,
+        });
+      };
+      let r = await lanzar(sessionId);
+      // Claude borra las sesiones antiguas: sin la principal, la glosa empieza una sesión nueva.
+      if (sessionId && /No conversation found/i.test(r.stderr ?? '')) {
+        sessionId = null;
+        bifurcar = true;
+        r = await lanzar(null);
+      }
+      const ajenos = [...cola.objetivosActivos(), ...[...activas].filter(([x]) => x !== k).flatMap(([, o]) => o.objetivos)];
       const { restaurados } = await guard.verificar({ propios: objetivos, ajenosActivos: ajenos });
       if (restaurados.length) console.warn('[guard] restaurados tras glosa', restaurados);
       final = await cerrar(ref, g, r, { antes, rutaDoc, objetivos });
@@ -153,7 +181,7 @@ export function crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, eje
     }
     if (correccion) final.correccion = correccion;
     const despues = await fs.readFile(rutaDoc, 'utf8').catch(() => null);
-    const dictamen = g.documento.match(RE_DICTAMEN)?.[1];
+    const dictamen = RE_DICTAMEN.test(g.documento);
     // Un dictamen enmendado debe seguir siendo un dictamen válido; si no, se deshace la enmienda.
     if (despues !== antes && dictamen && !parsearDictamen(despues)) {
       await guard.restaurar([sinComodin(objetivos[1])]);
@@ -162,17 +190,19 @@ export function crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, eje
     }
     await guard.commitear(objetivos.map(sinComodin), `glosa ${g.id} (corrección)`);
     final.enmendado = Boolean(g.enmendado) || despues !== antes;
-    if (despues !== antes && dictamen) {
-      const { meta } = parsearDictamen(despues);
+    if (despues !== antes) {
       const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
-      const enmendados = [...new Set([...(idea.enmendados ?? []), dictamen])];
-      // El veredicto solo se actualiza si es el último dictamen y la idea no se está analizando.
-      const ultimo = idea.hilo.findLast((m) => m.autor === 'claude')?.archivo === dictamen;
-      const parche = { enmendados };
-      if (ultimo && idea.estado !== 'en-proceso') Object.assign(parche, { estado: meta.veredicto, etapa: meta.etapa, resumen: meta.resumen });
-      const nueva = await ideas.actualizar(ref.carpetaId, ref.ideaId, parche);
-      emisor.emit('idea', { ref, idea: nueva });
-    } else if (despues !== antes) emisor.emit('idea', { ref, idea: await ideas.obtener(ref.carpetaId, ref.ideaId) });
+      // Toda enmienda se registra para avisar a la sesión principal en su siguiente ejecución.
+      const parche = { enmendados: [...new Set([...(idea.enmendados ?? []), g.documento])] };
+      // El veredicto solo cambia si ese dictamen es lo último del hilo (sin réplica pendiente), la idea está
+      // en un veredicto (no en proceso, detenida, pausada…) y no germina: una idea que germina conserva su estado.
+      const ultimo = idea.hilo.at(-1)?.archivo === g.documento.replace(/^hilo\//, '');
+      if (dictamen && ultimo && VEREDICTOS.has(idea.estado) && idea.trabajo !== 'germinacion') {
+        const { meta } = parsearDictamen(despues);
+        Object.assign(parche, { estado: meta.veredicto, etapa: meta.etapa, resumen: meta.resumen });
+      }
+      emisor.emit('idea', { ref, idea: await ideas.actualizar(ref.carpetaId, ref.ideaId, parche) });
+    }
     return final;
   }
 

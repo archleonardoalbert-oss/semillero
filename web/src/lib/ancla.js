@@ -8,7 +8,15 @@ const CONTEXTO = 40;
 const BLOQUES = new Set(['P', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'FIGURE', 'FIGCAPTION', 'ASIDE', 'BLOCKQUOTE', 'PRE', 'TR', 'DIV', 'UL', 'OL', 'TABLE']);
 
 const fuenteTex = (el) => el.querySelector('annotation[encoding="application/x-tex"]')?.textContent ?? '';
-const rutaDatos = (src) => decodeURI(String(src ?? '')).replace(/^\/archivos\//, '');
+const rutaDatos = (src) => {
+  let ruta = String(src ?? '');
+  try {
+    ruta = decodeURI(ruta);
+  } catch {
+    /* un % mal formado: se usa tal cual */
+  }
+  return ruta.replace(/^\/archivos\//, '');
+};
 
 function textoAtomo(el) {
   if (el.tagName === 'IMG') return `![${el.getAttribute('alt') ?? ''}](${rutaDatos(el.getAttribute('src'))})`;

@@ -142,7 +142,7 @@ test('corregir acertado enmienda el dictamen, se commitea y actualiza el veredic
   assert.equal(final.mensajes.at(-1).contenido, 'Tienes razón.');
   const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
   assert.equal(idea.estado, 'rechazada');
-  assert.deepEqual(idea.enmendados, ['002-claude.md']);
+  assert.deepEqual(idea.enmendados, ['hilo/002-claude.md']);
   assert.deepEqual((await guard.cambios()).filter((c) => !c.ruta.includes('registro')), []);
 });
 
@@ -204,4 +204,64 @@ test('recuperar marca como error las glosas cortadas y restaura su documento', a
   await motor.recuperar();
   assert.equal((await glosas.obtener(ref.carpetaId, ref.ideaId, g.id)).estado, 'error');
   assert.equal(await fs.readFile(path.join(cfg.datos, rutaIdea, 'hilo/002-claude.md'), 'utf8'), DICTAMEN);
+});
+
+// --- Revisión final ---
+const ENMENDADO = DICTAMEN.replace('veredicto: aceptada', 'veredicto: rechazada');
+
+test('I3: una corrección no pisa una réplica pendiente', async () => {
+  const { motor, falso, ideas, ref, rutaIdea, pedido, lista } = await preparar();
+  await ideas.responder(ref.carpetaId, ref.ideaId, 'Una réplica');
+  const g = await motor.pedir(ref, pedido({ tipo: 'corregir', prompt: 'mal' }));
+  await falso.responder(0, '---\ncorreccion: acertada\n---\nSí', { escribir: { [`${rutaIdea}/hilo/002-claude.md`]: ENMENDADO } });
+  await lista(g.id);
+  const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
+  assert.equal(idea.estado, 'replica-pendiente');
+  assert.deepEqual(idea.enmendados, ['hilo/002-claude.md']);
+});
+
+test('I4: corregir el dictamen de una idea que germina no le cambia el estado', async () => {
+  const { motor, falso, ideas, ref, rutaIdea, pedido, lista } = await preparar();
+  await ideas.actualizar(ref.carpetaId, ref.ideaId, { trabajo: 'germinacion', germinacion: { fase: 'mapa' } });
+  const g = await motor.pedir(ref, pedido({ tipo: 'corregir', prompt: 'mal' }));
+  await falso.responder(0, '---\ncorreccion: acertada\n---\nSí', { escribir: { [`${rutaIdea}/hilo/002-claude.md`]: ENMENDADO } });
+  await lista(g.id);
+  assert.equal((await ideas.obtener(ref.carpetaId, ref.ideaId)).estado, 'aceptada');
+});
+
+test('I5: dos correcciones a la vez sobre el mismo documento no se permiten', async () => {
+  const { motor, ref, pedido } = await preparar();
+  await motor.pedir(ref, pedido({ tipo: 'corregir', prompt: 'mal' }));
+  await assert.rejects(motor.pedir(ref, pedido({ tipo: 'corregir', prompt: 'otra' })), /en-proceso/);
+});
+
+test('I6: enmendar un nodo de la germinación se registra', async () => {
+  const { cfg, motor, falso, ideas, ref, rutaIdea, pedido, lista } = await preparar();
+  await fs.mkdir(path.join(cfg.datos, rutaIdea, 'germinacion/nodos'), { recursive: true });
+  await fs.writeFile(path.join(cfg.datos, rutaIdea, 'germinacion/nodos/e1.md'), 'La función $f(x)=x^2$ es lineal.');
+  const g = await motor.pedir(ref, pedido({ tipo: 'corregir', prompt: 'mal', documento: 'germinacion/nodos/e1.md' }));
+  await falso.responder(0, '---\ncorreccion: acertada\n---\nSí', { escribir: { [`${rutaIdea}/germinacion/nodos/e1.md`]: 'Es ~~lineal~~<ins>cuadrática</ins>.' } });
+  await lista(g.id);
+  assert.deepEqual((await ideas.obtener(ref.carpetaId, ref.ideaId)).enmendados, ['germinacion/nodos/e1.md']);
+});
+
+test('I7: si la sesión principal ya no existe, la glosa empieza una sesión nueva', async () => {
+  const { motor, falso, glosas, ref, pedido, lista } = await preparar();
+  const g = await motor.pedir(ref, pedido());
+  await hasta(() => falso.llamadas[0]);
+  falso.llamadas[0].resolve({ codigo: 1, abortado: false, stderr: 'No conversation found with session ID: S' });
+  await hasta(() => falso.llamadas[1]);
+  assert.ok(!falso.llamadas[1].args.includes('--resume'));
+  await falso.responder(1, 'Explicado');
+  await lista(g.id);
+  assert.equal((await glosas.obtener(ref.carpetaId, ref.ideaId, g.id)).estado, 'lista');
+});
+
+test('menor: dos «seguir» simultáneos solo lanzan una ejecución', async () => {
+  const { motor, falso, ref, pedido, lista } = await preparar();
+  const g = await motor.pedir(ref, pedido());
+  await falso.responder(0, 'Uno');
+  await lista(g.id);
+  const r = await Promise.allSettled([motor.seguir(ref, g.id, 'a'), motor.seguir(ref, g.id, 'b')]);
+  assert.equal(r.filter((x) => x.status === 'fulfilled').length, 1);
 });

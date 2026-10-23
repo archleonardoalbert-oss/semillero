@@ -14,12 +14,16 @@ export function crearGlosas(ref) {
   function poner(g) {
     const i = estado.lista.findIndex((x) => x.id === g.id);
     if (i === -1) estado.lista = [...estado.lista, g];
-    else estado.lista[i] = g;
+    // Una respuesta HTTP tardía no puede devolver a «en proceso» una glosa que ya terminó.
+    else if (!(g.estado === 'en-proceso' && estado.lista[i].estado !== 'en-proceso' && estado.lista[i].mensajes.length >= g.mensajes.length)) {
+      estado.lista[i] = g;
+    }
     if (g.estado !== 'en-proceso') vivas.delete(g.id);
   }
 
   const quitar = suscribir(ref, (msg) => {
-    if (msg.tipo === 'glosa') poner(msg.glosa);
+    if (msg.tipo === 'reconexion') cargar();
+    else if (msg.tipo === 'glosa') poner(msg.glosa);
     else if (msg.tipo === 'glosa-evento') {
       if (!vivas.has(msg.id)) vivas.set(msg.id, crearTranscripcion());
       vivas.get(msg.id).aplicar(msg.ev);
