@@ -206,7 +206,7 @@
 
 <style>
   .pagina {
-    max-width: 46rem;
+    max-width: 73.6rem;
     margin: 0 auto;
     padding: 2.5rem 0 6rem;
   }

@@ -167,7 +167,7 @@ test('superar el 90 % de 5 h pausa las activas y desencola el resto', async () =
   const pausas = [];
   cola.on('pausa', (p) => pausas.push(p));
   await cola.lanzar(refs);
-  await esperar();
+  await hasta(() => falso.llamadas.length === 5);
   falso.cuota(0, 0.95);
   await hasta(async () => (await Promise.all([0, 1, 2, 3, 4].map(estado))).every((e) => e === 'pausada'));
   await hasta(async () => (await estado(5)) === 'borrador');
