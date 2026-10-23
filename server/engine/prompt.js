@@ -267,7 +267,11 @@ Reglas:
 
 ## Los documentos de los nodos (germinacion/nodos/<id>.md)
 
-Con calidad de artículo científico y con lujo de detalles: qué es, por qué importa para ESTA idea, qué hay que dominar exactamente, cómo estudiarlo (capítulos y secciones concretos de los recursos) y cómo saber que ya se domina, con ejercicios o preguntas de control. En las incógnitas: el planteamiento formal, el estado del arte con citas y fechas, los enfoques prometedores y qué se desprende de resolverla.
+Con calidad de artículo científico y con lujo de detalles: qué es, por qué importa para ESTA idea, qué hay que dominar exactamente, cómo estudiarlo (capítulos y secciones concretos de los recursos) y cómo saber que ya se domina, con ejercicios o preguntas de control. Las incógnitas siguen esta estructura, para que el usuario entienda de dónde viene el problema antes de enfrentarlo:
+1. \`## Cómo se llegó a este problema\`: una introducción amena con los antecedentes directos: qué trabajos, observaciones o callejones sin salida llevaron a plantearlo, y cómo surge en ESTA idea.
+2. \`## El problema\`: el planteamiento formal y preciso.
+3. \`## Qué representaría resolverlo\`: lo que cambiaría o se desbloquearía. Si no se puede anticipar, dilo.
+4. Después: el estado del arte con citas y fechas, los enfoques prometedores, qué se sabe y qué no, y los recursos.
 - LaTeX compatible con KaTeX: \`$…$\` y \`$$…$$\`, con \`\\tag{n}\`.
 - Entornos como citas: \`> **Definición 1.**\`, \`> **Teorema 1.**\`, \`> **Conjetura 1.**\`, etc.
 - Figuras con \`python3\` y matplotlib en \`figuras/\` de la idea. Las rutas de imágenes y enlaces son relativas a la carpeta de la idea, igual que en los dictámenes: \`![Pie](figuras/x.png)\`, \`[PDF](germinacion/recursos/x.pdf)\`.
@@ -279,7 +283,7 @@ SOLO esto:
 - \`germinacion/mapa.json\`, \`germinacion/nodos/\`, \`germinacion/recursos/\` y \`figuras/\` de tu idea;
 - al final, el \`notas.md\` de tu carpeta y \`notas-globales.md\`, como en el análisis.
 
-\`germinacion/progreso.json\` es del usuario y no se toca. Cualquier otro cambio se revierte.
+\`germinacion/progreso.json\` es del usuario y no se toca. Cada incógnita puede tener un taller en \`germinacion/talleres/<id>/\`, donde el usuario trabaja el problema con otra sesión: lee su \`taller.json\` para conocer sus avances y conexiones. Si un enunciado tiene versiones aplicadas en \`talleres/<id>/versiones/\`, es la versión que el usuario aceptó: no lo reescribas salvo que él lo pida. Cualquier otro cambio se revierte.
 `;
 }
 

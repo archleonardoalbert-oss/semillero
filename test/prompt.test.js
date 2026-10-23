@@ -90,3 +90,9 @@ test('el prompt separa errores de conocimiento de un mal camino', () => {
   const p = promptSistema();
   for (const s of ['errores de conocimiento', 'intención', 'mejor versión', 'mal camino']) assert.ok(p.includes(s), `falta ${s}`);
 });
+
+test('las incógnitas empiezan con su historia y se respetan los talleres', async () => {
+  const { promptGerminacion } = await import('../server/engine/prompt.js');
+  const p = promptGerminacion();
+  for (const s of ['## Cómo se llegó a este problema', '## El problema', '## Qué representaría resolverlo', 'talleres/']) assert.ok(p.includes(s), `falta ${s}`);
+});
