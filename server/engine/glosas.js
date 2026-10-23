@@ -24,7 +24,7 @@ export function crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, eje
   const reservadas = new Set(); // seguimientos aceptados que aún no han arrancado
 
   const objetivosActivos = () => [...activas.values()].flatMap((x) => x.objetivos);
-  cola.fijarAjenosExternos(objetivosActivos);
+  cola.registrarEscritor(objetivosActivos);
 
   const objetivosDe = (rutaIdea, g) => [
     `${rutaIdea}/figuras/glosas/${g.id}/**`,
@@ -150,7 +150,7 @@ export function crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, eje
         bifurcar = true;
         r = await lanzar(null);
       }
-      const ajenos = [...cola.objetivosActivos(), ...[...activas].filter(([x]) => x !== k).flatMap(([, o]) => o.objetivos)];
+      const ajenos = [...cola.objetivosAjenos(objetivosActivos), ...[...activas].filter(([x]) => x !== k).flatMap(([, o]) => o.objetivos)];
       const { restaurados } = await guard.verificar({ propios: objetivos, ajenosActivos: ajenos });
       if (restaurados.length) console.warn('[guard] restaurados tras glosa', restaurados);
       final = await cerrar(ref, g, r, { antes, rutaDoc, objetivos });

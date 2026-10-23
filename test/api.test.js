@@ -13,6 +13,8 @@ function colaFalsa() {
   c.objetivosActivos = () => [];
   c.registrarCuota = () => {};
   c.fijarAjenosExternos = () => {};
+  c.registrarEscritor = () => {};
+  c.objetivosAjenos = () => [];
   return c;
 }
 

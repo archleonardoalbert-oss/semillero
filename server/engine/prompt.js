@@ -348,6 +348,127 @@ export function mensajeGerminacion({ idea, carpeta, rutaIdea, mapa, progreso, ca
   ].join('\n');
 }
 
+export function promptTaller() {
+  return `# Taller de una incógnita en Semillero
+
+Eres el asesor dedicado a UNA incógnita (o problema abierto) de la germinación de una idea del usuario. Él investiga el problema y tú le acompañas de forma continua hasta la solución correcta. No eres un buscador de respuestas: eres su director de tesis más exigente y más útil.
+
+## Tu trabajo en cada respuesta
+
+- **¿Va por buen camino?** Dilo con honestidad total. Si se equivoca, corrígele y explica por qué. Si acierta, dilo también y justifícalo.
+- **Qué le falta:** conocimientos, pruebas, controles, casos que no ha mirado.
+- **Lo que no está viendo en sus resultados:** patrones, implicaciones, por qué algo es más (o menos) relevante de lo que cree.
+- **Guía su foco:** el siguiente paso concreto y por qué ese y no otro.
+- **Conecta:** relaciones con incógnitas y problemas abiertos de otras ideas del semillero (tienes un índice). Una estructura global del problema vale más que un problema aislado.
+- **Haz evolucionar el problema:** cuando lo investigado lo acote, lo transforme o haga aparecer un subproblema, propón un nuevo enunciado.
+- Comprueba lo que haga falta con búsquedas actualizadas y fiables, y calcula con \`python3\` si ayuda. Lee sus adjuntos (Read) antes de opinar sobre ellos.
+- Sé comprensivo con sus errores de conocimiento (explícaselos), no con las malas direcciones.
+
+## Formato
+
+- Tu último mensaje, sin llamadas a herramientas después, ES tu respuesta; el usuario solo verá ese texto.
+- Español, Markdown, LaTeX compatible con KaTeX (\`$…$\`, \`$$…$$\`).
+- Figuras con matplotlib en la carpeta de figuras que se te indica, enlazadas con su ruta relativa a la carpeta de la idea.
+
+**Proponer un nuevo enunciado:** escribe el documento COMPLETO en la ruta de propuesta que se te indica, con la misma estructura («Cómo se llegó a este problema», «El problema», «Qué representaría resolverlo»…). Incluye en tu respuesta:
+
+\`\`\`semillero-propuesta
+{ "resumen": "una frase: qué cambia y por qué" }
+\`\`\`
+
+El usuario decidirá si la aplica. No propongas por proponer: solo cuando el problema haya cambiado de verdad.
+
+**Conexiones con otras incógnitas** (solo si son reales y útiles):
+
+\`\`\`semillero-conexiones
+[{ "carpetaId": "…", "ideaId": "…", "nodo": "id del nodo", "relacion": "una frase: qué las une" }]
+\`\`\`
+
+## Lo que puedes escribir
+
+SOLO la ruta de propuesta y la carpeta de figuras que se te indican. Puedes leer todo el semillero. Cualquier otro cambio se revierte.
+`;
+}
+
+// Primer mensaje de un taller: contexto justo de la incógnita, sin el peso de toda la germinación.
+export function mensajeInicialTaller({ idea, rutaIdea, mapa, nodo, notas, indice, historial = [], texto, adjuntos = [], rutas }) {
+  const deps = mapa.nodos.filter((n) => nodo.depende.includes(n.id));
+  return [
+    `Eres el taller de la ${nodo.abierto ? 'incógnita (problema abierto)' : 'incógnita'} «${nodo.titulo}» de la idea «${idea.titulo}».`,
+    '',
+    '## Contexto de la idea',
+    String(mapa.resumen ?? '').slice(0, 2500) || '_(sin resumen)_',
+    '',
+    '## El problema',
+    `Su enunciado está en ${rutaIdea}/germinacion/${nodo.documento}: léelo entero antes de responder.`,
+    ...(deps.length ? ['', 'Depende de:', ...deps.map((d) => `- «${d.titulo}» (${rutaIdea}/germinacion/${d.documento})`)] : []),
+    ...(notas ? ['', 'Notas del usuario en este nodo:', '', notas] : []),
+    '',
+    '## Índice de incógnitas del semillero (para conectar)',
+    indice || '_(no hay otras)_',
+    '',
+    `Ruta de propuesta de enunciado: ${rutas.propuesta}`,
+    `Carpeta de figuras: ${rutas.figuras}/`,
+    ...(historial.length
+      ? ['', '## Conversación previa del taller (tu sesión anterior se perdió)', '', ...historial.map((m) => `**${m.autor === 'usuario' ? 'Usuario' : 'Tú'}:** ${m.contenido}`)]
+      : []),
+    '',
+    '## Mensaje del usuario',
+    '',
+    texto,
+    ...(adjuntos.length ? ['', `Adjuntos (léelos con Read): ${adjuntos.map((a) => `${rutaIdea}/${a}`).join(', ')}`] : []),
+  ].join('\n');
+}
+
+export function mensajeTaller({ rutaIdea, texto, adjuntos = [] }) {
+  return [texto, ...(adjuntos.length ? ['', `Adjuntos (léelos con Read): ${adjuntos.map((a) => `${rutaIdea}/${a}`).join(', ')}`] : [])].join('\n');
+}
+
+const RE_PROPUESTA = /\n?```semillero-propuesta[ \t]*\n([\s\S]*?)\n```[ \t]*\n?/;
+const RE_CONEXIONES = /\n?```semillero-conexiones[ \t]*\n([\s\S]*?)\n```[ \t]*\n?/;
+
+export function parsearRespuestaTaller(texto) {
+  let cuerpo = String(texto ?? '').replace(/\r\n/g, '\n');
+  let propuesta = null;
+  let conexiones = [];
+  const p = cuerpo.match(RE_PROPUESTA);
+  if (p) {
+    try {
+      const j = JSON.parse(p[1]);
+      if (typeof j?.resumen === 'string' && j.resumen.trim()) propuesta = { resumen: j.resumen.trim().slice(0, 300) };
+    } catch {
+      /* bloque mal formado: se ignora */
+    }
+    cuerpo = cuerpo.replace(RE_PROPUESTA, '\n');
+  }
+  const c = cuerpo.match(RE_CONEXIONES);
+  if (c) {
+    try {
+      const j = JSON.parse(c[1]);
+      if (Array.isArray(j)) {
+        conexiones = j
+          .filter((x) => [x?.carpetaId, x?.ideaId, x?.nodo, x?.relacion].every((v) => typeof v === 'string' && v.trim()))
+          .slice(0, 10)
+          .map(({ carpetaId, ideaId, nodo, relacion }) => ({ carpetaId, ideaId, nodo, relacion: relacion.trim().slice(0, 300) }));
+      }
+    } catch {
+      /* bloque mal formado: se ignora */
+    }
+    cuerpo = cuerpo.replace(RE_CONEXIONES, '\n');
+  }
+  return { cuerpo: cuerpo.trim(), propuesta, conexiones };
+}
+
+export function argsTaller({ sessionId, ajustes, mensaje }) {
+  return [
+    '-p', mensaje, ...COMUNES,
+    ...(sessionId ? ['--resume', sessionId] : []),
+    '--model', ajustes.modelo, '--effort', ajustes.esfuerzo,
+    '--append-system-prompt', promptTaller(),
+    ...PERMISOS,
+  ];
+}
+
 const CORRECCIONES = new Set(['acertada', 'parcial', 'erronea']);
 
 export function parsearRespuestaGlosa(texto) {

@@ -12,6 +12,8 @@ import { crearAlmacenIdeas } from '../store/ideas.js';
 import { crearAjustes } from '../store/ajustes.js';
 import { crearAlmacenGlosas } from '../store/glosas.js';
 import { crearAlmacenGerminacion } from '../store/germinacion.js';
+import { crearAlmacenTalleres } from '../store/talleres.js';
+import { crearMotorTaller } from '../engine/taller.js';
 import { crearMotorGlosas } from '../engine/glosas.js';
 import { validarMapa } from '../engine/mapa.js';
 import { rutaSegura, slugify } from '../store/fsutil.js';
@@ -30,7 +32,7 @@ const ESTADO_HTTP = {
   'tipo-invalido': 400, 'documento-invalido': 400, 'prompt-vacio': 400, 'fragmento-vacio': 400,
   'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404, 'glosa-no-existe': 404, cuota: 409,
   'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409, 'no-germinable': 409, 'no-disponible': 409,
-  'respuestas-invalidas': 400, 'camino-invalido': 400, 'ya-analizada': 409, 'nodo-invalido': 400, 'estado-invalido': 400,
+  'respuestas-invalidas': 400, 'sin-propuesta': 409, 'version-invalida': 400, 'camino-invalido': 400, 'ya-analizada': 409, 'nodo-invalido': 400, 'estado-invalido': 400,
 };
 
 function agrupar(carpetas, ideas, extra = () => ({})) {
@@ -42,7 +44,7 @@ function agrupar(carpetas, ideas, extra = () => ({})) {
     .filter((g) => g.ideas.length);
 }
 
-export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa } = {}) {
+export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ejecutarTaller } = {}) {
   const app = Fastify({ logger: false, bodyLimit: 2 * 1024 * 1024 });
   const guard = crearGuard(cfg);
   await guard.iniciar();
@@ -55,6 +57,9 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa } =
   const glosas = crearAlmacenGlosas(cfg, { proteger: guard.proteger });
   const motorGlosas = crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, ...(ejecutarGlosa && { ejecutar: ejecutarGlosa }) });
   app.decorate('glosas', motorGlosas);
+  const talleres = crearAlmacenTalleres(cfg, { proteger: guard.proteger });
+  const motorTaller = crearMotorTaller({ cfg, ideas, talleres, germinacion, guard, cola, ajustes, ...(ejecutarTaller && { ejecutar: ejecutarTaller }) });
+  app.decorate('talleres', motorTaller);
 
   // Solo esta máquina: Host contra DNS rebinding y Origin contra webs ajenas abiertas en el navegador.
   const hostsValidos = new Set([`127.0.0.1:${cfg.puerto}`, `localhost:${cfg.puerto}`]);
@@ -76,7 +81,7 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa } =
     (req, body, done) => done(null, body));
 
   await app.register(fastifyWebsocket);
-  registrarWs(app, cola, motorGlosas);
+  registrarWs(app, cola, motorGlosas, motorTaller);
 
   const refsDe = (body) => {
     const refs = body?.refs;
@@ -211,6 +216,30 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa } =
     const { estado, notas } = req.body ?? {};
     return germinacion.marcarNodo(req.params.c, req.params.i, req.params.n, { estado, notas });
   });
+
+  const T = '/api/carpetas/:c/ideas/:i/germinacion/talleres/:n';
+  app.get(T, async (req) => {
+    await ideas.obtener(req.params.c, req.params.i);
+    const [taller, entrantes] = await Promise.all([
+      talleres.leer(req.params.c, req.params.i, req.params.n),
+      talleres.conexionesEntrantes(req.params.c, req.params.i, req.params.n),
+    ]);
+    return { taller, entrantes };
+  });
+  app.post(`${T}/mensajes`, async (req) => motorTaller.enviar(refDe(req), req.params.n, { texto: req.body?.texto, adjuntos: req.body?.adjuntos }));
+  app.post(`${T}/adjuntos`, async (req, reply) => {
+    if (!Buffer.isBuffer(req.body)) throw new Error('extension-invalida');
+    await ideas.obtener(req.params.c, req.params.i);
+    const ruta = await talleres.guardarAdjunto(req.params.c, req.params.i, req.params.n, String(req.query.nombre ?? ''), req.body);
+    return reply.code(201).send({ ruta });
+  });
+  app.post(`${T}/propuesta`, async (req) => {
+    const accion = req.body?.accion;
+    if (accion === 'aplicar') return motorTaller.aplicar(refDe(req), req.params.n);
+    if (accion === 'descartar') return motorTaller.descartar(refDe(req), req.params.n);
+    throw new Error('ruta-invalida');
+  });
+  app.post(`${T}/restaurar`, async (req) => motorTaller.restaurar(refDe(req), req.params.n, req.body?.version));
 
   const agrupadas = async (filtro, extra) => agrupar(await carpetas.listar(), (await ideas.listar()).filter(filtro), extra);
   app.get('/api/pendientes', async () => ideas.pendientes());

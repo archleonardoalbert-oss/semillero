@@ -25,7 +25,9 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
   let ignorarHastaConocerCuota = false; // reanudar sin cuota en memoria (p. ej. tras reiniciar)
   let reinicioVentanaPausa = null; // resetsAt de la ventana que provocó la última pausa
   let apagando = false;
-  let ajenosExternos = () => []; // objetivos de otras ejecuciones fuera de la cola (glosas)
+  // Escritores fuera de la cola (glosas, talleres): cada uno informa de lo que está escribiendo ahora.
+  const escritores = new Set();
+  const ajenosExternos = (excepto = null) => [...escritores].filter((f) => f !== excepto).flatMap((f) => f());
 
   const estado = () => ({
     ejecutando: [...activas.values()].map((a) => a.ref),
@@ -58,7 +60,8 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
   // Una glosa de corrección que enmienda documentos de la germinación no debe coincidir con una ejecución que los reescribe.
   const corrigiendoGerminacion = (ref) => {
     const prefijo = `${ideas.relIdea(ref.carpetaId, ref.ideaId)}/germinacion/`;
-    return ajenosExternos().some((o) => o.startsWith(prefijo));
+    // Los talleres solo escriben en talleres/, que la germinación no toca.
+    return ajenosExternos().some((o) => o.startsWith(prefijo) && !o.startsWith(`${prefijo}talleres/`));
   };
 
   // Estado al que vuelve una idea que esperaba en cola y se descarta (parada, pausa o apagado).
@@ -468,6 +471,9 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
 
   return Object.assign(emisor, {
     lanzar, detener, reanudar, germinar, estado, recuperar, apagar, registrarCuota, objetivosActivos,
-    fijarAjenosExternos: (fn) => (ajenosExternos = fn),
+    registrarEscritor: (fn) => escritores.add(fn),
+    fijarAjenosExternos: (fn) => escritores.add(fn),
+    // Lo que escriben ahora la cola y los demás escritores (menos `excepto`): lo que un escritor no debe revertir.
+    objetivosAjenos: (excepto) => [...objetivosActivos(), ...ajenosExternos(excepto)],
   });
 }
