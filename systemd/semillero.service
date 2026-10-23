@@ -1,0 +1,21 @@
+[Unit]
+Description=Semillero: almacén de ideas con dictamen de Claude
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Proyectos/semillero
+ExecStart=/usr/bin/node %h/Proyectos/semillero/server/index.js
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Restart=on-failure
+RestartSec=5
+# Las sesiones de claude son hijas de este servicio: que systemd-oomd no lo elija.
+OOMScoreAdjust=-500
+ManagedOOMPreference=avoid
+# Al parar el servicio, claude recibe SIGINT y conserva la sesión.
+KillMode=control-group
+KillSignal=SIGINT
+TimeoutStopSec=20
+
+[Install]
+WantedBy=default.target

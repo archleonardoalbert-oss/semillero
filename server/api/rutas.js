@@ -1,0 +1,193 @@
+import fs from 'node:fs';
+import fsp from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import Fastify from 'fastify';
+import fastifyStatic from '@fastify/static';
+import fastifyWebsocket from '@fastify/websocket';
+import { crearGuard } from '../engine/guard.js';
+import { crearCola } from '../engine/cola.js';
+import { crearAlmacenCarpetas } from '../store/carpetas.js';
+import { crearAlmacenIdeas } from '../store/ideas.js';
+import { crearAjustes } from '../store/ajustes.js';
+import { rutaSegura, slugify } from '../store/fsutil.js';
+import { registrarWs } from './ws.js';
+
+const DIST = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../web/dist');
+
+const MIME = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+  svg: 'image/svg+xml', md: 'text/markdown; charset=utf-8', json: 'application/json', jsonl: 'application/x-ndjson',
+  pdf: 'application/pdf', txt: 'text/plain; charset=utf-8',
+};
+
+const ESTADO_HTTP = {
+  'ruta-invalida': 400, 'extension-invalida': 400, 'nombre-vacio': 400, 'titulo-vacio': 400, 'refs-invalidos': 400,
+  'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404,
+  'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409,
+};
+
+function agrupar(carpetas, ideas, extra = () => ({})) {
+  return carpetas
+    .map((carpeta) => ({
+      carpeta,
+      ideas: ideas.filter((i) => i.carpetaId === carpeta.id).map((i) => ({ ...i, ...extra(i) })),
+    }))
+    .filter((g) => g.ideas.length);
+}
+
+export async function construirApp(cfg, { cola: colaInyectada } = {}) {
+  const app = Fastify({ logger: false, bodyLimit: 2 * 1024 * 1024 });
+  const guard = crearGuard(cfg);
+  await guard.iniciar();
+  const carpetas = crearAlmacenCarpetas(cfg, { proteger: guard.proteger });
+  const ideas = crearAlmacenIdeas(cfg, { proteger: guard.proteger });
+  const ajustes = crearAjustes(cfg);
+  const cola = colaInyectada ?? crearCola({ cfg, ideas, carpetas, ajustes, guard });
+  app.decorate('cola', cola);
+
+  // Solo esta máquina: Host contra DNS rebinding y Origin contra webs ajenas abiertas en el navegador.
+  const hostsValidos = new Set([`127.0.0.1:${cfg.puerto}`, `localhost:${cfg.puerto}`]);
+  const origenesValidos = new Set([...hostsValidos].flatMap((h) => [`http://${h}`]).concat(['http://localhost:5173', 'http://127.0.0.1:5173']));
+  app.addHook('onRequest', async (req, reply) => {
+    const host = req.headers.host ?? '';
+    const origen = req.headers.origin;
+    const hostOk = hostsValidos.has(host) || /^(localhost|127\.0\.0\.1):5173$/.test(host);
+    if (!hostOk || (origen && !origenesValidos.has(origen))) return reply.code(403).send({ error: 'origen-no-permitido' });
+  });
+
+  app.setErrorHandler((err, req, reply) => {
+    const codigo = ESTADO_HTTP[err.message] ?? err.statusCode ?? 500;
+    if (codigo >= 500) console.error('[api]', req.method, req.url, err);
+    reply.code(codigo).send({ error: err.message });
+  });
+
+  app.addContentTypeParser(/^(image\/.+|application\/octet-stream)$/, { parseAs: 'buffer', bodyLimit: 20 * 1024 * 1024 },
+    (req, body, done) => done(null, body));
+
+  await app.register(fastifyWebsocket);
+  registrarWs(app, cola);
+
+  const refsDe = (body) => {
+    const refs = body?.refs;
+    if (!Array.isArray(refs) || refs.some((r) => slugify(r?.carpetaId) !== r?.carpetaId || slugify(r?.ideaId) !== r?.ideaId)) {
+      throw new Error('refs-invalidos');
+    }
+    return refs.map(({ carpetaId, ideaId }) => ({ carpetaId, ideaId }));
+  };
+
+  app.get('/api/resumen', async () => {
+    const todas = await ideas.listar();
+    const cuenta = (e) => todas.filter((i) => i.estado === e).length;
+    return {
+      aceptadas: cuenta('aceptada'), rechazadas: cuenta('rechazada'), enProceso: cuenta('en-proceso'),
+      aclaracion: cuenta('aclaracion'), pausadas: cuenta('pausada'), borradores: cuenta('borrador'),
+      pendientes: todas.filter((i) => ['borrador', 'replica-pendiente', 'detenida', 'error'].includes(i.estado)).length,
+      total: todas.length, cola: cola.estado(),
+    };
+  });
+
+  app.get('/api/carpetas', async () => {
+    const [cs, todas] = await Promise.all([carpetas.listar(), ideas.listar()]);
+    return cs.map((c) => ({ ...c, ideas: todas.filter((i) => i.carpetaId === c.id).map(({ id, titulo, estado }) => ({ id, titulo, estado })) }));
+  });
+  app.post('/api/carpetas', async (req, reply) => reply.code(201).send(await carpetas.crear(req.body ?? {})));
+  app.patch('/api/carpetas/:c', async (req) => {
+    const { nombre, color } = req.body ?? {};
+    if (nombre !== undefined) await carpetas.renombrar(req.params.c, nombre);
+    if (color !== undefined) await carpetas.actualizar(req.params.c, { color });
+    return carpetas.obtener(req.params.c);
+  });
+  app.delete('/api/carpetas/:c', async (req, reply) => {
+    await carpetas.borrar(req.params.c);
+    reply.code(204).send();
+  });
+  app.get('/api/carpetas/:c/notas', async (req) => {
+    await carpetas.obtener(req.params.c);
+    return { texto: await fsp.readFile(rutaSegura(cfg.datos, `carpetas/${req.params.c}/notas.md`), 'utf8').catch(() => '') };
+  });
+  app.get('/api/notas-globales', async () => ({
+    texto: await fsp.readFile(path.join(cfg.datos, 'notas-globales.md'), 'utf8').catch(() => ''),
+  }));
+
+  app.get('/api/ideas', async (req) => ideas.listar({ estado: req.query.estado || undefined, carpetaId: req.query.carpeta || undefined }));
+  app.post('/api/carpetas/:c/ideas', async (req, reply) => reply.code(201).send(await ideas.crear(req.params.c, req.body ?? {})));
+  app.get('/api/carpetas/:c/ideas/:i', async (req) => ideas.obtener(req.params.c, req.params.i));
+  app.patch('/api/carpetas/:c/ideas/:i', async (req) => {
+    const { titulo, cuerpo } = req.body ?? {};
+    await ideas.editarOriginal(req.params.c, req.params.i, { titulo, cuerpo });
+    return ideas.obtener(req.params.c, req.params.i);
+  });
+  app.delete('/api/carpetas/:c/ideas/:i', async (req, reply) => {
+    await ideas.borrar(req.params.c, req.params.i);
+    reply.code(204).send();
+  });
+  app.post('/api/carpetas/:c/ideas/:i/replica', async (req) => {
+    await ideas.responder(req.params.c, req.params.i, String(req.body?.cuerpo ?? ''));
+    return ideas.obtener(req.params.c, req.params.i);
+  });
+  app.post('/api/carpetas/:c/ideas/:i/adjuntos', async (req, reply) => {
+    if (!Buffer.isBuffer(req.body)) throw new Error('extension-invalida');
+    const ruta = await ideas.guardarAdjunto(req.params.c, req.params.i, String(req.query.nombre ?? ''), req.body);
+    reply.code(201).send({ ruta });
+  });
+
+  app.get('/api/carpetas/:c/ideas/:i/registros', async (req) => {
+    const dir = path.join(ideas.dirIdea(req.params.c, req.params.i), 'registro');
+    return (await fsp.readdir(dir).catch(() => [])).filter((a) => a.endsWith('.jsonl')).sort();
+  });
+  app.get('/api/carpetas/:c/ideas/:i/registros/:archivo', async (req, reply) => {
+    const dir = path.join(ideas.dirIdea(req.params.c, req.params.i), 'registro');
+    const texto = await fsp.readFile(rutaSegura(dir, req.params.archivo), 'utf8').catch((e) => {
+      throw new Error(e.message === 'ruta-invalida' ? e.message : 'registro-no-existe');
+    });
+    reply.type('application/x-ndjson').send(texto);
+  });
+
+  const agrupadas = async (filtro, extra) => agrupar(await carpetas.listar(), (await ideas.listar()).filter(filtro), extra);
+  app.get('/api/pendientes', async () => ideas.pendientes());
+  app.get('/api/pausadas', async () => agrupadas((i) => i.estado === 'pausada', () => ({ etiqueta: 'PAUSADA' })));
+  app.get('/api/activas', async () => {
+    const { ejecutando, enCola } = cola.estado();
+    const k = (r) => `${r.carpetaId}/${r.ideaId}`;
+    const corriendo = new Set(ejecutando.map(k));
+    const esperando = new Set(enCola.map(k));
+    return agrupadas(
+      (i) => corriendo.has(`${i.carpetaId}/${i.id}`) || esperando.has(`${i.carpetaId}/${i.id}`),
+      (i) => ({ etiqueta: corriendo.has(`${i.carpetaId}/${i.id}`) ? 'EN CURSO' : 'EN COLA' }),
+    );
+  });
+
+  for (const accion of ['lanzar', 'detener', 'reanudar']) {
+    app.post(`/api/analisis/${accion}`, async (req) => {
+      const refs = refsDe(req.body);
+      await cola[accion](refs);
+      return cola.estado();
+    });
+  }
+
+  app.get('/api/ajustes', async () => ajustes.leer());
+  app.put('/api/ajustes', async (req) => ajustes.guardar(req.body ?? {}));
+
+  app.get('/archivos/*', async (req, reply) => {
+    const rel = req.params['*'];
+    if (rel.split('/').some((s) => s.startsWith('.'))) throw new Error('ruta-invalida');
+    const ruta = rutaSegura(cfg.datos, rel);
+    const st = await fsp.stat(ruta).catch(() => null);
+    if (!st?.isFile()) return reply.code(404).send({ error: 'no-existe' });
+    const ext = path.extname(ruta).slice(1).toLowerCase();
+    reply.header('cache-control', 'no-cache');
+    if (ext === 'svg') reply.header('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'");
+    reply.type(MIME[ext] ?? 'application/octet-stream').send(fs.createReadStream(ruta));
+  });
+
+  if (fs.existsSync(DIST)) {
+    await app.register(fastifyStatic, { root: DIST, wildcard: false });
+    app.setNotFoundHandler((req, reply) => {
+      if (req.method === 'GET' && !req.url.startsWith('/api/')) return reply.sendFile('index.html');
+      reply.code(404).send({ error: 'no-existe' });
+    });
+  }
+
+  return app;
+}
