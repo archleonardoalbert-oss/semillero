@@ -1,0 +1,79 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { existe } from '../store/fsutil.js';
+
+const exec = promisify(execFile);
+
+// Un patrón es una ruta exacta o un prefijo terminado en "/**".
+export function casa(ruta, patron) {
+  return patron.endsWith('/**') ? ruta.startsWith(patron.slice(0, -2)) : ruta === patron;
+}
+
+// Protege los textos del usuario: datos/ es un repo git; el servidor commitea
+// cada escritura suya al momento, así que lo no commiteado fuera de lo permitido
+// a una sesión es ajeno y se restaura.
+export function crearGuard(cfg) {
+  let cadena = Promise.resolve();
+  const enSerie = (fn) => {
+    const r = cadena.then(fn, fn);
+    cadena = r.catch(() => {});
+    return r;
+  };
+  const git = (...args) => exec('git', args, { cwd: cfg.datos, maxBuffer: 64 * 1024 * 1024 });
+
+  async function iniciar() {
+    await fs.mkdir(cfg.datos, { recursive: true });
+    await enSerie(async () => {
+      if (!(await existe(path.join(cfg.datos, '.git')))) {
+        await git('init', '-q');
+        await git('config', 'user.name', 'Semillero');
+        await git('config', 'user.email', 'semillero@localhost');
+        await git('config', 'core.quotepath', 'false');
+      }
+      await fs.writeFile(path.join(cfg.datos, '.gitignore'), '**/registro/\n*.tmp\n');
+      await git('add', '-A');
+      await git('commit', '-q', '--allow-empty', '-m', 'inicio');
+    });
+  }
+
+  async function cambiosSinBloqueo() {
+    const { stdout } = await git('status', '--porcelain', '-z', '-uall');
+    return stdout
+      .split('\0')
+      .filter(Boolean)
+      .map((e) => ({ codigo: e.slice(0, 2), ruta: e.slice(3) }));
+  }
+
+  const cambios = () => enSerie(cambiosSinBloqueo);
+
+  function commitear(rutas, mensaje) {
+    return enSerie(async () => {
+      if (rutas === 'todo') await git('add', '-A');
+      else if (rutas.length) await git('add', '-A', '--', ...rutas);
+      else return;
+      try {
+        await git('diff', '--cached', '--quiet');
+      } catch {
+        await git('commit', '-q', '-m', mensaje);
+      }
+    });
+  }
+
+  function verificar({ propios, ajenosActivos }) {
+    return enSerie(async () => {
+      const permitidos = [...propios, ...ajenosActivos];
+      const restaurados = [];
+      for (const { codigo, ruta } of await cambiosSinBloqueo()) {
+        if (permitidos.some((p) => casa(ruta, p))) continue;
+        if (codigo === '??') await fs.rm(path.join(cfg.datos, ruta), { force: true });
+        else await git('checkout', 'HEAD', '--', ruta);
+        restaurados.push(ruta);
+      }
+      return { restaurados };
+    });
+  }
+
+  return { iniciar, commitear, verificar, cambios };
+}
