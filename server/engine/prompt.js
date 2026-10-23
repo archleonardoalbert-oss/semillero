@@ -251,9 +251,12 @@ function listaRespuestas(mapa, respuestas) {
 // Mensaje de cada ejecución de germinación según en qué punto está.
 export function mensajeGerminacion({ idea, carpeta, rutaIdea, mapa, progreso, cambios, reanudar = false }) {
   const destino = `${rutaIdea}/germinacion/mapa.json`;
+  const rechazo = /^Mapa inválido: /.test(idea.error ?? '')
+    ? `\n\nOjo: tu último mapa.json fue rechazado: ${idea.error.replace(/^Mapa inválido: /, '')}. Sigue al pie de la letra el formato EXACTO de tus instrucciones.`
+    : '';
   const peticion = progreso?.pendiente ? ['', 'Lo que te pide el usuario:', '', progreso.pendiente] : [];
   const avances = cambios ? ['', 'Avances y notas del usuario desde tu última ejecución:', '', cambios] : [];
-  const cierre = `Escribe el mapa en ${destino}`;
+  const cierre = `${rechazo ? `${rechazo.trim()}\n` : ''}Escribe el mapa en ${destino}`;
   if (reanudar) {
     return [
       `Tu ejecución de germinación de «${idea.titulo}» se interrumpió (pausa por cuota o parada). Sigue en ${rutaIdea}.`,
@@ -309,7 +312,12 @@ export function parsearRespuestaGlosa(texto) {
 
 export const HERRAMIENTAS = 'Read Glob Grep WebSearch WebFetch Write Edit Bash(python3:*) Bash(curl:*) Bash(mkdir:*) Bash(ls:*)';
 
-const COMUNES = ['--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--thinking-display', 'summarized'];
+// Sin snapshot: el CLI grabaría el prompt de sistema de la primera petición y lo reutilizaría al reanudar,
+// ignorando el que pasemos (germinación y glosas usan prompts distintos al del análisis).
+const COMUNES = [
+  '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--thinking-display', 'summarized',
+  '--system-prompt-snapshot', 'off',
+];
 const PERMISOS = ['--permission-mode', 'dontAsk', '--allowedTools', HERRAMIENTAS, '--safe-mode'];
 
 // Glosa: bifurca la sesión principal (--fork-session), retoma la suya o empieza de cero.
@@ -326,17 +334,11 @@ export function argsGlosa({ sessionId, bifurcar, ajustes, mensaje }) {
 
 export function argsClaude({ sessionId, nueva, ajustes, mensaje, sistema = promptSistema() }) {
   return [
-    '-p', mensaje,
-    '--output-format', 'stream-json',
-    '--verbose',
-    '--include-partial-messages',
-    '--thinking-display', 'summarized',
+    '-p', mensaje, ...COMUNES,
     nueva ? '--session-id' : '--resume', sessionId,
     '--model', ajustes.modelo,
     '--effort', ajustes.esfuerzo,
     '--append-system-prompt', sistema,
-    '--permission-mode', 'dontAsk',
-    '--allowedTools', HERRAMIENTAS,
-    '--safe-mode',
+    ...PERMISOS,
   ];
 }

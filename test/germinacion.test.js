@@ -188,3 +188,12 @@ test('cambiosDesdeEnvio lista nodos con estado nuevo y notas nuevas', async () =
   assert.match(t, /Transformers[\s\S]*Duda con la atención/);
   await assert.rejects(germinacion.marcarNodo(ref.carpetaId, ref.ideaId, 'e1', { estado: 'volando' }), /estado-invalido/);
 });
+
+test('al retomar tras un mapa inválido la sesión recibe el motivo', async () => {
+  const { cola, falso, ref, terminar } = await preparar();
+  await cola.germinar(ref, {});
+  await terminar(0, { mapa: { fase: 'diagnostico' } });
+  await cola.germinar(ref, {});
+  await hasta(() => falso.llamadas[1]);
+  assert.match(falso.llamadas[1].mensaje, /rechazado: version debe ser 1/);
+});

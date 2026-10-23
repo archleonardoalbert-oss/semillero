@@ -71,3 +71,12 @@ test('el prompt de germinación fija el formato, las descargas legales y no inve
     assert.ok(p.includes(s), `falta ${s}`);
   }
 });
+
+test('cada ejecución usa su prompt de sistema: sin snapshot al reanudar', async () => {
+  const { argsGlosa } = await import('../server/engine/prompt.js');
+  const a = argsClaude({ sessionId: 'S', nueva: false, ajustes: AJUSTES_POR_DEFECTO, mensaje: 'm', sistema: 'X' });
+  assert.equal(a[a.indexOf('--system-prompt-snapshot') + 1], 'off');
+  assert.equal(a[a.indexOf('--append-system-prompt') + 1], 'X');
+  const g = argsGlosa({ sessionId: 'S', bifurcar: true, ajustes: AJUSTES_POR_DEFECTO, mensaje: 'm' });
+  assert.equal(g[g.indexOf('--system-prompt-snapshot') + 1], 'off');
+});
