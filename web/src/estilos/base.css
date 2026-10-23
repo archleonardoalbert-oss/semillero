@@ -1,0 +1,77 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+html { font-size: 17px; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(120vw 80vh at 20% -10%, rgb(111 227 165 / 0.06), transparent 60%),
+    radial-gradient(90vw 70vh at 110% 110%, rgb(94 224 224 / 0.04), transparent 60%),
+    var(--humus);
+  color: var(--liquen);
+  font-family: var(--sans);
+  font-size: var(--t0);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Grano de tierra, casi imperceptible. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+a { color: inherit; }
+
+button { font: inherit; color: inherit; }
+
+:focus-visible { outline: 2px solid var(--proceso); outline-offset: 3px; border-radius: 4px; }
+
+::selection { background: rgb(240 180 90 / 0.3); }
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.55em 1.1em;
+  border: 1px solid var(--linea-viva);
+  border-radius: 999px;
+  background: var(--superficie);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s var(--curva);
+}
+.boton:hover { border-color: var(--liquen-tenue); background: var(--superficie-alta); }
+.boton:active { transform: scale(0.97); }
+.boton:disabled { opacity: 0.4; cursor: not-allowed; }
+.boton.primario { background: var(--liquen); color: var(--humus); border-color: var(--liquen); font-weight: 600; }
+.boton.primario:hover { background: #fff; }
+.boton.discreto { border-color: transparent; background: transparent; color: var(--liquen-tenue); }
+.boton.discreto:hover { color: var(--liquen); background: var(--superficie); }
+
+.campo {
+  width: 100%;
+  padding: 0.6em 0.8em;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-s);
+  background: var(--humus-hondo);
+  color: var(--liquen);
+  font: inherit;
+}
+.campo:focus { outline: none; border-color: var(--linea-viva); }
+
+/* Transiciones entre vistas (View Transitions API). */
+::view-transition-old(root) { animation: 260ms var(--curva) both salir; }
+::view-transition-new(root) { animation: 420ms var(--curva) both entrar; }
+@keyframes salir { to { opacity: 0; transform: scale(0.985); filter: blur(4px); } }
+@keyframes entrar { from { opacity: 0; transform: translateY(14px) scale(1.01); filter: blur(6px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}

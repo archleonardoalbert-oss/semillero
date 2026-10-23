@@ -1,0 +1,45 @@
+:root {
+  /* Suelo y superficies: un vivero de noche. */
+  --humus: #0c1513;
+  --humus-hondo: #070d0c;
+  --superficie: #131f1c;
+  --superficie-alta: #1a2925;
+  --linea: #22332e;
+  --linea-viva: #33504a;
+
+  --liquen: #d8e2dc;
+  --liquen-tenue: #93a69e;
+  --liquen-apagado: #5f726b;
+
+  /* Las dos voces del manuscrito. */
+  --tu: #9ec5ff;
+  --tu-velo: rgb(158 197 255 / 0.07);
+  --claude: #f0b45a;
+  --claude-velo: rgb(240 180 90 / 0.06);
+
+  /* Estados de una idea. */
+  --aceptada: #6fe3a5;
+  --rechazada: #c46a5a;
+  --aclaracion: #b39cff;
+  --proceso: #5ee0e0;
+  --nueva: #e8efe9;
+  --pausada: #e6c86e;
+
+  --serif: 'EB Garamond', 'Iowan Old Style', Georgia, serif;
+  --sans: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Escala tipográfica modular (razón 1.25) sobre 17 px. */
+  --t-1: 0.8rem;
+  --t0: 1rem;
+  --t1: 1.25rem;
+  --t2: 1.5625rem;
+  --t3: 1.953rem;
+  --t4: 2.441rem;
+  --t5: 3.815rem;
+
+  --curva: cubic-bezier(0.22, 1, 0.36, 1);
+  --curva-muelle: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --radio-s: 6px;
+  --radio-m: 14px;
+}
