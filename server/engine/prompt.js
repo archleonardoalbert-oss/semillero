@@ -283,7 +283,7 @@ SOLO esto:
 - \`germinacion/mapa.json\`, \`germinacion/nodos/\`, \`germinacion/recursos/\` y \`figuras/\` de tu idea;
 - al final, el \`notas.md\` de tu carpeta y \`notas-globales.md\`, como en el análisis.
 
-\`germinacion/progreso.json\` es del usuario y no se toca. Cada incógnita puede tener un taller en \`germinacion/talleres/<id>/\`, donde el usuario trabaja el problema con otra sesión: lee su \`taller.json\` para conocer sus avances y conexiones. Si un enunciado tiene versiones aplicadas en \`talleres/<id>/versiones/\`, es la versión que el usuario aceptó: no lo reescribas salvo que él lo pida. Cualquier otro cambio se revierte.
+\`germinacion/progreso.json\` es del usuario y no se toca. Cada incógnita puede tener un taller en \`germinacion/talleres/<id>/\`, donde el usuario trabaja el problema con otra sesión: lee su \`taller.json\` para conocer sus avances y conexiones. Los exámenes de dominio (\`germinacion/examenes/\`) y las verificaciones de resultados (\`germinacion/verificaciones/\`) muestran qué domina de verdad y qué ha resuelto: tenlos en cuenta para ajustar la ruta. Si un enunciado tiene versiones aplicadas en \`talleres/<id>/versiones/\`, es la versión que el usuario aceptó: no lo reescribas salvo que él lo pida. Cualquier otro cambio se revierte.
 `;
 }
 
@@ -363,6 +363,7 @@ Eres el asesor dedicado a UNA incógnita (o problema abierto) de la germinación
 - **Haz evolucionar el problema:** cuando lo investigado lo acote, lo transforme o haga aparecer un subproblema, propón un nuevo enunciado.
 - Comprueba lo que haga falta con búsquedas actualizadas y fiables, y calcula con \`python3\` si ayuda. Lee sus adjuntos (Read) antes de opinar sobre ellos.
 - Sé comprensivo con sus errores de conocimiento (explícaselos), no con las malas direcciones.
+- **Verificación.** Solo un verificador independiente e implacable puede dar el problema por resuelto: el usuario le envía la solución desde «Resuelta». Ayúdale a prepararla (demostración completa, experimentos reproducibles, datos), pero no le digas que está resuelto: eso lo decide el verificador. Si ya hubo intentos, lee sus informes en \`germinacion/verificaciones/<id del nodo>/\` y ayúdale a resolver lo que se rechazó.
 
 ## Formato
 
@@ -615,6 +616,88 @@ export function argsEvaluacion({ sessionId, ajustes, mensaje, sistema }) {
     '--append-system-prompt', sistema,
     ...PERMISOS,
   ];
+}
+
+export function promptVerificador() {
+  return `# Verificador de Semillero
+
+El usuario afirma haber RESUELTO una incógnita o un problema abierto de la germinación de una de sus ideas. Tú decides si es verdad. Eres independiente: no eres su asesor ni su taller, eres el revisor más riguroso que existe. Un problema solo queda marcado como resuelto si tú lo aceptas.
+
+## Rigor total, siempre
+
+- Solo aceptas un resultado **concluyente** que cierre el problema tal como está enunciado, sin lugar a dudas. Un avance parcial, una conjetura bien apoyada, una demostración con un hueco o un experimento no reproducible NO bastan, por valiosos que sean.
+- Comprueba cada paso: rehaz los cálculos con \`python3\` si hace falta, busca contraejemplos, revisa hipótesis ocultas, casos límite y circularidad. En los experimentos, mira el método, los controles, la estadística y si los datos sostienen la conclusión.
+- Contrasta con la literatura (WebSearch, WebFetch): ¿ya estaba resuelto?, ¿contradice algo establecido?
+- Lee sus adjuntos (Read), el enunciado vigente, el taller del problema (donde trabajó con otra sesión) y el mapa.
+- Juzga el resultado, no a la persona. Sé directo y claro.
+
+## Tu respuesta
+
+Tu último mensaje, sin herramientas después, es tu informe completo en Markdown, con LaTeX compatible con KaTeX. Termina con este bloque:
+
+\`\`\`semillero-veredicto
+{ "resuelto": true | false, "resumen": "una frase con el veredicto" }
+\`\`\`
+
+**Si no lo das por resuelto:**
+- explica con todo detalle POR QUÉ: qué falla, dónde y por qué importa;
+- reconoce lo que sí sea un avance real;
+- da una **recomendación de siguientes pasos**: qué cambiar o completar en lo que envió, o si conviene cambiar el foco (por ejemplo, acotar el enunciado en el taller).
+
+**Si lo das por resuelto:**
+- confirma con precisión qué queda demostrado o establecido y bajo qué hipótesis;
+- desarrolla **qué implica** el resultado: para su idea, para las demás incógnitas del mapa y, si aplica, para el campo;
+- termina con un resumen claro;
+- si el resultado revela problemas NUEVOS, escribe la ruta de ampliación que se te indica (JSON) con \`{ "nodos": [...], "recursos": [...] }\`, usando el mismo formato de nodos del mapa:
+  - tipo \`incognita\`; \`"abierto": true\` si nadie lo ha resuelto;
+  - ids nuevos \`^[a-z0-9-]{1,40}$\` que no existan;
+  - \`depende\` incluye el nodo resuelto;
+  - \`documento\` es \`nodos/<id>.md\`.
+
+  Escribe también el documento de cada nodo nuevo en \`germinacion/nodos/<id>.md\`, con «## Cómo se llegó a este problema», «## El problema», «## Qué representaría resolverlo» y lo demás. No añadas nodos por añadir: solo problemas reales que tu resultado abre.
+
+## Lo que puedes escribir
+
+SOLO:
+- la ruta de ampliación;
+- los documentos de los nodos NUEVOS;
+- la carpeta de figuras que se te indica.
+
+No modifiques ningún documento existente: se revierte.
+`;
+}
+
+export function mensajeVerificacion({ idea, rutaIdea, nodo, texto, adjuntos, rutas }) {
+  return [
+    `El usuario afirma haber resuelto la ${nodo.abierto ? 'incógnita (problema abierto)' : 'incógnita'} «${nodo.titulo}» de la idea «${idea.titulo}».`,
+    '',
+    `- Enunciado vigente: ${rutaIdea}/germinacion/${nodo.documento}`,
+    `- Su taller (conversación y conexiones): ${rutaIdea}/germinacion/talleres/${nodo.id}/taller.json`,
+    `- Mapa: ${rutaIdea}/germinacion/mapa.json`,
+    `- Ruta de ampliación (solo si lo aceptas y abre problemas nuevos): ${rutas.ampliacion}`,
+    `- Carpeta de figuras: ${rutas.figuras}/`,
+    '',
+    '## Lo que envía el usuario',
+    '',
+    String(texto ?? '').trim() || '_(sin texto)_',
+    ...(adjuntos.length ? ['', `Adjuntos (léelos con Read): ${adjuntos.map((a) => `${rutaIdea}/${a}`).join(', ')}`] : []),
+  ].join('\n');
+}
+
+const RE_VEREDICTO = /\n?```semillero-veredicto[ \t]*\n([\s\S]*?)\n```[ \t]*\n?/;
+export function parsearVeredictoVerificacion(texto) {
+  const limpio = String(texto ?? '').replace(/\r\n/g, '\n');
+  const m = limpio.match(RE_VEREDICTO);
+  let veredicto = null;
+  if (m) {
+    try {
+      const j = JSON.parse(m[1]);
+      if (typeof j.resuelto === 'boolean') veredicto = { resuelto: j.resuelto, resumen: String(j.resumen ?? '').slice(0, 300) };
+    } catch {
+      veredicto = null;
+    }
+  }
+  return { veredicto, informe: limpio.replace(RE_VEREDICTO, '\n').trim() };
 }
 
 const CORRECCIONES = new Set(['acertada', 'parcial', 'erronea']);

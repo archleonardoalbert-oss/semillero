@@ -16,6 +16,8 @@ import { crearAlmacenTalleres } from '../store/talleres.js';
 import { crearMotorTaller } from '../engine/taller.js';
 import { crearAlmacenExamenes } from '../store/examenes.js';
 import { crearMotorExamenes } from '../engine/examenes.js';
+import { crearAlmacenVerificaciones } from '../store/verificaciones.js';
+import { crearMotorVerificacion } from '../engine/verificacion.js';
 import { crearMotorGlosas } from '../engine/glosas.js';
 import { validarMapa } from '../engine/mapa.js';
 import { rutaSegura, slugify } from '../store/fsutil.js';
@@ -35,7 +37,7 @@ const ESTADO_HTTP = {
   'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404, 'glosa-no-existe': 404, cuota: 409,
   'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409, 'no-germinable': 409, 'no-disponible': 409,
   'respuestas-invalidas': 400, 'requiere-examen': 409, 'examen-abierto': 409, 'examen-cerrado': 409, 'tiempo-agotado': 409,
-  'dificultad-invalida': 400, 'pregunta-invalida': 400, 'examen-no-existe': 404, 'requiere-verificacion': 409, 'sin-propuesta': 409, 'version-invalida': 400, 'camino-invalido': 400, 'ya-analizada': 409, 'nodo-invalido': 400, 'estado-invalido': 400,
+  'dificultad-invalida': 400, 'pregunta-invalida': 400, 'examen-no-existe': 404, 'verificacion-no-existe': 404, 'ya-resuelta': 409, 'requiere-verificacion': 409, 'sin-propuesta': 409, 'version-invalida': 400, 'camino-invalido': 400, 'ya-analizada': 409, 'nodo-invalido': 400, 'estado-invalido': 400,
 };
 
 function agrupar(carpetas, ideas, extra = () => ({})) {
@@ -66,6 +68,9 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
   const examenes = crearAlmacenExamenes(cfg, { proteger: guard.proteger });
   const motorExamenes = crearMotorExamenes({ cfg, ideas, examenes, germinacion, guard, cola, ajustes, ...(ejecutarEvaluacion && { ejecutar: ejecutarEvaluacion }) });
   app.decorate('examenes', motorExamenes);
+  const verificaciones = crearAlmacenVerificaciones(cfg, { proteger: guard.proteger });
+  const motorVerificacion = crearMotorVerificacion({ cfg, ideas, verificaciones, germinacion, guard, cola, ajustes, ...(ejecutarEvaluacion && { ejecutar: ejecutarEvaluacion }) });
+  app.decorate('verificaciones', motorVerificacion);
 
   // Solo esta máquina: Host contra DNS rebinding y Origin contra webs ajenas abiertas en el navegador.
   const hostsValidos = new Set([`127.0.0.1:${cfg.puerto}`, `localhost:${cfg.puerto}`]);
@@ -87,7 +92,7 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     (req, body, done) => done(null, body));
 
   await app.register(fastifyWebsocket);
-  registrarWs(app, cola, motorGlosas, motorTaller, motorExamenes);
+  registrarWs(app, cola, motorGlosas, motorTaller, motorExamenes, motorVerificacion);
 
   const refsDe = (body) => {
     const refs = body?.refs;
@@ -263,6 +268,19 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
   });
   app.post(`${X}/:x/entregar`, async (req) => motorExamenes.entregar(refDe(req), req.params.n, req.params.x));
   app.post(`${X}/:x/corregir`, async (req) => motorExamenes.reintentarCorreccion(refDe(req), req.params.n, req.params.x));
+
+  const V = '/api/carpetas/:c/ideas/:i/germinacion/verificaciones/:n';
+  app.get(V, async (req) => {
+    await ideas.obtener(req.params.c, req.params.i);
+    return verificaciones.listar(req.params.c, req.params.i, req.params.n);
+  });
+  app.post(V, async (req, reply) => reply.code(201).send(await motorVerificacion.enviar(refDe(req), req.params.n, { texto: req.body?.texto, adjuntos: req.body?.adjuntos })));
+  app.post(`${V}/adjuntos`, async (req, reply) => {
+    if (!Buffer.isBuffer(req.body)) throw new Error('extension-invalida');
+    await ideas.obtener(req.params.c, req.params.i);
+    const ruta = await verificaciones.guardarAdjunto(req.params.c, req.params.i, req.params.n, String(req.query.nombre ?? ''), req.body);
+    return reply.code(201).send({ ruta });
+  });
 
   const agrupadas = async (filtro, extra) => agrupar(await carpetas.listar(), (await ideas.listar()).filter(filtro), extra);
   app.get('/api/pendientes', async () => ideas.pendientes());
