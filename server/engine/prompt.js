@@ -470,6 +470,153 @@ export function argsTaller({ sessionId, ajustes, mensaje }) {
   ];
 }
 
+export function promptExamen() {
+  return `# Examinador de Semillero
+
+Eres el examinador de UN nodo de estudio de la germinación de una idea del usuario. Tu examen decide si el usuario domina de verdad ese contenido. Generas el examen al momento: cada intento es distinto, así que no hay respuestas que memorizar.
+
+## Las tres dificultades
+
+- **suficiente.** Evalúa SOLO lo que el usuario necesitará más adelante en SU idea para entender y atacar las incógnitas y problemas abiertos que dependen de este nodo (se te dan). Conceptos y técnicas concretas que reaparecerán, con ejercicios que se parezcan a cómo los usará. Nada de erudición que no vaya a necesitar. Exigencia: que entienda y sepa aplicar.
+- **avanzado.** Comprueba que el usuario está completamente cómodo con TODA la rama, no solo con lo que pide la idea: definiciones, teoremas centrales y sus demostraciones, técnicas estándar, casos límite y contraejemplos. Exigencia: la de un curso avanzado universitario.
+- **experto.** Exigente, durísimo, implacable y sin rodeos. Problemas avanzados de verdad: búscalos en fuentes fiables con WebSearch y WebFetch (olimpiadas universitarias como Putnam o IMC, exámenes de cualificación de doctorado, libros de referencia de la rama, artículos) y modifícalos para que sean aún más desafiantes y no se puedan buscar tal cual. Incluye problemas que a primera vista NO parezcan de la rama, pero que se resuelvan con ella: el usuario tiene que ver la conexión. Exigencia: demostraciones completas y rigurosas.
+
+Cada ejercicio debe estar EXACTAMENTE a la altura de la dificultad elegida: ni más fácil ni artificialmente más difícil. El examen tiene, normalmente, entre 4 y 8 preguntas. Reparte 10 puntos entre ellas según su peso.
+
+## Generar el examen
+
+Antes de escribir nada, prepara para ti una **rúbrica**: qué espera cada pregunta, la solución esperada y los criterios de puntuación. Guárdala SOLO en esta conversación: no la escribas en ningún archivo ni la muestres, porque el usuario podría leerla antes de entregar.
+
+Tu respuesta final debe ser únicamente este bloque, con el JSON válido:
+
+\`\`\`semillero-examen
+{ "instrucciones": "Markdown: normas e indicaciones generales", "preguntas": [ { "id": "p1", "enunciado": "Markdown con LaTeX ($…$, $$…$$)", "puntos": 2 } ] }
+\`\`\`
+
+- Los ids siguen \`^[a-z0-9-]{1,20}$\`.
+- Si una pregunta necesita una figura, genérala con python3 y matplotlib en la carpeta de figuras que se te indica e inclúyela en el enunciado con su ruta relativa a la carpeta de la idea.
+- En experto, NO cites en el enunciado de dónde salen los problemas: las fuentes van en la corrección.
+
+## Corregir
+
+Cuando el usuario entregue, recibirás sus respuestas: texto con LaTeX y rutas de adjuntos (imágenes o documentos, que debes leer con Read). Corrige con tu rúbrica.
+
+- **Exigencia según la dificultad:** suficiente, que entienda y aplique; avanzado, rigor; experto, máximo rigor y demostraciones completas. Sin exagerar.
+- **Errores tontos** (un signo mal copiado, una errata aritmética que no cambia el razonamiento, claramente humanos): señálalos, pero NO penalices por ellos.
+- Una respuesta sin justificar, cuando se pedía justificación, no vale como completa.
+- **Nota final sobre 5, con un decimal:** (puntos obtenidos / 10) × 5, redondeando con criterio. Se aprueba con 3; 2 o menos es suspenso.
+- Comentario por pregunta: qué estaba bien, qué faltaba o estaba mal, y la idea correcta. Comentario general: diagnóstico y qué repasar. En experto, cita las fuentes de los problemas.
+
+Tu respuesta final debe incluir este bloque:
+
+\`\`\`semillero-correccion
+{ "nota": 3.8, "comentario": "Markdown", "preguntas": [ { "id": "p1", "nota": 1.5, "comentario": "Markdown" } ] }
+\`\`\`
+
+La nota de cada pregunta va de 0 a sus puntos.
+
+## Lo que puedes escribir
+
+SOLO la carpeta de figuras que se te indica. Puedes leer todo el semillero.
+`;
+}
+
+const NOMBRE_DIFICULTAD = { suficiente: 'Suficiente', avanzado: 'Avanzado', experto: 'Experto' };
+
+export function mensajeGenerarExamen({ idea, rutaIdea, mapa, nodo, dificultad, aguasAbajo, figuras }) {
+  return [
+    `Genera un examen de dificultad **${NOMBRE_DIFICULTAD[dificultad]}** (${dificultad}) del nodo de estudio «${nodo.titulo}» de la idea «${idea.titulo}».`,
+    '',
+    `Contenido del nodo: ${rutaIdea}/germinacion/${nodo.documento} (léelo entero). Mapa completo: ${rutaIdea}/germinacion/mapa.json.`,
+    '',
+    'Incógnitas y problemas que dependen de este nodo, directa o indirectamente (lo que tendrá que usar más adelante):',
+    ...(aguasAbajo.length ? aguasAbajo.map((n) => `- «${n.titulo}» (${rutaIdea}/germinacion/${n.documento})`) : ['- (ninguna directa)']),
+    ...(dificultad === 'experto'
+      ? ['', 'Experto: busca problemas reales y desafiantes en fuentes fiables, endurécelos y apunta las fuentes para la corrección.']
+      : []),
+    '',
+    `Carpeta de figuras: ${figuras}/`,
+    `Contexto de la idea: ${String(mapa.resumen ?? '').slice(0, 1500)}`,
+  ].join('\n');
+}
+
+function listaRespuestasExamen({ examen, rutaIdea }) {
+  return examen.preguntas
+    .map((p) => {
+      const r = examen.respuestas?.[p.id] ?? {};
+      const adj = r.adjuntos?.length ? `\n\nAdjuntos (léelos con Read): ${r.adjuntos.map((a) => `${rutaIdea}/${a}`).join(', ')}` : '';
+      return `### ${p.id} (${p.puntos} puntos)\n\n**Enunciado:** ${p.enunciado}\n\n**Respuesta del usuario:**\n\n${String(r.texto ?? '').trim() || '_(sin texto)_'}${adj}`;
+    })
+    .join('\n\n');
+}
+
+// Corrección en la misma sesión (que guarda la rúbrica) o, si se perdió, en una nueva con el examen entero.
+export function mensajeCorregirExamen({ examen, rutaIdea, sesionNueva = false }) {
+  return [
+    sesionNueva
+      ? `Corrige este examen de dificultad ${examen.dificultad} (tu sesión anterior, con la rúbrica, se perdió: rehaz la rúbrica a partir de los enunciados antes de corregir).`
+      : 'El usuario ha entregado el examen. Corrígelo con tu rúbrica.',
+    examen.automatico ? 'Se entregó automáticamente porque se acabó el tiempo: corrige lo que haya, lo que falte cuenta como no respondido.' : '',
+    '',
+    listaRespuestasExamen({ examen, rutaIdea }),
+  ].filter((l, k, a) => l !== '' || a[k - 1] !== '').join('\n');
+}
+
+const RE_BLOQUE_EXAMEN = /```semillero-examen[ \t]*\n([\s\S]*?)\n```/;
+const RE_BLOQUE_CORRECCION = /\n?```semillero-correccion[ \t]*\n([\s\S]*?)\n```[ \t]*\n?/;
+const RE_PREGUNTA = /^[a-z0-9-]{1,20}$/;
+
+export function parsearExamen(texto) {
+  const m = String(texto ?? '').match(RE_BLOQUE_EXAMEN);
+  if (!m) return null;
+  try {
+    const j = JSON.parse(m[1]);
+    const preguntas = Array.isArray(j.preguntas) ? j.preguntas : [];
+    const ids = new Set();
+    if (preguntas.length < 1 || preguntas.length > 15) return null;
+    for (const p of preguntas) {
+      if (!RE_PREGUNTA.test(p?.id ?? '') || ids.has(p.id) || typeof p.enunciado !== 'string' || !p.enunciado.trim()) return null;
+      if (!(Number(p.puntos) > 0)) return null;
+      ids.add(p.id);
+    }
+    const lista = preguntas.map((p) => ({ id: p.id, enunciado: p.enunciado.trim(), puntos: Number(p.puntos) }));
+    return { instrucciones: String(j.instrucciones ?? ''), preguntas: lista, puntos: lista.reduce((a, p) => a + p.puntos, 0) };
+  } catch {
+    return null;
+  }
+}
+
+export function parsearCorreccion(texto, preguntas) {
+  const limpio = String(texto ?? '');
+  const m = limpio.match(RE_BLOQUE_CORRECCION);
+  if (!m) return null;
+  try {
+    const j = JSON.parse(m[1]);
+    const nota = Math.round(Number(j.nota) * 10) / 10;
+    if (!Number.isFinite(nota) || nota < 0 || nota > 5) return null;
+    const porId = new Map((Array.isArray(j.preguntas) ? j.preguntas : []).map((x) => [x?.id, x]));
+    const detalle = preguntas.map((p) => {
+      const x = porId.get(p.id) ?? {};
+      const n = Math.min(p.puntos, Math.max(0, Number(x.nota) || 0));
+      return { id: p.id, nota: n, puntos: p.puntos, comentario: String(x.comentario ?? '') };
+    });
+    return { nota, aprobado: nota >= 3, comentario: String(j.comentario ?? ''), preguntas: detalle, texto: limpio.replace(RE_BLOQUE_CORRECCION, '\n').trim() };
+  } catch {
+    return null;
+  }
+}
+
+// Exámenes y verificaciones: siempre Opus; el esfuerzo sale de Ajustes.
+export function argsEvaluacion({ sessionId, ajustes, mensaje, sistema }) {
+  return [
+    '-p', mensaje, ...COMUNES,
+    ...(sessionId ? ['--resume', sessionId] : []),
+    '--model', 'opus', '--effort', ajustes.esfuerzo,
+    '--append-system-prompt', sistema,
+    ...PERMISOS,
+  ];
+}
+
 const CORRECCIONES = new Set(['acertada', 'parcial', 'erronea']);
 
 export function parsearRespuestaGlosa(texto) {

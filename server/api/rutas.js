@@ -14,6 +14,8 @@ import { crearAlmacenGlosas } from '../store/glosas.js';
 import { crearAlmacenGerminacion } from '../store/germinacion.js';
 import { crearAlmacenTalleres } from '../store/talleres.js';
 import { crearMotorTaller } from '../engine/taller.js';
+import { crearAlmacenExamenes } from '../store/examenes.js';
+import { crearMotorExamenes } from '../engine/examenes.js';
 import { crearMotorGlosas } from '../engine/glosas.js';
 import { validarMapa } from '../engine/mapa.js';
 import { rutaSegura, slugify } from '../store/fsutil.js';
@@ -32,7 +34,8 @@ const ESTADO_HTTP = {
   'tipo-invalido': 400, 'documento-invalido': 400, 'prompt-vacio': 400, 'fragmento-vacio': 400,
   'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404, 'glosa-no-existe': 404, cuota: 409,
   'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409, 'no-germinable': 409, 'no-disponible': 409,
-  'respuestas-invalidas': 400, 'requiere-examen': 409, 'requiere-verificacion': 409, 'sin-propuesta': 409, 'version-invalida': 400, 'camino-invalido': 400, 'ya-analizada': 409, 'nodo-invalido': 400, 'estado-invalido': 400,
+  'respuestas-invalidas': 400, 'requiere-examen': 409, 'examen-abierto': 409, 'examen-cerrado': 409, 'tiempo-agotado': 409,
+  'dificultad-invalida': 400, 'pregunta-invalida': 400, 'examen-no-existe': 404, 'requiere-verificacion': 409, 'sin-propuesta': 409, 'version-invalida': 400, 'camino-invalido': 400, 'ya-analizada': 409, 'nodo-invalido': 400, 'estado-invalido': 400,
 };
 
 function agrupar(carpetas, ideas, extra = () => ({})) {
@@ -44,7 +47,7 @@ function agrupar(carpetas, ideas, extra = () => ({})) {
     .filter((g) => g.ideas.length);
 }
 
-export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ejecutarTaller } = {}) {
+export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ejecutarTaller, ejecutarEvaluacion } = {}) {
   const app = Fastify({ logger: false, bodyLimit: 2 * 1024 * 1024 });
   const guard = crearGuard(cfg);
   await guard.iniciar();
@@ -60,6 +63,9 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
   const talleres = crearAlmacenTalleres(cfg, { proteger: guard.proteger });
   const motorTaller = crearMotorTaller({ cfg, ideas, talleres, germinacion, guard, cola, ajustes, ...(ejecutarTaller && { ejecutar: ejecutarTaller }) });
   app.decorate('talleres', motorTaller);
+  const examenes = crearAlmacenExamenes(cfg, { proteger: guard.proteger });
+  const motorExamenes = crearMotorExamenes({ cfg, ideas, examenes, germinacion, guard, cola, ajustes, ...(ejecutarEvaluacion && { ejecutar: ejecutarEvaluacion }) });
+  app.decorate('examenes', motorExamenes);
 
   // Solo esta máquina: Host contra DNS rebinding y Origin contra webs ajenas abiertas en el navegador.
   const hostsValidos = new Set([`127.0.0.1:${cfg.puerto}`, `localhost:${cfg.puerto}`]);
@@ -81,7 +87,7 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     (req, body, done) => done(null, body));
 
   await app.register(fastifyWebsocket);
-  registrarWs(app, cola, motorGlosas, motorTaller);
+  registrarWs(app, cola, motorGlosas, motorTaller, motorExamenes);
 
   const refsDe = (body) => {
     const refs = body?.refs;
@@ -240,6 +246,23 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     throw new Error('ruta-invalida');
   });
   app.post(`${T}/restaurar`, async (req) => motorTaller.restaurar(refDe(req), req.params.n, req.body?.version));
+
+  const X = '/api/carpetas/:c/ideas/:i/germinacion/examenes/:n';
+  app.get(X, async (req) => {
+    await ideas.obtener(req.params.c, req.params.i);
+    return examenes.listar(req.params.c, req.params.i, req.params.n);
+  });
+  app.post(X, async (req, reply) => reply.code(201).send(await motorExamenes.generar(refDe(req), req.params.n, { dificultad: req.body?.dificultad })));
+  app.get(`${X}/:x`, async (req) => examenes.leer(req.params.c, req.params.i, req.params.n, req.params.x));
+  app.put(`${X}/:x/respuestas/:p`, async (req) =>
+    motorExamenes.responder(refDe(req), req.params.n, req.params.x, { pregunta: req.params.p, texto: req.body?.texto, adjuntos: req.body?.adjuntos }));
+  app.post(`${X}/:x/adjuntos`, async (req, reply) => {
+    if (!Buffer.isBuffer(req.body)) throw new Error('extension-invalida');
+    const ruta = await motorExamenes.adjuntar(refDe(req), req.params.n, req.params.x, String(req.query.pregunta ?? ''), String(req.query.nombre ?? ''), req.body);
+    return reply.code(201).send({ ruta });
+  });
+  app.post(`${X}/:x/entregar`, async (req) => motorExamenes.entregar(refDe(req), req.params.n, req.params.x));
+  app.post(`${X}/:x/corregir`, async (req) => motorExamenes.reintentarCorreccion(refDe(req), req.params.n, req.params.x));
 
   const agrupadas = async (filtro, extra) => agrupar(await carpetas.listar(), (await ideas.listar()).filter(filtro), extra);
   app.get('/api/pendientes', async () => ideas.pendientes());
