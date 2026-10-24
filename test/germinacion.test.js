@@ -137,12 +137,12 @@ test('el mapa vivo envía los avances y la petición, y luego los da por comunic
   const { cola, falso, ref, terminar, germinacion } = await preparar();
   await cola.germinar(ref, {});
   await terminar(0, { mapa: copia(MAPA) });
-  await germinacion.marcarNodo(ref.carpetaId, ref.ideaId, 'e1', { estado: 'hecho', notas: 'Terminé el libro de Strang.' });
+  await germinacion.marcarNodo(ref.carpetaId, ref.ideaId, 'e1', { estado: 'en-curso', notas: 'Terminé el libro de Strang.' });
   await cola.germinar(ref, { peticion: 'Profundiza en la incógnita i1.' });
   await hasta(() => falso.llamadas[1]);
   const m = falso.llamadas[1].mensaje;
   assert.match(m, /Álgebra lineal/);
-  assert.match(m, /hecho/);
+  assert.match(m, /en-curso/);
   assert.match(m, /Strang/);
   assert.match(m, /Profundiza en la incógnita i1/);
   await terminar(1, { mapa: copia(MAPA) });
@@ -234,7 +234,7 @@ test('I2: lo que el usuario cambia durante la ejecución sigue pendiente de comu
   await terminar(0, { mapa: copia(MAPA) });
   await cola.germinar(ref, {});
   await hasta(() => falso.llamadas[1]);
-  await germinacion.marcarNodo(ref.carpetaId, ref.ideaId, 'e2', { estado: 'hecho' });
+  await germinacion.marcarNodo(ref.carpetaId, ref.ideaId, 'e2', { estado: 'en-curso' });
   await terminar(1, { mapa: copia(MAPA) });
   assert.match(await germinacion.cambiosDesdeEnvio(ref.carpetaId, ref.ideaId, copia(MAPA)), /Transformers/);
 });
@@ -338,4 +338,31 @@ test('I4: con el último veredicto «aceptada» no se dice que no se aceptó', a
   const p = (await germinacion.leerProgreso(ref.carpetaId, ref.ideaId)).pendiente ?? '';
   assert.ok(!/aunque tu último veredicto/.test(p), p);
   assert.match(p, /Un matiz/);
+});
+
+// --- Estados protegidos ---
+
+test('hecho y resuelta no se pueden poner a mano', async () => {
+  const { germinacion, ref } = await preparar();
+  await assert.rejects(germinacion.marcarNodo(ref.carpetaId, ref.ideaId, 'e1', { estado: 'hecho' }), /requiere-examen/);
+  await assert.rejects(germinacion.marcarNodo(ref.carpetaId, ref.ideaId, 'i1', { estado: 'resuelta' }), /requiere-verificacion/);
+});
+
+test('fijarDominio conserva la mejor dificultad y, a igual dificultad, la mejor nota', async () => {
+  const { germinacion, ref } = await preparar();
+  const d = (x) => germinacion.fijarDominio(ref.carpetaId, ref.ideaId, 'e1', x);
+  await d({ dificultad: 'avanzado', nota: 3.5, examen: 'a' });
+  await d({ dificultad: 'suficiente', nota: 5, examen: 'b' });
+  await d({ dificultad: 'avanzado', nota: 4.2, examen: 'c' });
+  const n = (await germinacion.leerProgreso(ref.carpetaId, ref.ideaId)).nodos.e1;
+  assert.equal(n.estado, 'hecho');
+  assert.deepEqual(n.dominio, { dificultad: 'avanzado', nota: 4.2, examen: 'c' });
+});
+
+test('fijarResuelta marca la incógnita con su verificación', async () => {
+  const { germinacion, ref } = await preparar();
+  await germinacion.fijarResuelta(ref.carpetaId, ref.ideaId, 'i1', { verificacion: 'v1' });
+  const n = (await germinacion.leerProgreso(ref.carpetaId, ref.ideaId)).nodos.i1;
+  assert.equal(n.estado, 'resuelta');
+  assert.equal(n.verificacion, 'v1');
 });

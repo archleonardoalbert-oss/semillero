@@ -51,11 +51,36 @@ export function crearAlmacenGerminacion(cfg, { proteger }) {
   function marcarNodo(c, i, id, { estado, notas } = {}) {
     if (!RE_ID.test(String(id))) return Promise.reject(new Error('nodo-invalido'));
     if (estado !== undefined && !ESTADOS.has(estado)) return Promise.reject(new Error('estado-invalido'));
+    // «Dominado» se gana con un examen y «Resuelta» con una verificación: no se ponen a mano.
+    if (estado === 'hecho') return Promise.reject(new Error('requiere-examen'));
+    if (estado === 'resuelta') return Promise.reject(new Error('requiere-verificacion'));
     return modificar(c, i, (p) => {
       const n = { ...(p.nodos[id] ?? {}) };
       if (estado !== undefined) n.estado = estado;
       if (notas !== undefined) n.notas = String(notas).slice(0, MAX_NOTAS);
       p.nodos[id] = n;
+    });
+  }
+
+  const RANGO = { suficiente: 1, avanzado: 2, experto: 3 };
+
+  // Tras aprobar un examen: se conserva la mejor dificultad y, a igual dificultad, la mejor nota.
+  function fijarDominio(c, i, id, dominio) {
+    return modificar(c, i, (p) => {
+      const n = { ...(p.nodos[id] ?? {}) };
+      const previo = n.dominio;
+      const mejor = !previo || RANGO[dominio.dificultad] > RANGO[previo.dificultad]
+        || (RANGO[dominio.dificultad] === RANGO[previo.dificultad] && dominio.nota > previo.nota);
+      if (mejor) n.dominio = { dificultad: dominio.dificultad, nota: dominio.nota, examen: dominio.examen };
+      n.estado = 'hecho';
+      p.nodos[id] = n;
+    });
+  }
+
+  // Tras pasar la verificación.
+  function fijarResuelta(c, i, id, { verificacion }) {
+    return modificar(c, i, (p) => {
+      p.nodos[id] = { ...(p.nodos[id] ?? {}), estado: 'resuelta', verificacion };
     });
   }
 
@@ -91,5 +116,5 @@ export function crearAlmacenGerminacion(cfg, { proteger }) {
     });
   }
 
-  return { leerMapa, leerProgreso, guardarRespuestas, marcarNodo, ponerPeticion, cambiosDesdeEnvio, marcarEnviado };
+  return { leerMapa, leerProgreso, guardarRespuestas, marcarNodo, fijarDominio, fijarResuelta, ponerPeticion, cambiosDesdeEnvio, marcarEnviado };
 }

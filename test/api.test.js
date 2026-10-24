@@ -163,11 +163,12 @@ test('germinar pasa la petición a la cola y el progreso se guarda', async () =>
   assert.deepEqual([accion, ref], ['germinar', { carpetaId: 'ia', ideaId: 'pesos-rapidos' }]);
   assert.equal(opciones.peticion, 'Más ejemplos');
   assert.equal(opciones.forzar, false);
-  const r = await pedir('PATCH', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion/nodos/e1', { estado: 'hecho' });
+  const r = await pedir('PATCH', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion/nodos/e1', { estado: 'en-curso' });
   assert.equal(r.statusCode, 200);
   const g = (await pedir('GET', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion')).json();
   assert.equal(g.mapa, null);
-  assert.equal(g.progreso.nodos.e1.estado, 'hecho');
+  assert.equal(g.progreso.nodos.e1.estado, 'en-curso');
+  assert.equal((await pedir('PATCH', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion/nodos/e1', { estado: 'hecho' })).statusCode, 409);
   assert.equal((await pedir('PATCH', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion/nodos/e1', { estado: 'x' })).statusCode, 400);
 });
 
