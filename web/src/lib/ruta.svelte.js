@@ -30,6 +30,13 @@ async function aplicar(destino) {
   } else await cambiar();
 }
 
+// Cambia la URL sin animación ni nueva entrada en el historial (p. ej. al cerrar la lámina de un nodo).
+export function reemplazar(hash) {
+  if (hash === location.hash) return;
+  history.replaceState(null, '', hash);
+  Object.assign(ruta, interpretar(hash));
+}
+
 export function ir(hash) {
   if (hash === location.hash) return;
   history.pushState(null, '', hash);

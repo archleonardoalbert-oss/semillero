@@ -53,7 +53,7 @@ async function preparar() {
   const idea = await ideas.crear('ia', { titulo: 'Memoria FFN', cuerpo: 'x' });
   const otra = await ideas.crear('ia', { titulo: 'Superposición', cuerpo: 'y' });
   const rutaIdea = `carpetas/ia/ideas/${idea.id}`;
-  for (const [id, mapa] of [[idea.id, MAPA], [otra.id, { ...copia(MAPA), nodos: [{ ...MAPA.nodos[2], id: 'i9', titulo: 'Superposición de hechos' }] }]]) {
+  for (const [id, mapa] of [[idea.id, MAPA], [otra.id, { ...copia(MAPA), nodos: [{ ...MAPA.nodos[2], id: 'i9', titulo: 'Superposición de hechos', depende: [] }] }]]) {
     const dir = path.join(cfg.datos, 'carpetas/ia/ideas', id, 'germinacion');
     await fs.mkdir(path.join(dir, 'nodos'), { recursive: true });
     await fs.writeFile(path.join(dir, 'mapa.json'), JSON.stringify({ ...mapa, recursos: MAPA.recursos }));
@@ -222,4 +222,63 @@ test('la germinación no revierte la propuesta que escribe un taller activo', as
   colaFalso.llamadas[0].resolve({ codigo: 0, abortado: false, resultado: { is_error: false } });
   await hasta(async () => (await ideas.obtener('ia', ref.ideaId)).estado !== 'en-proceso');
   assert.equal(await fs.readFile(propuesta, 'utf8'), 'a medias');
+});
+
+// --- Revisión final ---
+
+test('I1: no se aplica una propuesta mientras una corrección enmienda ese enunciado', async () => {
+  const { motor, falso, ref, rutaIdea, libre, cola } = await preparar();
+  await motor.enviar(ref, 'i1', { texto: 'x' });
+  await falso.responder(0, 'P\n```semillero-propuesta\n{"resumen":"r"}\n```', { escribir: { [`${rutaIdea}/germinacion/talleres/i1/propuesta.md`]: 'nuevo' } });
+  await libre();
+  cola.registrarEscritor(() => [`${rutaIdea}/germinacion/nodos/i1.md`]);
+  await assert.rejects(motor.aplicar(ref, 'i1'), /en-proceso/);
+});
+
+test('I2: un mapa con un documento manipulado no permite escribir fuera de nodos/', async () => {
+  const { cfg, motor, falso, ref, rutaIdea, libre } = await preparar();
+  await motor.enviar(ref, 'i1', { texto: 'x' });
+  await falso.responder(0, 'P\n```semillero-propuesta\n{"resumen":"r"}\n```', { escribir: { [`${rutaIdea}/germinacion/talleres/i1/propuesta.md`]: 'nuevo' } });
+  await libre();
+  const ruta = path.join(cfg.datos, rutaIdea, 'germinacion/mapa.json');
+  const m = JSON.parse(await fs.readFile(ruta, 'utf8'));
+  m.nodos[2].documento = '../../../../../fuera.md';
+  await fs.writeFile(ruta, JSON.stringify(m));
+  await motor.aplicar(ref, 'i1');
+  await assert.rejects(fs.access(path.join(cfg.datos, '../fuera.md')));
+  assert.equal(await fs.readFile(path.join(cfg.datos, rutaIdea, 'germinacion/nodos/i1.md'), 'utf8'), 'nuevo');
+});
+
+test('menor: la versión archivada se etiqueta como lo que era antes de aplicar', async () => {
+  const { motor, falso, ref, rutaIdea, libre, leer } = await preparar();
+  await motor.enviar(ref, 'i1', { texto: 'x' });
+  await falso.responder(0, 'P\n```semillero-propuesta\n{"resumen":"Acotar a la cabeza"}\n```', { escribir: { [`${rutaIdea}/germinacion/talleres/i1/propuesta.md`]: 'nuevo' } });
+  await libre();
+  await motor.aplicar(ref, 'i1');
+  assert.match((await leer()).versiones[0].resumen, /^Antes de: Acotar a la cabeza/);
+});
+
+test('menor: recuperar desbloquea talleres cortados aunque el mapa no esté o no tenga el nodo', async () => {
+  const { cfg, motor, talleres, ref, rutaIdea, leer } = await preparar();
+  await talleres.actualizar('ia', ref.ideaId, 'i1', { estado: 'en-proceso' });
+  await fs.writeFile(path.join(cfg.datos, rutaIdea, 'germinacion/mapa.json'), '{"a medias');
+  await motor.recuperar();
+  assert.equal((await leer()).estado, 'error');
+});
+
+test('menor: una conexión solo vale hacia una incógnita', async () => {
+  const { motor, falso, ref, libre, leer, otra } = await preparar();
+  await motor.enviar(ref, 'i1', { texto: 'x' });
+  await falso.responder(0, `C\n\`\`\`semillero-conexiones\n${JSON.stringify([{ carpetaId: 'ia', ideaId: otra.id, nodo: 'e1', relacion: 'x' }])}\n\`\`\``);
+  await libre();
+  assert.deepEqual((await leer()).conexiones, []);
+});
+
+test('menor: el taller usa siempre Opus', async () => {
+  const { motor, falso, ref, cfg } = await preparar();
+  await fs.writeFile(path.join(cfg.datos, 'estado.json'), JSON.stringify({ modelo: 'sonnet' }));
+  await motor.enviar(ref, 'i1', { texto: 'x' });
+  await hasta(() => falso.llamadas[0]);
+  const a = falso.llamadas[0].args;
+  assert.equal(a[a.indexOf('--model') + 1], 'opus');
 });

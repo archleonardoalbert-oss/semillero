@@ -4,7 +4,7 @@
   import { api } from '../lib/api.js';
   import { renderizar } from '../lib/render.js';
   import { avisar, refrescar } from '../lib/estado.svelte.js';
-  import { ir, enlace } from '../lib/ruta.svelte.js';
+  import { ir, enlace, reemplazar } from '../lib/ruta.svelte.js';
   import Arbol from '../componentes/Arbol.svelte';
   import Cuestionario from '../componentes/Cuestionario.svelte';
   import LaminaNodo from '../componentes/LaminaNodo.svelte';
@@ -38,14 +38,21 @@
   });
 
   let mapa = $derived(datos?.mapa);
-  let inicialAbierto = false; // solo la primera vez: cerrarla no debe hacer que se reabra al recargar
+  // El nodo de la URL se abre una vez por cada valor distinto (una conexión a otro nodo de la misma idea
+  // cambia el valor); al cerrar la lámina se quita de la URL para que no se reabra.
+  let atendido = null;
   $effect(() => {
-    if (inicialAbierto || !nodoInicial || !mapa) return;
+    if (!nodoInicial || nodoInicial === atendido || !mapa) return;
     const n = mapa.nodos.find((x) => x.id === nodoInicial);
     if (!n) return;
-    inicialAbierto = true;
+    atendido = nodoInicial;
     abrirLamina(n, { x: innerWidth / 2, y: innerHeight / 2 });
   });
+  function cerrarLamina() {
+    laminaAbierta = false;
+    atendido = null;
+    if (nodoInicial) reemplazar(enlace.idea(ref.carpetaId, ref.ideaId));
+  }
   // Las raíces del árbol: cada mensaje del manuscrito, en orden.
   let raices = $derived.by(() => {
     let dictamenes = 0;
@@ -215,7 +222,7 @@
 {#if laminaAbierta && lamina}
   {#key lamina.nodo.id}
     <LaminaNodo nodo={mapa?.nodos.find((n) => n.id === lamina.nodo.id) ?? lamina.nodo} desde={lamina.desde} {mapa} {progreso} {ref} {base} {glosas} bloqueado={enProceso}
-      alCerrar={() => (laminaAbierta = false)} alIrA={irANodo} alCambiar={cargar} />
+      alCerrar={cerrarLamina} alIrA={irANodo} alCambiar={cargar} />
   {/key}
 {/if}
 

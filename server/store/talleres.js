@@ -3,6 +3,11 @@ import path from 'node:path';
 import { slugify, escribirJSON, leerJSON, escribirAtomico } from './fsutil.js';
 
 const RE_NODO = /^[a-z0-9-]{1,40}$/;
+const RE_DOCUMENTO = /^nodos\/[a-z0-9-]{1,40}\.md$/;
+const docSeguro = (documento) => {
+  if (!RE_DOCUMENTO.test(String(documento))) throw new Error('documento-invalido');
+  return documento;
+};
 const EXTENSIONES = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'pdf', 'txt', 'md', 'csv', 'py', 'ipynb', 'json']);
 const VACIO = (nodo) => ({ nodo, sessionId: null, estado: 'libre', mensajes: [], propuesta: null, versiones: [], conexiones: [], error: null });
 
@@ -58,7 +63,7 @@ export function crearAlmacenTalleres(cfg, { proteger }) {
     const t = await leer(c, i, n);
     if (!t.propuesta) throw new Error('sin-propuesta');
     const rt = relTaller(c, i, n);
-    const doc = `${relIdea(c, i)}/germinacion/${documento}`;
+    const doc = `${relIdea(c, i)}/germinacion/${docSeguro(documento)}`;
     const num = String(t.versiones.length + 1).padStart(3, '0');
     await proteger([`${rt}/versiones/${num}.md`, doc, `${rt}/propuesta.md`], async () => {
       const vigente = await fs.readFile(abs(doc), 'utf8').catch(() => '');
@@ -69,7 +74,8 @@ export function crearAlmacenTalleres(cfg, { proteger }) {
     });
     return actualizar(c, i, n, (x) => ({
       propuesta: null,
-      versiones: [...x.versiones, { n: x.versiones.length + 1, fecha: new Date().toISOString(), resumen: x.propuesta?.resumen ?? '' }],
+      // La versión archivada es el texto de ANTES de aplicar: se etiqueta así.
+      versiones: [...x.versiones, { n: x.versiones.length + 1, fecha: new Date().toISOString(), resumen: `Antes de: ${x.propuesta?.resumen ?? 'una propuesta'}` }],
     }));
   }
 
@@ -85,7 +91,7 @@ export function crearAlmacenTalleres(cfg, { proteger }) {
     const v = t.versiones.find((x) => x.n === Number(version));
     if (!v) throw new Error('version-invalida');
     const rt = relTaller(c, i, n);
-    const doc = `${relIdea(c, i)}/germinacion/${documento}`;
+    const doc = `${relIdea(c, i)}/germinacion/${docSeguro(documento)}`;
     const num = String(t.versiones.length + 1).padStart(3, '0');
     await proteger([`${rt}/versiones/${num}.md`, doc], async () => {
       const vigente = await fs.readFile(abs(doc), 'utf8').catch(() => '');

@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ejecutar as ejecutarReal } from './runner.js';
 import { argsTaller, mensajeInicialTaller, mensajeTaller, parsearRespuestaTaller } from './prompt.js';
+import { validarMapa } from './mapa.js';
 
 const MAX_TEXTO = 30000;
 const RE_ADJUNTO = /^germinacion\/talleres\/[a-z0-9-]{1,40}\/adjuntos\/[^/\\]+$/;
@@ -25,8 +26,21 @@ export function crearMotorTaller({ cfg, ideas, talleres, germinacion, guard, col
   };
   const objetivosDe = (ref, n) => [rutas(ref, n).propuesta, `${rutas(ref, n).figuras}/**`];
 
+  // El mapa en disco puede estar a medio escribir o manipulado por una sesión: solo se usa si es válido
+  // (lo que también garantiza documentos «nodos/<id>.md»); si no, el último commiteado.
+  async function mapaValido(ref) {
+    const v = validarMapa(await germinacion.leerMapa(ref.carpetaId, ref.ideaId));
+    if (v.ok) return v.mapa;
+    try {
+      const commit = validarMapa(JSON.parse(await guard.commiteado(`${ideas.relIdea(ref.carpetaId, ref.ideaId)}/germinacion/mapa.json`)));
+      return commit.ok ? commit.mapa : null;
+    } catch {
+      return null;
+    }
+  }
+
   async function incognita(ref, n) {
-    const mapa = await germinacion.leerMapa(ref.carpetaId, ref.ideaId);
+    const mapa = await mapaValido(ref);
     const nodo = mapa?.nodos?.find((x) => x.id === n && x.tipo === 'incognita');
     if (!nodo) throw new Error('nodo-invalido');
     return { mapa, nodo };
@@ -151,9 +165,15 @@ export function crearMotorTaller({ cfg, ideas, talleres, germinacion, guard, col
 
   async function conexionValida(ref, n, c) {
     if (c.carpetaId === ref.carpetaId && c.ideaId === ref.ideaId && c.nodo === n) return false;
-    const mapa = await germinacion.leerMapa(c.carpetaId, c.ideaId).catch(() => null);
-    return Boolean(mapa?.nodos?.some((x) => x.id === c.nodo));
+    const mapa = await mapaValido({ carpetaId: c.carpetaId, ideaId: c.ideaId }).catch(() => null);
+    return Boolean(mapa?.nodos?.some((x) => x.id === c.nodo && x.tipo === 'incognita'));
   }
+
+  // Una glosa «Corregir» que enmienda ahora mismo el enunciado: aplicar o restaurar la pisaría.
+  const enmendandose = (ref, nodo) => {
+    const doc = `${ideas.relIdea(ref.carpetaId, ref.ideaId)}/germinacion/${nodo.documento}`;
+    return cola.objetivosAjenos(objetivosActivos).includes(doc);
+  };
 
   async function cerrar(ref, n, r, { antes, rPropuesta, objetivos }) {
     const res = r.resultado;
@@ -179,7 +199,7 @@ export function crearMotorTaller({ cfg, ideas, talleres, germinacion, guard, col
   async function aplicar(ref, n) {
     const { nodo } = await incognita(ref, n);
     await comprobarIdea(ref);
-    if (activos.has(clave(ref, n))) throw new Error('en-proceso');
+    if (activos.has(clave(ref, n)) || enmendandose(ref, nodo)) throw new Error('en-proceso');
     const t = await talleres.aplicarPropuesta(ref.carpetaId, ref.ideaId, n, nodo.documento);
     emisor.emit('taller', { ref, nodo: n, taller: t });
     return t;
@@ -195,23 +215,22 @@ export function crearMotorTaller({ cfg, ideas, talleres, germinacion, guard, col
   async function restaurar(ref, n, version) {
     const { nodo } = await incognita(ref, n);
     await comprobarIdea(ref);
-    if (activos.has(clave(ref, n))) throw new Error('en-proceso');
+    if (activos.has(clave(ref, n)) || enmendandose(ref, nodo)) throw new Error('en-proceso');
     const t = await talleres.restaurar(ref.carpetaId, ref.ideaId, n, version, nodo.documento);
     emisor.emit('taller', { ref, nodo: n, taller: t });
     return t;
   }
 
   // Al arrancar: los talleres cortados quedan en error y se deshace lo que dejaron a medias.
+  // Se recorren los talleres en disco, no el mapa: puede estar a medio escribir o haber perdido el nodo.
   async function recuperar() {
     for (const idea of await ideas.listar()) {
-      const mapa = await germinacion.leerMapa(idea.carpetaId, idea.id);
-      for (const nodo of mapa?.nodos ?? []) {
-        if (nodo.tipo !== 'incognita') continue;
-        const ref = { carpetaId: idea.carpetaId, ideaId: idea.id };
-        const t = await talleres.leer(idea.carpetaId, idea.id, nodo.id).catch(() => null);
+      const dir = path.join(ideas.dirIdea(idea.carpetaId, idea.id), 'germinacion', 'talleres');
+      for (const n of await fs.readdir(dir).catch(() => [])) {
+        const t = await talleres.leer(idea.carpetaId, idea.id, n).catch(() => null);
         if (t?.estado !== 'en-proceso') continue;
-        await guard.restaurar(objetivosDe(ref, nodo.id));
-        await talleres.actualizar(idea.carpetaId, idea.id, nodo.id, { estado: 'error', error: 'Se interrumpió al reiniciar el servidor.' });
+        await guard.restaurar(objetivosDe({ carpetaId: idea.carpetaId, ideaId: idea.id }, n));
+        await talleres.actualizar(idea.carpetaId, idea.id, n, { estado: 'error', error: 'Se interrumpió al reiniciar el servidor.' });
       }
     }
   }

@@ -73,7 +73,13 @@
   }
 
   // Escape cierra la lámina salvo que haya una glosa o un panel abiertos encima.
-  const tecla = (e) => e.key === 'Escape' && !document.querySelector('.hoja, .panel') && alCerrar();
+  function tecla(e) {
+    if (e.key !== 'Escape' || document.querySelector('.hoja, .panel')) return;
+    // Escape mientras se escribe no cierra la lámina (se perdería lo escrito en el taller).
+    if (e.target.closest?.('textarea, input, [contenteditable="true"]')) return;
+    if (comparando) comparando = null;
+    else alCerrar();
+  }
 </script>
 
 <svelte:window onkeydown={tecla} />
@@ -172,7 +178,7 @@
       </div>
       {#if conTaller}
         <div class="lado-taller">
-          <Taller {ref} {nodo} {base} bind:cita alVerDocumento={(md, titulo) => (comparando = md === null ? null : { md, titulo })}
+          <Taller {ref} {nodo} {base} bind:cita alIrMismaIdea={alIrA} alVerDocumento={(md, titulo) => (comparando = md === null ? null : { md, titulo })}
             alCambioEnunciado={() => recarga++} />
         </div>
       {/if}

@@ -12,7 +12,7 @@
   // conecta con otras ideas y propone cómo evoluciona el enunciado (el usuario decide si aplicarlo).
   // `cita`: texto que la lámina pide añadir a la caja (al citar un fragmento del enunciado).
   // `alVerDocumento(md | null, titulo)`: muestra a la izquierda una propuesta o versión (null = el enunciado vigente).
-  let { ref, nodo, base, cita = $bindable(''), alVerDocumento, alCambioEnunciado } = $props();
+  let { ref, nodo, base, cita = $bindable(''), alVerDocumento, alCambioEnunciado, alIrMismaIdea = null } = $props();
 
   let taller = $state(null);
   let entrantes = $state([]);
@@ -47,7 +47,10 @@
     if (msg.tipo === 'taller') {
       const antes = taller?.versiones?.length ?? 0;
       taller = msg.taller;
-      if (msg.taller.estado !== 'en-proceso') transcripcion = crearTranscripcion();
+      if (msg.taller.estado !== 'en-proceso') {
+        transcripcion = crearTranscripcion();
+        version++;
+      }
       if ((msg.taller.versiones?.length ?? 0) !== antes) alCambioEnunciado?.();
       bajar();
     } else if (msg.tipo === 'taller-evento') {
@@ -104,6 +107,7 @@
     enviando = true;
     try {
       transcripcion = crearTranscripcion();
+      version++;
       taller = await api.enviarTaller(ref.carpetaId, ref.ideaId, nodo.id, { texto, adjuntos: adjuntos.map((a) => a.ruta) });
       texto = '';
       adjuntos = [];
@@ -152,7 +156,9 @@
     }
   }
 
-  const irA = (c) => ir(enlace.idea(c.carpetaId, c.ideaId, c.nodo));
+  // Dentro de la misma idea se abre la lámina directamente; si no, se navega a la otra idea.
+  const irA = (c) =>
+    c.carpetaId === ref.carpetaId && c.ideaId === ref.ideaId && alIrMismaIdea ? alIrMismaIdea(c.nodo) : ir(enlace.idea(c.carpetaId, c.ideaId, c.nodo));
   const ACCION = { WebSearch: 'Buscando', WebFetch: 'Leyendo una fuente', Read: 'Leyendo', Bash: 'Calculando', Write: 'Escribiendo la propuesta', Edit: 'Escribiendo' };
 </script>
 
@@ -164,12 +170,12 @@
 
   {#if taller?.conexiones?.length || entrantes.length}
     <div class="conexiones">
-      {#each taller?.conexiones ?? [] as c (`${c.ideaId}/${c.nodo}`)}
+      {#each taller?.conexiones ?? [] as c (`${c.carpetaId}/${c.ideaId}/${c.nodo}`)}
         <button class="conexion" onclick={() => irA(c)} title={c.relacion}>
           <span class="flecha">→</span><span class="rel">{c.relacion}</span>
         </button>
       {/each}
-      {#each entrantes as c (`${c.desde.ideaId}/${c.desde.nodo}`)}
+      {#each entrantes as c (`${c.desde.carpetaId}/${c.desde.ideaId}/${c.desde.nodo}`)}
         <button class="conexion entrante" onclick={() => irA(c.desde)} title={c.relacion}>
           <span class="flecha">←</span><span class="rel">{c.relacion}</span>
         </button>

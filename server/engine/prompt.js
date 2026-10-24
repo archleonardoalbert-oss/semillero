@@ -463,7 +463,8 @@ export function argsTaller({ sessionId, ajustes, mensaje }) {
   return [
     '-p', mensaje, ...COMUNES,
     ...(sessionId ? ['--resume', sessionId] : []),
-    '--model', ajustes.modelo, '--effort', ajustes.esfuerzo,
+    // Siempre Opus (decisión del usuario); el esfuerzo sí sale de Ajustes.
+    '--model', 'opus', '--effort', ajustes.esfuerzo,
     '--append-system-prompt', promptTaller(),
     ...PERMISOS,
   ];
