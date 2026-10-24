@@ -47,6 +47,13 @@ export const api = {
   responderDiagnostico: (c, i, respuestas) => pedir('PUT', `${idea(c, i)}/germinacion/respuestas`, { respuestas }),
   marcarNodo: (c, i, n, datos) => pedir('PATCH', `${idea(c, i)}/germinacion/nodos/${encodeURIComponent(n)}`, datos),
   documento: (c, i, rel) => pedir('GET', `/archivos/carpetas/${encodeURIComponent(c)}/ideas/${encodeURIComponent(i)}/${rel}`),
+  taller: (c, i, n) => pedir('GET', `${idea(c, i)}/germinacion/talleres/${encodeURIComponent(n)}`),
+  enviarTaller: (c, i, n, datos) => pedir('POST', `${idea(c, i)}/germinacion/talleres/${encodeURIComponent(n)}/mensajes`, datos),
+  adjuntarTaller: (c, i, n, archivo) =>
+    pedir('POST', `${idea(c, i)}/germinacion/talleres/${encodeURIComponent(n)}/adjuntos?nombre=${encodeURIComponent(archivo.name || 'adjunto.png')}`, archivo,
+      { tipo: archivo.type?.startsWith('image/') ? archivo.type : 'application/octet-stream' }),
+  propuestaTaller: (c, i, n, accion) => pedir('POST', `${idea(c, i)}/germinacion/talleres/${encodeURIComponent(n)}/propuesta`, { accion }),
+  restaurarTaller: (c, i, n, version) => pedir('POST', `${idea(c, i)}/germinacion/talleres/${encodeURIComponent(n)}/restaurar`, { version }),
   pendientes: () => pedir('GET', '/api/pendientes'),
   pausadas: () => pedir('GET', '/api/pausadas'),
   activas: () => pedir('GET', '/api/activas'),

@@ -7,7 +7,6 @@ const BASE_TRONCO = 80; // altura del primer nodo del tronco sobre el suelo
 const CAPA = 105; // altura entre capas del tronco
 const ANCHO_TRONCO = 70; // separación entre nodos de una misma capa
 const RADIO_COPA = 190; // primer anillo de la copa
-const ANILLO = 115; // separación entre anillos
 const ARCO = [-165, -15]; // la copa ocupa el arco superior (grados)
 const HUECO_COPA = 82; // distancia mínima entre incógnitas de un mismo anillo
 const MAX_TITULO = 38;
@@ -61,31 +60,55 @@ export function disponer(mapa, { raices = [] } = {}) {
   const techo = estudios.length ? Math.min(...estudios.map((n) => pos.get(n.id).y)) : -BASE_TRONCO;
   const ancla = (id) => pos.get(id)?.x ?? 0;
 
-  // Copa: anillos por profundidad entre incógnitas, en el arco superior, sin que se apiñen.
+  // Copa: una cúpula. Cada incógnita recibe su propio ángulo, ordenadas según el estudio que las sostiene
+  // (así las ramas no se cruzan); el radio crece con su profundidad entre incógnitas y se intercala en tres
+  // subanillos para que vecinas de ángulo no se toquen.
   const nivelC = niveles(incognitas, porId, (d) => d.tipo === 'incognita');
-  const anillos = new Map();
-  for (const n of incognitas) {
-    const v = nivelC.get(n.id);
-    if (!anillos.has(v)) anillos.set(v, []);
-    anillos.get(v).push(n);
-  }
+  const raizEstudio = (n, vistos = new Set()) => {
+    if (vistos.has(n.id)) return null;
+    vistos.add(n.id);
+    const est = n.depende.filter((d) => porId.get(d)?.tipo === 'estudio').sort((x, y) => pos.get(x).y - pos.get(y).y)[0];
+    if (est) return est;
+    for (const d of n.depende) {
+      const r = porId.get(d)?.tipo === 'incognita' && raizEstudio(porId.get(d), vistos);
+      if (r) return r;
+    }
+    return null;
+  };
+  const orden = [...incognitas].sort((x, y) => {
+    const ax = ancla(raizEstudio(x));
+    const ay = ancla(raizEstudio(y));
+    return ax - ay || nivelC.get(x.id) - nivelC.get(y.id) || x.id.localeCompare(y.id);
+  });
   const centroCopa = { x: 0, y: techo - 40 };
   const arco = ((ARCO[1] - ARCO[0]) * Math.PI) / 180;
-  let radio = RADIO_COPA - ANILLO;
-  for (const v of [...anillos.keys()].sort((a, b) => a - b)) {
-    const anillo = anillos.get(v);
-    radio = Math.max(radio + ANILLO, (anillo.length * HUECO_COPA) / arco);
-    // Cada incógnita mira hacia lo que la sostiene, para que las ramas no se crucen.
-    const referencia = (n) => {
-      const xs = n.depende.map(ancla).filter((x) => Number.isFinite(x));
-      return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
-    };
-    anillo.sort((a, b) => referencia(a) - referencia(b));
-    anillo.forEach((n, k) => {
-      const t = anillo.length === 1 ? 0.5 : k / (anillo.length - 1);
-      const ang = ((ARCO[0] + t * (ARCO[1] - ARCO[0])) * Math.PI) / 180;
-      pos.set(n.id, { x: centroCopa.x + radio * Math.cos(ang), y: centroCopa.y + radio * Math.sin(ang) });
-    });
+  const N = orden.length;
+  const paso = N > 1 ? arco / (N - 1) : 0;
+  const SUB = 3;
+  const radioBase = Math.max(RADIO_COPA, N > SUB ? HUECO_COPA / (paso * SUB) : 0);
+  orden.forEach((n, k) => {
+    const ang = ((N === 1 ? -90 : ARCO[0]) * Math.PI) / 180 + paso * k;
+    const r = radioBase + nivelC.get(n.id) * 45 + (k % SUB) * 62;
+    pos.set(n.id, { x: centroCopa.x + r * Math.cos(ang), y: centroCopa.y + r * Math.sin(ang) });
+  });
+  // Relajación: si dos incógnitas quedan cerca, la más profunda se aleja hacia fuera.
+  for (let vuelta = 0; vuelta < 100; vuelta++) {
+    let movido = false;
+    for (let x = 0; x < N; x++) {
+      for (let y = x + 1; y < N; y++) {
+        const [a, b] = nivelC.get(orden[x].id) >= nivelC.get(orden[y].id) ? [orden[x], orden[y]] : [orden[y], orden[x]];
+        const pa = pos.get(a.id);
+        const pb = pos.get(b.id);
+        if (Math.hypot(pa.x - pb.x, pa.y - pb.y) >= HUECO_COPA * 0.75) continue;
+        const dx = pa.x - centroCopa.x;
+        const dy = pa.y - centroCopa.y;
+        const l = Math.hypot(dx, dy) || 1;
+        pa.x += (dx / l) * 30;
+        pa.y += (dy / l) * 30;
+        movido = true;
+      }
+    }
+    if (!movido) break;
   }
 
   const forma = (n) => (n.tipo === 'estudio' ? 'tronco' : n.abierto ? 'fruto' : 'hoja');

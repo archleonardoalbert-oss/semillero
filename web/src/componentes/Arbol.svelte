@@ -60,10 +60,14 @@
     return e === 'hecho' || e === 'en-curso' ? e : 'pendiente';
   }
 
+  // Encaja el árbol en el hueco que dejan libre la cabecera (arriba) y la leyenda (abajo).
+  const MARGEN = { arriba: 150, abajo: 70, lados: 30 };
   function encajar() {
     const { caja } = d;
-    const k = Math.min(ancho / caja.ancho, alto / caja.alto, 1.15);
-    vista = { k, x: ancho / 2 - (caja.x + caja.ancho / 2) * k, y: alto / 2 - (caja.y + caja.alto / 2) * k };
+    const w = ancho - 2 * MARGEN.lados;
+    const h = alto - MARGEN.arriba - MARGEN.abajo;
+    const k = Math.min(w / caja.ancho, h / caja.alto, 1.15);
+    vista = { k, x: ancho / 2 - (caja.x + caja.ancho / 2) * k, y: MARGEN.arriba + h / 2 - (caja.y + caja.alto / 2) * k };
   }
 
   onMount(() => {

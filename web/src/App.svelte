@@ -28,7 +28,7 @@
   {#if ruta.nombre === 'carpeta'}
     {#key ruta.params[0]}<Carpeta carpetaId={ruta.params[0]} />{/key}
   {:else if ruta.nombre === 'idea'}
-    {#key ruta.params.join('/')}<Idea carpetaId={ruta.params[0]} ideaId={ruta.params[1]} />{/key}
+    {#key `${ruta.params[0]}/${ruta.params[1]}`}<Idea carpetaId={ruta.params[0]} ideaId={ruta.params[1]} nodo={ruta.params[2]} />{/key}
   {:else if ruta.nombre === 'lista'}
     {#key ruta.params[0]}<Lista estado={ruta.params[0]} />{/key}
   {:else if ruta.nombre === 'ajustes'}

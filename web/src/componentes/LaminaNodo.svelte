@@ -7,6 +7,8 @@
   import { crearAutoguardado } from '../lib/autoguardado.js';
   import Glosable from './Glosable.svelte';
   import Editor from './Editor.svelte';
+  import Taller from './Taller.svelte';
+  import { diferencias } from '../lib/diff.js';
 
   // La lámina de un nodo: brota desde el nodo pulsado y ocupa la pantalla.
   let { nodo, mapa, progreso, ref, base, glosas, desde, bloqueado = false, alCerrar, alIrA, alCambiar } = $props();
@@ -19,13 +21,20 @@
 
   let documento = $state(null);
   let fallo = $state(null);
+  let recarga = $state(0);
   $effect(() => {
-    documento = null;
+    recarga;
     fallo = null;
     api.documento(ref.carpetaId, ref.ideaId, `germinacion/${nodo.documento}`)
       .then((t) => (documento = t))
       .catch(() => (fallo = 'La sesión aún no ha escrito el documento de este nodo.'));
   });
+
+  // Las incógnitas tienen taller: pantalla dividida con el enunciado a la izquierda.
+  let conTaller = $derived(nodo.tipo === 'incognita');
+  let cita = $state('');
+  let comparando = $state(null); // { md, titulo }: una propuesta o versión comparada con el enunciado vigente
+  let bloques = $derived(comparando && documento !== null ? diferencias(documento, comparando.md) : null);
 
   let estado = $derived(progreso?.nodos?.[nodo.id]?.estado ?? ESTADOS[nodo.tipo][0][0]);
   let recursos = $derived((mapa.recursos ?? []).filter((r) => nodo.recursos.includes(r.id)));
@@ -93,10 +102,20 @@
       </div>
     </header>
 
-    <div class="cuerpo">
+    <div class="cuerpo" class:dividida={conTaller}>
+      <div class="columna">
       <article class="documento">
-        {#if documento !== null}
-          <Glosable html={renderizar(documento, base)} documento="germinacion/{nodo.documento}" autor="claude" {glosas} {base} {bloqueado} flotante />
+        {#if bloques}
+          <div class="comparacion">
+            <p class="aviso-comparacion">{comparando.titulo}, comparada con el enunciado vigente.
+              <button class="enlace" onclick={() => (comparando = null)}>Volver al enunciado</button></p>
+            {#each bloques as b, k (k)}
+              <div class="bloque {b.tipo} manuscrito">{@html renderizar(b.texto, base)}</div>
+            {/each}
+          </div>
+        {:else if documento !== null}
+          <Glosable html={renderizar(documento, base)} documento="germinacion/{nodo.documento}" autor="claude" {glosas} {base} {bloqueado} flotante
+            alCitar={conTaller ? (md) => (cita = md) : null} />
         {:else if fallo}
           <p class="vacio">{fallo}</p>
         {:else}
@@ -150,6 +169,13 @@
           </div>
         </section>
       </aside>
+      </div>
+      {#if conTaller}
+        <div class="lado-taller">
+          <Taller {ref} {nodo} {base} bind:cita alVerDocumento={(md, titulo) => (comparando = md === null ? null : { md, titulo })}
+            alCambioEnunciado={() => recarga++} />
+        </div>
+      {/if}
     </div>
   </div>
 </div>
@@ -371,7 +397,65 @@
     border-radius: var(--radio-s);
     background: var(--humus-hondo);
   }
+  /* Incógnitas: el enunciado y lo suyo a la izquierda; el taller fijo a la derecha. */
+  .cuerpo.dividida {
+    grid-template-columns: minmax(0, 1fr) minmax(24rem, 38rem);
+    gap: 2.5rem;
+  }
+  .columna {
+    display: grid;
+    gap: 3rem;
+    min-width: 0;
+  }
+  .cuerpo:not(.dividida) .columna {
+    display: contents;
+  }
+  .dividida .lateral {
+    position: static;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  }
+  .lado-taller {
+    position: sticky;
+    top: 1rem;
+    height: calc(100vh - 2rem);
+  }
+  .comparacion .bloque {
+    margin: 0 0 0.8rem;
+    padding: 0.2rem 0.8rem;
+    border-left: 3px solid transparent;
+    border-radius: 0 8px 8px 0;
+  }
+  .bloque.quitado {
+    border-left-color: var(--rechazada);
+    background: rgb(196 106 90 / 0.1);
+    text-decoration: line-through;
+    text-decoration-color: rgb(196 106 90 / 0.6);
+    opacity: 0.75;
+  }
+  .bloque.nuevo {
+    border-left-color: var(--aceptada);
+    background: rgb(111 227 165 / 0.08);
+  }
+  .aviso-comparacion {
+    margin: 0 0 1rem;
+    color: var(--cambios);
+    font-size: var(--t-1);
+  }
+  .enlace {
+    margin-left: 0.5rem;
+    border: 0;
+    background: none;
+    color: var(--tu);
+    cursor: pointer;
+  }
   @media (max-width: 1100px) {
+    .cuerpo.dividida {
+      grid-template-columns: 1fr;
+    }
+    .lado-taller {
+      position: static;
+      height: 75vh;
+    }
     .cuerpo {
       grid-template-columns: 1fr;
     }

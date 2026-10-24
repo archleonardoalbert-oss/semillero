@@ -12,7 +12,7 @@
   // Un documento renderizado en el que se puede seleccionar cualquier cosa (texto, fórmulas, imágenes)
   // para pedir que Claude la explique o corregirla. Las glosas quedan ancladas al fragmento.
   // `desfase`: distancia (rem) del borde derecho de este bloque al margen de la página.
-  let { html, documento, autor, glosas, base, bloqueado = false, desfase = 2.5, flotante = false } = $props();
+  let { html, documento, autor, glosas, base, bloqueado = false, desfase = 2.5, flotante = false, alCitar = null } = $props();
 
   const yo = {};
   const ANCHO_MARGEN = '(min-width: 1710px)';
@@ -198,7 +198,8 @@
 
   {#if panel}
     <PanelGlosa x={panel.x} y={panel.y} vistaPrevia={panel.vistaPrevia} puedeCorregir={autor === 'claude'}
-      alEnviar={enviar} alCerrar={() => (panel = null)} />
+      alEnviar={enviar} alCerrar={() => (panel = null)}
+      alCitar={alCitar ? () => (alCitar(serializar(contenido, panel.rango).markdown), (panel = null), getSelection().removeAllRanges()) : null} />
   {/if}
 </div>
 

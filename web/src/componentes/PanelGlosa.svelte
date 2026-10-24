@@ -3,7 +3,8 @@
   import { cubicOut } from 'svelte/easing';
 
   // Panel que brota junto a la selección: elegir Explicar o Corregir y escribir la petición.
-  let { x, y, puedeCorregir, vistaPrevia, alEnviar, alCerrar } = $props();
+  // `alCitar`: si existe, ofrece llevar el fragmento al taller de la incógnita.
+  let { x, y, puedeCorregir, vistaPrevia, alEnviar, alCerrar, alCitar = null } = $props();
 
   let tipo = $state(null);
   let prompt = $state('');
@@ -46,6 +47,12 @@
         <button class="accion corregir" onclick={() => elegir('corregir')}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 16.5l1-4 8.5-8.5 3 3-8.5 8.5-4 1zM11.5 5.5l3 3" /></svg>
           Corregir
+        </button>
+      {/if}
+      {#if alCitar}
+        <button class="accion citar" onclick={alCitar}>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h5v5H6.5c0 2 1 3 2.5 3.5M11 6h5v5h-2.5c0 2 1 3 2.5 3.5" /></svg>
+          Citar en el taller
         </button>
       {/if}
     </div>
@@ -131,6 +138,9 @@
   }
   .corregir {
     color: var(--corregir);
+  }
+  .citar {
+    color: var(--aclaracion);
   }
   .accion:hover,
   .accion:focus-visible {

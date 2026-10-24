@@ -11,7 +11,8 @@
   import EnVivo from '../componentes/EnVivo.svelte';
 
   // La página de una idea que germina: el árbol (o la plántula mientras se prepara) a pantalla completa.
-  let { idea, ref, base, glosas, carpeta, alVerManuscrito } = $props();
+  // `nodo`: si la ruta lo trae (p. ej. desde una conexión de otro taller), su lámina se abre al cargar.
+  let { idea, ref, base, glosas, carpeta, nodo: nodoInicial = undefined, alVerManuscrito } = $props();
 
   let datos = $state(null);
   let lamina = $state(null); // { nodo, desde }: se conserva mientras la lámina se cierra
@@ -37,6 +38,14 @@
   });
 
   let mapa = $derived(datos?.mapa);
+  let inicialAbierto = false; // solo la primera vez: cerrarla no debe hacer que se reabra al recargar
+  $effect(() => {
+    if (inicialAbierto || !nodoInicial || !mapa) return;
+    const n = mapa.nodos.find((x) => x.id === nodoInicial);
+    if (!n) return;
+    inicialAbierto = true;
+    abrirLamina(n, { x: innerWidth / 2, y: innerHeight / 2 });
+  });
   // Las raíces del árbol: cada mensaje del manuscrito, en orden.
   let raices = $derived.by(() => {
     let dictamenes = 0;

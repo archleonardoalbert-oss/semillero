@@ -3,7 +3,7 @@ import { tick } from 'svelte';
 const PATRONES = [
   ['inicio', /^#?\/?$/],
   ['carpeta', /^#\/carpeta\/([^/]+)$/],
-  ['idea', /^#\/idea\/([^/]+)\/([^/]+)$/],
+  ['idea', /^#\/idea\/([^/]+)\/([^/]+)(?:\/nodo\/([^/]+))?$/],
   ['lista', /^#\/lista\/([^/]+)$/],
   ['ajustes', /^#\/ajustes$/],
   ['notas', /^#\/notas$/],
@@ -12,7 +12,7 @@ const PATRONES = [
 function interpretar(hash) {
   for (const [nombre, re] of PATRONES) {
     const m = hash.match(re);
-    if (m) return { nombre, params: m.slice(1).map(decodeURIComponent) };
+    if (m) return { nombre, params: m.slice(1).map((p) => (p === undefined ? undefined : decodeURIComponent(p))) };
   }
   return { nombre: 'inicio', params: [] };
 }
@@ -41,7 +41,7 @@ window.addEventListener('popstate', () => aplicar(interpretar(location.hash)));
 export const enlace = {
   inicio: () => '#/',
   carpeta: (c) => `#/carpeta/${encodeURIComponent(c)}`,
-  idea: (c, i) => `#/idea/${encodeURIComponent(c)}/${encodeURIComponent(i)}`,
+  idea: (c, i, nodo) => `#/idea/${encodeURIComponent(c)}/${encodeURIComponent(i)}${nodo ? `/nodo/${encodeURIComponent(nodo)}` : ''}`,
   lista: (estado) => `#/lista/${estado}`,
   ajustes: () => '#/ajustes',
   notas: () => '#/notas',

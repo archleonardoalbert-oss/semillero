@@ -17,7 +17,7 @@
   import AntesDeGerminar from '../componentes/AntesDeGerminar.svelte';
   import Germinacion from './Germinacion.svelte';
 
-  let { carpetaId, ideaId } = $props();
+  let { carpetaId, ideaId, nodo = undefined } = $props();
   const ref = { carpetaId, ideaId };
   const base = rutaIdea(carpetaId, ideaId);
   const glosas = crearGlosas(ref);
@@ -196,7 +196,7 @@
 {#if error}
   <p class="error">{error}</p>
 {:else if idea && germina && !verManuscrito}
-  <Germinacion {idea} {ref} {base} {glosas} {carpeta} alVerManuscrito={verMensaje} />
+  <Germinacion {idea} {ref} {base} {glosas} {carpeta} {nodo} alVerManuscrito={verMensaje} />
 {:else if idea}
   {#if condensando}<div class="semilla-cae" aria-hidden="true"></div>{/if}
   <article class="pagina" class:condensando style:--origen={origen}>
