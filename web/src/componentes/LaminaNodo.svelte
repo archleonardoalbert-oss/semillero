@@ -3,7 +3,9 @@
   import { cubicOut, cubicIn } from 'svelte/easing';
   import { api } from '../lib/api.js';
   import { renderizar } from '../lib/render.js';
-  import { avisar } from '../lib/estado.svelte.js';
+  import { avisar, suscribir } from '../lib/estado.svelte.js';
+  import Examen from './Examen.svelte';
+  import Verificacion from './Verificacion.svelte';
   import { crearAutoguardado } from '../lib/autoguardado.js';
   import Glosable from './Glosable.svelte';
   import Editor from './Editor.svelte';
@@ -41,7 +43,47 @@
   let requiere = $derived(mapa.nodos.filter((n) => nodo.depende.includes(n.id)));
   let abre = $derived(mapa.nodos.filter((n) => n.depende.includes(nodo.id)));
 
+  // Registro de exámenes (estudio) o verificaciones (incógnitas) del nodo.
+  let registro = $state([]);
+  let examenAbierto = $state(null); // { inicial }
+  let verificacionAbierta = $state(null); // { inicial }
+  async function cargarRegistro() {
+    try {
+      registro = nodo.tipo === 'estudio'
+        ? await api.examenes(ref.carpetaId, ref.ideaId, nodo.id)
+        : await api.verificaciones(ref.carpetaId, ref.ideaId, nodo.id);
+    } catch {
+      registro = [];
+    }
+  }
+  $effect(() => {
+    nodo.id;
+    cargarRegistro();
+  });
+  const quitarRegistro = suscribir(ref, (msg) => {
+    if (msg.nodo !== nodo.id) return;
+    if (msg.tipo === 'examen' || msg.tipo === 'verificacion') {
+      cargarRegistro();
+      if (['corregido', 'aceptada'].includes(msg.examen?.estado ?? msg.verificacion?.estado)) alCambiar();
+    }
+  });
+  onDestroy(quitarRegistro);
+  let dominio = $derived(progreso?.nodos?.[nodo.id]?.dominio ?? null);
+  const NOMBRE_NIVEL = { suficiente: 'Suficiente', avanzado: 'Avanzado', experto: 'Experto' };
+  const fechaCorta = (iso) => (iso ? new Date(iso).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
+
   async function marcar(e) {
+    // «Dominado» y «Resuelta» no se marcan: se ganan con un examen o una verificación.
+    if (e === 'hecho') {
+      const abierto = registro.find((x) => ['generando', 'abierto', 'corrigiendo'].includes(x.estado));
+      examenAbierto = { inicial: abierto ?? null };
+      return;
+    }
+    if (e === 'resuelta') {
+      const enCurso = registro.find((x) => x.estado === 'revisando');
+      verificacionAbierta = { inicial: enCurso ?? null };
+      return;
+    }
     try {
       await api.marcarNodo(ref.carpetaId, ref.ideaId, nodo.id, { estado: e });
       alCambiar();
@@ -74,7 +116,7 @@
 
   // Escape cierra la lámina salvo que haya una glosa o un panel abiertos encima.
   function tecla(e) {
-    if (e.key !== 'Escape' || document.querySelector('.hoja, .panel')) return;
+    if (e.key !== 'Escape' || document.querySelector('.hoja, .panel, .examen, .verificacion')) return;
     // Escape mientras se escribe no cierra la lámina (se perdería lo escrito en el taller).
     if (e.target.closest?.('textarea, input, [contenteditable="true"]')) return;
     if (comparando) comparando = null;
@@ -103,9 +145,17 @@
       {#if nodo.resumen}<p class="resumen">{nodo.resumen}</p>{/if}
       <div class="estados" role="radiogroup" aria-label="Tu progreso">
         {#each ESTADOS[nodo.tipo] as [valor, texto] (valor)}
-          <button role="radio" aria-checked={estado === valor} class:elegido={estado === valor} class={valor} onclick={() => marcar(valor)}>{texto}</button>
+          <button role="radio" aria-checked={estado === valor} class:elegido={estado === valor} class={valor} onclick={() => marcar(valor)}
+            title={valor === 'hecho' ? 'Requiere aprobar un examen' : valor === 'resuelta' ? 'Requiere pasar la verificación' : ''}>
+            {texto}{#if (valor === 'hecho' || valor === 'resuelta') && estado !== valor}<span class="candado" aria-hidden="true"> ⌁</span>{/if}
+          </button>
         {/each}
       </div>
+      {#if dominio && estado === 'hecho'}
+        <p class="dominio {dominio.dificultad}" class:perfecto={dominio.nota === 5}>
+          Dominado en nivel {NOMBRE_NIVEL[dominio.dificultad]} con {String(dominio.nota).replace('.', ',')}/5
+        </p>
+      {/if}
     </header>
 
     <div class="cuerpo" class:dividida={conTaller}>
@@ -130,6 +180,29 @@
       </article>
 
       <aside class="lateral">
+        {#if registro.length}
+          <section>
+            <h2>{nodo.tipo === 'estudio' ? 'Registro de exámenes' : 'Verificaciones'}</h2>
+            <ul class="registro">
+              {#each [...registro].reverse() as x (x.id)}
+                <li>
+                  <button onclick={() => (nodo.tipo === 'estudio' ? (examenAbierto = { inicial: x }) : (verificacionAbierta = { inicial: x }))}>
+                    {#if nodo.tipo === 'estudio'}
+                      <span class="nivel {x.dificultad}">{NOMBRE_NIVEL[x.dificultad]}</span>
+                      <span class="res" class:ok={x.correccion?.aprobado}>
+                        {x.correccion ? `${String(x.correccion.nota).replace('.', ',')}/5 ${x.correccion.aprobado ? 'aprobado' : 'suspenso'}` : { generando: 'generándose', abierto: 'sin entregar', corrigiendo: 'corrigiéndose', entregado: 'sin corregir', error: 'error' }[x.estado]}
+                      </span>
+                    {:else}
+                      <span class="res" class:ok={x.estado === 'aceptada'}>{{ revisando: 'en revisión', aceptada: 'aceptada', rechazada: 'no concluyente', error: 'error' }[x.estado]}</span>
+                      <span class="resumen-v">{x.resumen}</span>
+                    {/if}
+                    <span class="fecha">{fechaCorta(x.creado)}</span>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          </section>
+        {/if}
         {#if requiere.length || abre.length}
           <section>
             {#if requiere.length}
@@ -185,6 +258,13 @@
     </div>
   </div>
 </div>
+
+{#if examenAbierto}
+  <Examen {ref} {nodo} {base} inicial={examenAbierto.inicial} alCerrar={() => (examenAbierto = null)} />
+{/if}
+{#if verificacionAbierta}
+  <Verificacion {ref} {nodo} {base} inicial={verificacionAbierta.inicial} alCerrar={() => (verificacionAbierta = null)} />
+{/if}
 
 <style>
   .lamina {
@@ -453,6 +533,82 @@
     background: none;
     color: var(--tu);
     cursor: pointer;
+  }
+  .candado {
+    opacity: 0.6;
+  }
+  .dominio {
+    margin: 0.7rem 0 0;
+    font-weight: 600;
+    color: var(--tono-d);
+  }
+  .dominio.suficiente {
+    --tono-d: var(--aceptada);
+  }
+  .dominio.avanzado {
+    --tono-d: var(--proceso);
+  }
+  .dominio.experto {
+    --tono-d: var(--pausada);
+  }
+  .dominio.perfecto {
+    animation: brillo-d 1.6s ease-in-out infinite;
+  }
+  @keyframes brillo-d {
+    50% {
+      text-shadow: 0 0 12px var(--tono-d);
+    }
+  }
+  .registro {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .registro button {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.3rem 0.6rem;
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--linea);
+    border-radius: 8px;
+    background: var(--humus-hondo);
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .registro button:hover {
+    border-color: var(--linea-viva);
+  }
+  .registro .nivel {
+    font-weight: 600;
+  }
+  .registro .nivel.suficiente {
+    color: var(--aceptada);
+  }
+  .registro .nivel.avanzado {
+    color: var(--proceso);
+  }
+  .registro .nivel.experto {
+    color: var(--pausada);
+  }
+  .registro .res {
+    color: var(--liquen-tenue);
+  }
+  .registro .res.ok {
+    color: var(--aceptada);
+  }
+  .registro .resumen-v {
+    flex-basis: 100%;
+    color: var(--liquen);
+  }
+  .registro .fecha {
+    margin-left: auto;
+    color: var(--liquen-apagado);
+    font-size: 0.75rem;
   }
   @media (max-width: 1100px) {
     .cuerpo.dividida {

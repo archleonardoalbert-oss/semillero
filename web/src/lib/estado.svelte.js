@@ -56,7 +56,7 @@ function conectar() {
     else if (msg.tipo === 'idea') {
       refrescar();
       for (const fn of oyentes.get(clave(msg.ref)) ?? []) fn(msg);
-    } else if (['evento', 'glosa', 'glosa-evento', 'taller', 'taller-evento'].includes(msg.tipo)) {
+    } else if (['evento', 'glosa', 'glosa-evento', 'taller', 'taller-evento', 'examen', 'examen-evento', 'verificacion', 'verificacion-evento'].includes(msg.tipo)) {
       for (const fn of oyentes.get(clave(msg.ref)) ?? []) fn(msg);
     } else if (msg.tipo === 'pausa') {
       const pct = Math.round(100 * Math.max(msg.datos.cuota?.cincoHoras ?? 0, msg.datos.cuota?.sieteDias ?? 0));

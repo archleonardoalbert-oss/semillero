@@ -62,6 +62,16 @@
     }));
   });
   let progreso = $derived(datos?.progreso);
+  // Recuento real de estados: lo de estudio y lo de las incógnitas.
+  let recuento = $derived.by(() => {
+    const r = { pendiente: 0, 'en-curso': 0, hecho: 0, abierta: 0, atacando: 0, resuelta: 0 };
+    for (const n of mapa?.nodos ?? []) {
+      const e = progreso?.nodos?.[n.id]?.estado;
+      if (n.tipo === 'estudio') r[e === 'hecho' || e === 'en-curso' ? e : 'pendiente']++;
+      else r[e === 'resuelta' || e === 'atacando' ? e : 'abierta']++;
+    }
+    return r;
+  });
   let enProceso = $derived(idea.estado === 'en-proceso');
   let fase = $derived(mapa?.fase ?? 'preparando');
   let diagnosticando = $derived(fase === 'diagnostico' && !enProceso && idea.estado !== 'pausada');
@@ -161,6 +171,12 @@
         <span class="luz" class:viva={enProceso}></span>
         {fase === 'mapa' ? 'Germinando: mapa vivo' : fase === 'diagnostico' ? 'Germinando: diagnóstico' : 'Germinando: preparando'}
       </p>
+      {#if mapa?.fase === 'mapa'}
+        <dl class="recuento">
+          <div><dt>Estudio</dt><dd><span>{recuento.pendiente}</span> pendientes, <span class="c">{recuento['en-curso']}</span> estudiando, <span class="d">{recuento.hecho}</span> dominados</dd></div>
+          <div><dt>Problemas</dt><dd><span>{recuento.abierta}</span> abiertos, <span class="c">{recuento.atacando}</span> atacándolos, <span class="r">{recuento.resuelta}</span> resueltos</dd></div>
+        </dl>
+      {/if}
       {#if estadoTexto}<p class="estado" class:error={idea.estado === 'error'}>{estadoTexto}</p>{/if}
       {#if idea.estado === 'error' || idea.estado === 'detenida' || (!enProceso && !mapa && datos && idea.estado !== 'pausada')}
         <button class="boton" disabled={enviando} onclick={() => germinar()}>Retomar la germinación</button>
@@ -304,6 +320,37 @@
       opacity: 0.35;
       transform: scale(1.4);
     }
+  }
+  .recuento {
+    display: grid;
+    gap: 0.15rem;
+    margin: 0.6rem 0 0;
+    font-size: var(--t-1);
+    color: var(--liquen-tenue);
+  }
+  .recuento div {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .recuento dt {
+    min-width: 5.5rem;
+    color: var(--liquen-apagado);
+  }
+  .recuento dd {
+    margin: 0;
+  }
+  .recuento span {
+    font-weight: 700;
+    color: var(--liquen);
+  }
+  .recuento .c {
+    color: var(--proceso);
+  }
+  .recuento .d {
+    color: var(--aceptada);
+  }
+  .recuento .r {
+    color: var(--pausada);
   }
   .estado {
     margin: 0.5rem 0 0.8rem;

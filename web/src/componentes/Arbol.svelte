@@ -183,7 +183,8 @@
 
       {#each d.nodos as n (n.id)}
         {@const e = estadoDe(n)}
-        <g class="nodo {n.forma} {e}" class:florece={nuevos.has(n.id)} class:apagada={atenuado(n.id)}
+        {@const dom = e === 'hecho' ? progreso?.nodos?.[n.id]?.dominio : null}
+        <g class="nodo {n.forma} {e} {dom ? `dominio-${dom.dificultad}` : ''}" class:perfecto={dom?.nota === 5} class:florece={nuevos.has(n.id)} class:apagada={atenuado(n.id)}
           style:--retraso="{retraso(n)}ms" transform="translate({n.x} {n.y})" role="button" tabindex="0"
           aria-label="{n.forma === 'tronco' ? 'Estudio' : n.forma === 'fruto' ? 'Problema abierto' : 'Incógnita'}: {n.nodo.titulo}"
           onclick={(ev) => abrir(n, ev)} onkeydown={(ev) => ev.key === 'Enter' && abrir(n, ev)}
@@ -371,6 +372,46 @@
   }
   .tronco.hecho .corazon {
     fill: var(--aceptada);
+  }
+  /* Dominio por examen: verde (suficiente), cian (avanzado), dorado (experto); con 5/5 palpita. */
+  .tronco.dominio-suficiente .nudo {
+    stroke: var(--aceptada);
+    fill: rgb(111 227 165 / 0.25);
+  }
+  .tronco.dominio-suficiente .corazon {
+    fill: var(--aceptada);
+  }
+  .tronco.dominio-avanzado .nudo {
+    stroke: var(--proceso);
+    fill: rgb(94 224 224 / 0.25);
+  }
+  .tronco.dominio-avanzado .corazon {
+    fill: var(--proceso);
+  }
+  .tronco.dominio-experto .nudo {
+    stroke: var(--pausada);
+    fill: rgb(230 200 110 / 0.3);
+  }
+  .tronco.dominio-experto .corazon {
+    fill: var(--pausada);
+  }
+  .tronco.perfecto .forma {
+    animation: palpitar 1.4s ease-in-out infinite;
+  }
+  @keyframes palpitar {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    15% {
+      transform: scale(1.28);
+    }
+    30% {
+      transform: scale(1.05);
+    }
+    45% {
+      transform: scale(1.2);
+    }
   }
   /* Hojas: incógnitas. Frutos: problemas abiertos. Lo resuelto madura en dorado. */
   .cuerpo-hoja {
