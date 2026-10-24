@@ -186,3 +186,13 @@ test('I1: la ruta de germinación nunca sirve un mapa a medio escribir', async (
   const g = (await pedir('GET', '/api/carpetas/ia/ideas/pesos-rapidos/germinacion')).json();
   assert.equal(g.mapa.nodos.length, 3);
 });
+
+test('I2: los registros de ejecución no se sirven por /archivos ni por subrutas', async () => {
+  const { pedir, cfg } = await conIdea();
+  const fsp = await import('node:fs/promises');
+  const dir = `${cfg.datos}/carpetas/ia/ideas/pesos-rapidos/registro/examenes`;
+  await fsp.mkdir(dir, { recursive: true });
+  await fsp.writeFile(`${dir}/e1-x.jsonl`, '{"rubrica":"secreta"}');
+  assert.notEqual((await pedir('GET', '/archivos/carpetas/ia/ideas/pesos-rapidos/registro/examenes/e1-x.jsonl')).statusCode, 200);
+  assert.notEqual((await pedir('GET', '/api/carpetas/ia/ideas/pesos-rapidos/registros/examenes%2Fe1-x.jsonl')).statusCode, 200);
+});

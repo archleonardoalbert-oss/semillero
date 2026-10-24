@@ -81,7 +81,7 @@ export function crearMotorVerificacion({ cfg, ideas, verificaciones, germinacion
       // después el guard revierte todo lo demás, salvo lo que otros escritores estén escribiendo ahora.
       const { veredicto, informe } = parsearVeredictoVerificacion(r.resultado?.result);
       const aceptado = !r.resultado?.is_error && veredicto?.resuelto === true;
-      const amp = aceptado ? await leerAmpliacion(rutas, mapa) : { nuevos: [], recursos: [] };
+      const amp = aceptado ? await leerAmpliacion(rutas, mapa, n, rutaIdea) : { nuevos: [], recursos: [] };
       const docsNuevos = amp.nuevos.map((x) => `${rutaIdea}/germinacion/${x.documento}`);
       const propios = aceptado ? [rutas.ampliacion, `${rutas.figuras}/**`, ...docsNuevos] : [`${rutas.figuras}/**`];
       const ajenos = [...cola.objetivosAjenos(objetivosActivos), ...[...activas].filter(([x]) => x !== k).flatMap(([, o]) => o)];
@@ -110,14 +110,21 @@ export function crearMotorVerificacion({ cfg, ideas, verificaciones, germinacion
   }
 
   // La ampliación propuesta: solo nodos con id y documento bien formados y que no existan ya.
-  async function leerAmpliacion(rutas, mapa) {
+  async function leerAmpliacion(rutas, mapa, n, rutaIdea) {
     const texto = await fs.readFile(path.join(cfg.datos, rutas.ampliacion), 'utf8').catch(() => null);
     if (texto === null) return { nuevos: [], recursos: [] };
     try {
       const amp = JSON.parse(texto);
       const ids = new Set(mapa.nodos.map((x) => x.id));
       const nuevos = Array.isArray(amp.nodos) ? amp.nodos : [];
-      const bien = nuevos.every((x) => /^[a-z0-9-]{1,40}$/.test(x?.id ?? '') && x.documento === `nodos/${x.id}.md` && !ids.has(x.id));
+      let bien = nuevos.every((x) => /^[a-z0-9-]{1,40}$/.test(x?.id ?? '') && x.documento === `nodos/${x.id}.md` && !ids.has(x.id)
+        && x.tipo === 'incognita' && Array.isArray(x.depende) && x.depende.includes(n));
+      // El documento debe ser nuevo de verdad: escrito ahora, no un archivo que ya estuviera commiteado.
+      for (const x of bien ? nuevos : []) {
+        const rel = `${rutaIdea}/germinacion/${x.documento}`;
+        const existe = await fs.access(path.join(cfg.datos, rel)).then(() => true, () => false);
+        if (!existe || (await guard.commiteado(rel)) !== null) bien = false;
+      }
       return { nuevos: bien ? nuevos : [], recursos: Array.isArray(amp.recursos) ? amp.recursos : [], invalida: !bien && nuevos.length > 0 };
     } catch {
       return { nuevos: [], recursos: [], invalida: true };
@@ -147,7 +154,8 @@ export function crearMotorVerificacion({ cfg, ideas, verificaciones, germinacion
       for (const v of await verificaciones.todas(idea.carpetaId, idea.id)) {
         if (v.estado !== 'revisando') continue;
         const rutaIdea = ideas.relIdea(idea.carpetaId, idea.id);
-        await guard.restaurar([`${verificaciones.relV(idea.carpetaId, idea.id, v.nodo, v.id)}/ampliacion.json`, `${rutaIdea}/figuras/verificaciones/${v.id}/**`]);
+        // Lo que el verificador dejó en nodos/ sin terminar no es legítimo: lo del servidor está siempre commiteado.
+        await guard.restaurar([`${verificaciones.relV(idea.carpetaId, idea.id, v.nodo, v.id)}/ampliacion.json`, `${rutaIdea}/figuras/verificaciones/${v.id}/**`, `${rutaIdea}/germinacion/nodos/**`]);
         await verificaciones.actualizar(idea.carpetaId, idea.id, v.nodo, v.id, { estado: 'error', error: 'Se interrumpió al reiniciar el servidor.' });
       }
     }

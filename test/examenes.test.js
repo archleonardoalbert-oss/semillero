@@ -212,3 +212,48 @@ test('solo hay un examen abierto por nodo, y no en nodos de incógnita', async (
   await assert.rejects(motor.generar(ref, 'e1', { dificultad: 'experto' }), /examen-abierto/);
   await assert.rejects(motor.generar(ref, 'e2', { dificultad: 'inventada' }), /dificultad-invalida/);
 });
+
+// --- Revisión final ---
+
+test('I1/I2: durante el examen solo se emite el nombre de la acción, nunca consultas, texto ni pensamiento', async () => {
+  const { motor, falso, ref } = await preparar();
+  const vistos = [];
+  motor.on('examen-evento', ({ ev }) => vistos.push(ev));
+  await motor.generar(ref, 'e1', { dificultad: 'experto' });
+  await hasta(() => falso.llamadas[0]);
+  const l = falso.llamadas[0];
+  l.alEvento({ type: 'stream_event', event: { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Rúbrica: p1 espera la SVD…' } } });
+  l.alEvento({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 't', name: 'WebSearch', input: { query: 'Putnam 2016 B4' } }] } });
+  const todo = JSON.stringify(vistos);
+  assert.ok(!/Rúbrica|Putnam/.test(todo), todo);
+  assert.ok(vistos.some((e) => e.type === 'accion' && e.herramienta === 'WebSearch'));
+});
+
+test('menor: reintentar la corrección dos veces a la vez lanza una sola', async () => {
+  const { motor, falso, ref, hastaEstado } = await preparar();
+  const ex = await motor.generar(ref, 'e1', { dificultad: 'avanzado' });
+  await falso.responder(0, EXAMEN);
+  await hastaEstado(ex.id, 'abierto');
+  await motor.entregar(ref, 'e1', ex.id);
+  await falso.responder(1, 'sin bloque');
+  await hastaEstado(ex.id, 'entregado');
+  const r = await Promise.allSettled([motor.reintentarCorreccion(ref, 'e1', ex.id), motor.reintentarCorreccion(ref, 'e1', ex.id)]);
+  assert.equal(r.filter((x) => x.status === 'fulfilled').length, 1);
+});
+
+test('menor: dos generaciones a la vez crean un solo examen', async () => {
+  const { motor, ref, examenes } = await preparar();
+  const r = await Promise.allSettled([motor.generar(ref, 'e1', { dificultad: 'avanzado' }), motor.generar(ref, 'e1', { dificultad: 'experto' })]);
+  assert.equal(r.filter((x) => x.status === 'fulfilled').length, 1);
+  assert.equal((await examenes.listar('ia', ref.ideaId, 'e1')).length, 1);
+});
+
+test('menor: una respuesta que llega tras la entrega no se guarda', async () => {
+  const { motor, falso, ref, hastaEstado, examenes, leer } = await preparar();
+  const ex = await motor.generar(ref, 'e1', { dificultad: 'avanzado' });
+  await falso.responder(0, EXAMEN);
+  await hastaEstado(ex.id, 'abierto');
+  await examenes.actualizar('ia', ref.ideaId, 'e1', ex.id, { estado: 'corrigiendo' });
+  await assert.rejects(motor.responder(ref, 'e1', ex.id, { pregunta: 'p1', texto: 'tarde' }), /examen-cerrado/);
+  assert.equal((await leer(ex.id)).respuestas.p1, undefined);
+});

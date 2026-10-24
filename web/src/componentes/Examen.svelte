@@ -5,7 +5,6 @@
   import { api } from '../lib/api.js';
   import { renderizar } from '../lib/render.js';
   import { suscribir, avisar } from '../lib/estado.svelte.js';
-  import { crearTranscripcion } from '../lib/eventos.js';
   import { crearAutoguardado } from '../lib/autoguardado.js';
   import Editor from './Editor.svelte';
   import Adjuntos from './Adjuntos.svelte';
@@ -27,30 +26,27 @@
   let elegida = $state('suficiente');
   let pidiendo = $state(false);
   let ahora = $state(Date.now());
-  let version = $state(0);
-  let transcripcion = crearTranscripcion();
+  let accion = $state(null); // solo el nombre de lo que hace la sesión: nunca qué busca (no debe filtrarse)
+  let recorrigiendo = $state(false);
   const reloj = setInterval(() => (ahora = Date.now()), 1000);
 
   const quitar = suscribir(ref, (msg) => {
-    if (!examen || msg.nodo !== nodo.id) return;
+    if (!examen) return;
+    // Tras una reconexión se perdieron los avisos: se vuelve a leer el examen.
+    if (msg.tipo === 'reconexion') {
+      api.examen(ref.carpetaId, ref.ideaId, nodo.id, examen.id).then((e) => (examen = e)).catch(() => {});
+      return;
+    }
+    if (msg.nodo !== nodo.id) return;
     if (msg.tipo === 'examen' && msg.examen.id === examen.id) {
       examen = msg.examen;
-      if (!['generando', 'corrigiendo'].includes(examen.estado)) (transcripcion = crearTranscripcion()), version++;
-    } else if (msg.tipo === 'examen-evento' && msg.id === examen.id) {
-      transcripcion.aplicar(msg.ev);
-      version++;
-    } else if (msg.tipo === 'reconexion') api.examen(ref.carpetaId, ref.ideaId, nodo.id, examen.id).then((e) => (examen = e));
+      if (!['generando', 'corrigiendo'].includes(examen.estado)) accion = null;
+    } else if (msg.tipo === 'examen-evento' && msg.id === examen.id && msg.ev.type === 'accion') accion = msg.ev.herramienta;
   });
   onDestroy(() => {
     quitar();
     clearInterval(reloj);
     for (const g of guardados.values()) g.vaciar();
-  });
-
-  let vivo = $derived.by(() => {
-    version;
-    const b = transcripcion.bloques;
-    return { ultimo: b.at(-1) };
   });
 
   async function generar() {
@@ -101,10 +97,14 @@
   }
 
   async function recorregir() {
+    if (recorrigiendo) return;
+    recorrigiendo = true;
     try {
       examen = await api.recorregirExamen(ref.carpetaId, ref.ideaId, nodo.id, examen.id);
     } catch (e) {
       avisar(`No se pudo corregir: ${e.message}`, 'error');
+    } finally {
+      recorrigiendo = false;
     }
   }
 
@@ -151,7 +151,7 @@
       <div class="espera">
         <span class="luz"></span>
         <p>{examen.estado === 'generando' ? 'La sesión está preparando tu examen…' : 'La sesión está corrigiendo tus respuestas…'}</p>
-        {#if vivo.ultimo?.tipo === 'herramienta'}<p class="accion">{ACCION[vivo.ultimo.herramienta] ?? 'Trabajando'}{vivo.ultimo.query ? `: «${vivo.ultimo.query}»` : ''}</p>{/if}
+        {#if accion}<p class="accion">{ACCION[accion] ?? 'Trabajando'}…</p>{/if}
       </div>
     {:else if examen.estado === 'error'}
       <p class="fallo">No se pudo generar el examen: {examen.error}</p>
@@ -197,7 +197,7 @@
         </ol>
       {:else}
         <p class="fallo">La corrección falló: {examen.error ?? 'sin detalle'}.</p>
-        <div class="acciones"><button class="boton" onclick={recorregir}>Volver a corregir</button></div>
+        <div class="acciones"><button class="boton" disabled={recorrigiendo} onclick={recorregir}>Volver a corregir</button></div>
       {/if}
     {/if}
   </div>

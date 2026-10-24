@@ -169,6 +169,8 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
   });
   app.get('/api/carpetas/:c/ideas/:i/registros/:archivo', async (req, reply) => {
     const dir = path.join(ideas.dirIdea(req.params.c, req.params.i), 'registro');
+    // Solo los registros de análisis y germinación (no los de exámenes, glosas… en subcarpetas).
+    if (!/^[^/\\]+\.jsonl$/.test(req.params.archivo)) throw new Error('ruta-invalida');
     const texto = await fsp.readFile(rutaSegura(dir, req.params.archivo), 'utf8').catch((e) => {
       throw new Error(e.message === 'ruta-invalida' ? e.message : 'registro-no-existe');
     });
@@ -309,7 +311,9 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
 
   app.get('/archivos/*', async (req, reply) => {
     const rel = req.params['*'];
-    if (rel.split('/').some((s) => s.startsWith('.'))) throw new Error('ruta-invalida');
+    // Los registros de ejecución (stream completo de las sesiones, con su pensamiento) no se sirven:
+    // en los exámenes contienen la rúbrica.
+    if (rel.split('/').some((s) => s.startsWith('.') || s === 'registro')) throw new Error('ruta-invalida');
     const ruta = rutaSegura(cfg.datos, rel);
     const st = await fsp.stat(ruta).catch(() => null);
     if (!st?.isFile()) return reply.code(404).send({ error: 'no-existe' });

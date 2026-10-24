@@ -8,6 +8,11 @@ const DIFICULTADES = new Set(['suficiente', 'avanzado', 'experto']);
 const RE_ADJUNTO = /^germinacion\/examenes\/[a-z0-9-]{1,40}\/x-[a-z0-9]+-[a-f0-9]{6}\/adjuntos\/[^/\\]+$/;
 const MAX_TEXTO = 60000;
 const sinComodin = (p) => p.replace(/\/\*\*$/, '');
+const herramientasDe = (ev) => {
+  if (ev.type === 'stream_event' && ev.event?.type === 'content_block_start' && ['tool_use', 'server_tool_use'].includes(ev.event.content_block?.type)) return [ev.event.content_block.name];
+  if (ev.type === 'assistant') return (ev.message?.content ?? []).filter((c) => c.type === 'tool_use' || c.type === 'server_tool_use').map((c) => c.name);
+  return [];
+};
 
 // Exámenes de dominio de los nodos de estudio: se generan al momento con la dificultad elegida y los
 // corrige la misma sesión, que es la única que conoce la rúbrica. Aprobar (≥ 3/5) domina el nodo.
@@ -59,7 +64,9 @@ export function crearMotorExamenes({
       rutaRegistro: path.join(ideas.dirIdea(ref.carpetaId, ref.ideaId), 'registro', 'examenes', `${n}-${id}-${marca}.jsonl`),
       alEvento: (ev) => {
         if (ev.type === 'system' && ev.subtype === 'init' && ev.session_id) sesion = ev.session_id;
-        emisor.emit('examen-evento', { ref, nodo: n, id, ev });
+        // Al navegador solo llega QUÉ hace la sesión (buscar, leer…), nunca qué busca, ni su texto ni su
+        // pensamiento: ahí elabora la rúbrica y elige de dónde saca los problemas.
+        for (const herramienta of herramientasDe(ev)) emisor.emit('examen-evento', { ref, nodo: n, id, ev: { type: 'accion', herramienta } });
         cola.registrarCuota(ev);
       },
       senal: new AbortController().signal,
@@ -79,8 +86,20 @@ export function crearMotorExamenes({
 
   const textoFallo = (r) => r.errorArranque ?? (r.resultado?.result || r.stderr?.trim().split('\n').at(-1) || 'La sesión no respondió');
 
+  const reservados = new Set(); // generaciones aceptadas que aún no han creado su examen
   async function generar(ref, n, { dificultad } = {}) {
     if (!DIFICULTADES.has(dificultad)) throw new Error('dificultad-invalida');
+    const kn = `${ref.carpetaId}/${ref.ideaId}/${n}`;
+    if (reservados.has(kn)) throw new Error('examen-abierto');
+    reservados.add(kn);
+    try {
+      return await generarReservado(ref, n, dificultad);
+    } finally {
+      reservados.delete(kn);
+    }
+  }
+
+  async function generarReservado(ref, n, dificultad) {
     const { mapa, nodo } = await nodoEstudio(ref, n);
     const idea = await comprobarIdea(ref);
     const abiertos = (await examenes.listar(ref.carpetaId, ref.ideaId, n)).filter((e) => ['generando', 'abierto', 'corrigiendo'].includes(e.estado));
@@ -133,7 +152,10 @@ export function crearMotorExamenes({
     const e = await abierto(ref, n, id);
     if (!e.preguntas.some((p) => p.id === pregunta)) throw new Error('pregunta-invalida');
     const lista = Array.isArray(adjuntos) ? adjuntos.map(String).filter((a) => RE_ADJUNTO.test(a) && a.includes(`/${id}/adjuntos/`)) : undefined;
-    const x = await examenes.actualizar(ref.carpetaId, ref.ideaId, n, id, (actual) => ({
+    const x = await examenes.actualizar(ref.carpetaId, ref.ideaId, n, id, (actual) => {
+      // Comprobado dentro de la escritura en serie: un autoguardado que llega tras la entrega no se cuela.
+      if (actual.estado !== 'abierto') throw new Error('examen-cerrado');
+      return {
       respuestas: {
         ...actual.respuestas,
         [pregunta]: {
@@ -141,7 +163,8 @@ export function crearMotorExamenes({
           adjuntos: lista ?? actual.respuestas?.[pregunta]?.adjuntos ?? [],
         },
       },
-    }));
+      };
+    });
     emitir(ref, n, x);
     return x;
   }
@@ -194,9 +217,10 @@ export function crearMotorExamenes({
   // Reintentar la corrección de un examen entregado cuya corrección falló.
   async function reintentarCorreccion(ref, n, id) {
     await comprobarIdea(ref);
-    const e = await examenes.leer(ref.carpetaId, ref.ideaId, n, id);
-    if (e.estado !== 'entregado') throw new Error('examen-cerrado');
-    const x = await examenes.actualizar(ref.carpetaId, ref.ideaId, n, id, { estado: 'corrigiendo', error: null });
+    const x = await examenes.actualizar(ref.carpetaId, ref.ideaId, n, id, (actual) => {
+      if (actual.estado !== 'entregado') throw new Error('examen-cerrado');
+      return { estado: 'corrigiendo', error: null };
+    });
     emitir(ref, n, x);
     corregir(ref, n, x).catch((err) => console.error('[examenes] corregir', err));
     return x;
@@ -204,6 +228,11 @@ export function crearMotorExamenes({
 
   // Al arrancar: la generación cortada queda en error; lo que se corregía, se vuelve a corregir;
   // un examen abierto con el tiempo vencido se entrega, y si no, se vuelve a programar su límite.
+  const pendientes = [];
+  function reanudarCorrecciones() {
+    for (const [ref, e] of pendientes.splice(0)) corregir(ref, e.nodo, e).catch((err) => console.error('[examenes] corregir', err));
+  }
+
   async function recuperar() {
     for (const idea of await ideas.listar()) {
       const ref = { carpetaId: idea.carpetaId, ideaId: idea.id };
@@ -212,7 +241,8 @@ export function crearMotorExamenes({
           await guard.restaurar([`${figuras(ref, e.id)}/**`]);
           await examenes.actualizar(ref.carpetaId, ref.ideaId, e.nodo, e.id, { estado: 'error', error: 'Se interrumpió al reiniciar el servidor.' });
         } else if (e.estado === 'corrigiendo') {
-          corregir(ref, e.nodo, e).catch((err) => console.error('[examenes] corregir', err));
+          // Se relanza después de que la cola se recupere (su guard no debe revertir esta corrección).
+          pendientes.push([ref, e]);
         } else if (e.estado === 'abierto' && e.limite) {
           if (vencido(e)) await entregar(ref, e.nodo, e.id, { automatico: true }).catch(() => {});
           else programarLimite(ref, e.nodo, e.id, Date.parse(e.limite) - reloj());
@@ -221,5 +251,5 @@ export function crearMotorExamenes({
     }
   }
 
-  return Object.assign(emisor, { generar, responder, adjuntar, entregar, reintentarCorreccion, recuperar, objetivosActivos });
+  return Object.assign(emisor, { generar, responder, adjuntar, entregar, reintentarCorreccion, recuperar, reanudarCorrecciones, objetivosActivos });
 }

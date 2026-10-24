@@ -179,3 +179,30 @@ test('el verificador no revierte la enmienda que una glosa hace a la vez en otro
   await fin(v.id);
   assert.equal(await fs.readFile(path.join(cfg.datos, doc), 'utf8'), 'enmienda de la glosa');
 });
+
+test('I3: al arrancar, una verificación cortada no deja documentos en nodos/', async () => {
+  const { cfg, motor, verificaciones, ref, rutaIdea } = await preparar();
+  await verificaciones.crear('ia', ref.ideaId, 'i1', { texto: 'x', adjuntos: [] });
+  await fs.writeFile(path.join(cfg.datos, rutaIdea, 'germinacion/nodos/huerfano.md'), 'a medias');
+  await fs.writeFile(path.join(cfg.datos, rutaIdea, 'germinacion/nodos/e1.md'), 'retocado');
+  await motor.recuperar();
+  await assert.rejects(fs.access(path.join(cfg.datos, rutaIdea, 'germinacion/nodos/huerfano.md')));
+  assert.equal(await fs.readFile(path.join(cfg.datos, rutaIdea, 'germinacion/nodos/e1.md'), 'utf8'), '# Álgebra lineal');
+});
+
+test('menor: la ampliación exige incógnitas que dependan del nodo resuelto', async () => {
+  const { cfg, motor, falso, ref, rutaIdea, fin, verificaciones } = await preparar();
+  const v = await motor.enviar(ref, 'i1', { texto: 'x' });
+  await hasta(() => falso.llamadas[0]);
+  const base = `${rutaIdea}/germinacion`;
+  await falso.responder(0, veredicto(true), {
+    escribir: {
+      [`${base}/verificaciones/i1/${v.id}/ampliacion.json`]: JSON.stringify({ nodos: [{ id: 'e9', tipo: 'estudio', titulo: 'x', documento: 'nodos/e9.md', depende: [], recursos: [] }] }),
+      [`${base}/nodos/e9.md`]: 'x',
+    },
+  });
+  await fin(v.id);
+  const r = await verificaciones.leer('ia', ref.ideaId, 'i1', v.id);
+  assert.match(r.aviso ?? '', /ampliación/);
+  assert.equal(JSON.parse(await fs.readFile(path.join(cfg.datos, base, 'mapa.json'), 'utf8')).nodos.length, MAPA.nodos.length);
+});

@@ -21,7 +21,12 @@
   let transcripcion = crearTranscripcion();
 
   const quitar = suscribir(ref, (msg) => {
-    if (!v || msg.nodo !== nodo.id) return;
+    if (!v) return;
+    if (msg.tipo === 'reconexion') {
+      api.verificaciones(ref.carpetaId, ref.ideaId, nodo.id).then((l) => (v = l.find((x) => x.id === v.id) ?? v)).catch(() => {});
+      return;
+    }
+    if (msg.nodo !== nodo.id) return;
     if (msg.tipo === 'verificacion' && msg.verificacion.id === v.id) v = msg.verificacion;
     else if (msg.tipo === 'verificacion-evento' && msg.id === v.id) {
       transcripcion.aplicar(msg.ev);

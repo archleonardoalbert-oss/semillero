@@ -63,7 +63,9 @@
   const quitarRegistro = suscribir(ref, (msg) => {
     if (msg.nodo !== nodo.id) return;
     if (msg.tipo === 'examen' || msg.tipo === 'verificacion') {
-      cargarRegistro();
+      // Solo cuando cambia de estado: cada autoguardado del examen también emite un aviso.
+      const x = msg.examen ?? msg.verificacion;
+      if (registro.find((r) => r.id === x.id)?.estado !== x.estado) cargarRegistro();
       if (['corregido', 'aceptada'].includes(msg.examen?.estado ?? msg.verificacion?.estado)) alCambiar();
     }
   });
