@@ -37,6 +37,14 @@
   });
 
   let mapa = $derived(datos?.mapa);
+  // Las raíces del árbol: cada mensaje del manuscrito, en orden.
+  let raices = $derived.by(() => {
+    let dictamenes = 0;
+    return idea.hilo.map((m) => ({
+      id: m.archivo,
+      etiqueta: m.n === 1 ? 'Tu idea' : m.autor === 'claude' ? `Dictamen ${++dictamenes}` : 'Tu réplica',
+    }));
+  });
   let progreso = $derived(datos?.progreso);
   let enProceso = $derived(idea.estado === 'en-proceso');
   let fase = $derived(mapa?.fase ?? 'preparando');
@@ -111,8 +119,8 @@
   <div class="escenario">
     {#if mapa?.fase === 'mapa'}
       <div class="capa" in:fade={{ duration: 500 }}>
-        <Arbol {mapa} {progreso} titulo={idea.titulo} clave="{ref.carpetaId}/{ref.ideaId}"
-          alAbrirNodo={abrirLamina} alAbrirSemilla={alVerManuscrito} />
+        <Arbol {mapa} {progreso} titulo={idea.titulo} clave="{ref.carpetaId}/{ref.ideaId}" {raices}
+          alAbrirNodo={abrirLamina} alAbrirRaiz={(archivo) => alVerManuscrito(archivo)} />
       </div>
     {:else}
       <!-- Plántula: la semilla brota mientras la sesión se prepara. -->
@@ -156,10 +164,10 @@
 
     {#if mapa?.fase === 'mapa'}
       <ul class="leyenda" aria-label="Leyenda">
-        <li><span class="l-estudio"></span>Estudio</li>
-        <li><span class="l-incognita"></span>Incógnita</li>
-        <li><span class="l-abierto"></span>Problema abierto</li>
-        <li><span class="l-hoja"></span>Recurso</li>
+        <li><span class="l-estudio"></span>Tronco: lo que estudiar</li>
+        <li><span class="l-incognita"></span>Hoja: incógnita</li>
+        <li><span class="l-abierto"></span>Fruto: problema abierto</li>
+        <li><span class="l-raiz"></span>Raíces: el manuscrito</li>
         <li class="pista">Arrastra para moverte, usa la rueda para ampliar y haz doble clic para encajar</li>
       </ul>
     {/if}
@@ -339,20 +347,23 @@
     height: 0.8rem;
   }
   .l-estudio {
-    border: 2px solid var(--aceptada);
+    border: 2px solid #6b8f7a;
     border-radius: 50%;
   }
   .l-incognita {
-    border: 2px solid var(--aclaracion);
-    transform: rotate(45deg) scale(0.8);
+    border: 1.5px solid var(--aclaracion);
+    border-radius: 0 70% 0 70%;
+    background: rgb(179 156 255 / 0.16);
   }
   .l-abierto {
-    border: 1px dashed var(--aclaracion);
+    border: 1.5px solid #e88fb4;
     border-radius: 50%;
+    background: rgb(232 143 180 / 0.2);
   }
-  .l-hoja {
-    background: #f0b45a;
-    border-radius: 0 70% 0 70%;
+  .l-raiz {
+    border-bottom: 2px solid #8a6a3d;
+    border-left: 2px solid #8a6a3d;
+    border-radius: 0 0 0 70%;
   }
   .redactor {
     position: absolute;

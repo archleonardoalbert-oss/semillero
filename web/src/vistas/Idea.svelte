@@ -1,5 +1,5 @@
 <script>
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { slide } from 'svelte/transition';
   import Editor from '../componentes/Editor.svelte';
   import Dictamen from '../componentes/Dictamen.svelte';
@@ -42,6 +42,18 @@
   let ultimo = $derived(idea?.hilo.at(-1));
   let replicaPendiente = $derived(ultimo?.autor === 'usuario' && ultimo.n > 1 ? ultimo : null);
   let germina = $derived(Boolean(idea?.germinacion));
+
+  // Desde las raíces del árbol: abre el manuscrito y lo desplaza al mensaje pulsado.
+  async function verMensaje(archivo = null) {
+    verManuscrito = true;
+    await tick();
+    const el = archivo && document.getElementById(`m-${archivo}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.classList.add('resaltado');
+      setTimeout(() => el.classList.remove('resaltado'), 2200);
+    } else window.scrollTo({ top: 0 });
+  }
   let ultimoDictamen = $derived(idea?.hilo.findLast((m) => m.autor === 'claude'));
   let veredicto = $derived(idea?.veredicto ?? ultimoDictamen?.meta?.veredicto ?? null);
   // Se puede germinar todo salvo lo rechazado rotundamente; fuera de «Aceptada», pasando por «Antes de germinar».
@@ -184,7 +196,7 @@
 {#if error}
   <p class="error">{error}</p>
 {:else if idea && germina && !verManuscrito}
-  <Germinacion {idea} {ref} {base} {glosas} {carpeta} alVerManuscrito={() => (verManuscrito = true)} />
+  <Germinacion {idea} {ref} {base} {glosas} {carpeta} alVerManuscrito={verMensaje} />
 {:else if idea}
   {#if condensando}<div class="semilla-cae" aria-hidden="true"></div>{/if}
   <article class="pagina" class:condensando style:--origen={origen}>
@@ -216,7 +228,7 @@
 
     {#each idea.hilo as m (m.archivo)}
       {#if m.autor === 'usuario'}
-        <section class="tu" class:original={m.n === 1}>
+        <section class="tu" class:original={m.n === 1} id="m-{m.archivo}">
           <header>
             <span class="voz">{m.n === 1 ? 'Tu idea' : 'Tu réplica'}</span>
             {#if m.n === 1 && !enProceso}<span class="guardado">{guardado}</span>{/if}
@@ -232,7 +244,9 @@
           {/if}
         </section>
       {:else}
+        <div id="m-{m.archivo}" class="ancla-mensaje">
         <Dictamen mensaje={m} {base} {glosas} bloqueado={enProceso} {idea} vigente={m === ultimoDictamen && !germina} alElegirCamino={elegirCamino} fecha={m === idea.hilo.findLast((x) => x.autor === 'claude') ? fecha(idea.ultimoVeredicto) : ''} />
+        </div>
       {/if}
     {/each}
 
@@ -289,6 +303,18 @@
     max-width: 73.6rem;
     margin: 0 auto;
     padding: 2.5rem 0 6rem;
+  }
+  .ancla-mensaje {
+    scroll-margin-top: 5rem;
+    border-radius: var(--radio-m);
+    transition: background 0.6s;
+  }
+  .tu {
+    scroll-margin-top: 5rem;
+    transition: background 0.6s;
+  }
+  :global(.resaltado) {
+    background: rgb(240 180 90 / 0.08);
   }
   .pagina.condensando {
     transform-origin: var(--origen);
