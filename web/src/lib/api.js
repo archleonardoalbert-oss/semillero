@@ -74,6 +74,16 @@ export const api = {
   analisis: (accion, refs) => pedir('POST', `/api/analisis/${accion}`, { refs }),
   ajustes: () => pedir('GET', '/api/ajustes'),
   tipos: () => pedir('GET', '/api/tipos'),
+  // El ejecutable autónomo de una germinación: tarda unos segundos en compilarse.
+  exportar: async (c, i, so) => {
+    const r = await fetch(`/api/carpetas/${encodeURIComponent(c)}/ideas/${encodeURIComponent(i)}/exportar/${so}`);
+    if (!r.ok) {
+      const datos = await r.json().catch(() => ({}));
+      throw Object.assign(new Error(datos.error ?? `HTTP ${r.status}`), { codigo: r.status });
+    }
+    const nombre = r.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1] ?? `germinacion-${so}`;
+    return { nombre, blob: await r.blob() };
+  },
   guardarAjustes: (datos) => pedir('PUT', '/api/ajustes', datos),
 };
 

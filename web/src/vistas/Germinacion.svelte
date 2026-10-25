@@ -141,6 +141,32 @@
     }
   }
 
+  // Exportar: un ejecutable autónomo con la germinación completa para leerla en otro ordenador.
+  let exportando = $state(false); // panel abierto
+  let compilando = $state(null); // 'linux' | 'windows' mientras se genera
+  const NOMBRE_SO = { linux: 'Linux', windows: 'Windows' };
+  async function exportar(so) {
+    compilando = so;
+    try {
+      const { nombre, blob } = await api.exportar(ref.carpetaId, ref.ideaId, so);
+      const url = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement('a'), { href: url, download: nombre });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      avisar(`Descargado ${nombre}.`);
+    } catch (e) {
+      avisar(
+        { 'sin-mapa': 'Esta germinación todavía no tiene árbol que exportar.', 'visor-no-construido': 'Falta construir el visor: ejecuta npm run build.' }[e.message]
+          ?? `No se pudo exportar: ${e.message}`,
+        'error',
+      );
+    } finally {
+      compilando = null;
+    }
+  }
+
   function irANodo(id) {
     const n = mapa.nodos.find((x) => x.id === id);
     if (n) abrirLamina(n, { x: innerWidth / 2, y: innerHeight / 2 });
@@ -197,6 +223,9 @@
           Comunicar avances{#if cambios.length}<span class="cuenta">{cambios.length}</span>{/if}
         </button>
       {/if}
+      {#if mapa?.fase === 'mapa'}
+        <button class="boton discreto" aria-expanded={exportando} onclick={() => (exportando = !exportando)}>Exportar</button>
+      {/if}
       {#if enProceso}<button class="boton discreto" onclick={() => (vivoAbierto = !vivoAbierto)}>{vivoAbierto ? 'Ocultar' : 'Ver'} la sesión</button>{/if}
     </nav>
 
@@ -208,6 +237,20 @@
         <li><span class="l-raiz"></span>Raíces: el manuscrito</li>
         <li class="pista">Arrastra para moverte, usa la rueda para ampliar y haz doble clic para encajar</li>
       </ul>
+    {/if}
+
+    {#if exportando}
+      <div class="exportador" transition:fly={{ y: -12, duration: 280, easing: cubicOut }}>
+        <p>Un solo archivo con el árbol completo, los documentos de cada nodo, la Visión del camino, tu idea, el dictamen y todos los recursos descargados. Al abrirlo se abre en el navegador, solo para leer: sin sesiones ni estados.</p>
+        <div class="pie">
+          {#each ['linux', 'windows'] as so (so)}
+            <button class="boton" disabled={compilando !== null} onclick={() => exportar(so)}>
+              {compilando === so ? `Generando para ${NOMBRE_SO[so]}…` : `Para ${NOMBRE_SO[so]}`}
+            </button>
+          {/each}
+        </div>
+        <p class="nota">En Linux, antes de abrirlo dale permiso de ejecución: clic derecho, Propiedades, «Es ejecutable».</p>
+      </div>
     {/if}
 
     {#if redactando}
@@ -433,6 +476,29 @@
     border-bottom: 2px solid #8a6a3d;
     border-left: 2px solid #8a6a3d;
     border-radius: 0 0 0 70%;
+  }
+  .exportador {
+    position: absolute;
+    top: 4.6rem;
+    right: 2rem;
+    z-index: 4;
+    width: min(26rem, 90vw);
+    padding: 1rem 1.2rem;
+    border: 1px solid var(--linea-viva);
+    border-radius: var(--radio-s);
+    background: var(--superficie);
+  }
+  .exportador p {
+    margin: 0 0 0.8rem;
+    color: var(--liquen-tenue);
+    font-size: var(--t-1);
+  }
+  .exportador .pie {
+    justify-content: flex-start;
+  }
+  .exportador .nota {
+    margin: 0.8rem 0 0;
+    color: var(--liquen-apagado);
   }
   .redactor {
     position: absolute;

@@ -8,7 +8,7 @@
     "test": "node --test \"test/**/*.test.js\"",
     "start": "node server/index.js",
     "dev": "vite --config web/vite.config.js",
-    "build": "vite build --config web/vite.config.js"
+    "build": "vite build --config web/vite.config.js && vite build --config web/vite.visor.config.js"
   },
   "dependencies": {
     "@fastify/static": "^10.1.7",
