@@ -23,12 +23,51 @@
     }
   }
 
+  const CONTEXTO = [
+    ['pais', 'País o región', 'Dónde vives y desde dónde trabajarías. Cambia la normativa, el mercado y las oportunidades.', 1],
+    ['capital', 'Capital disponible', 'Cuánto podrías invertir sin poner en riesgo lo esencial.', 1],
+    ['tiempo', 'Tiempo disponible', 'Horas a la semana y durante cuánto tiempo, junto a tus estudios o tu trabajo.', 1],
+    ['habilidades', 'Habilidades y formación', 'Lo que ya sabes hacer bien, lo que estudias y tu experiencia.', 3],
+    ['metas', 'Metas', 'Qué quieres conseguir: ingresos, investigar, aprender, un portafolio, independencia…', 3],
+  ];
+  let contexto = $state(null);
+  let guardandoContexto = $state(false);
+  api.ajustes().then((r) => (contexto = { ...r.contexto }));
+
+  async function guardarContexto(ev) {
+    ev.preventDefault();
+    guardandoContexto = true;
+    try {
+      contexto = { ...(await api.guardarAjustes({ contexto })).contexto };
+      avisar('Contexto guardado: lo leerán todas las sesiones.');
+    } catch (e) {
+      avisar(`No se pudo guardar: ${e.message}`, 'error');
+    } finally {
+      guardandoContexto = false;
+    }
+  }
+
   const pct = (x) => (x == null ? 'sin datos' : `${Math.round(x * 100)} %`);
   const hora = (s) => (s ? new Date(s * 1000).toLocaleString('es', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '');
 </script>
 
 <div class="pagina">
   <h1>Ajustes</h1>
+
+  {#if contexto}
+    <form class="contexto" onsubmit={guardarContexto}>
+      <h2>Tu contexto</h2>
+      <p class="nota">Todas las sesiones leen esto antes de juzgar una idea: una idea buena para alguien con capital y tiempo puede ser mala para ti. Rellena solo lo que quieras.</p>
+      {#each CONTEXTO as [clave, nombre, ayuda, filas] (clave)}
+        <label>
+          <span>{nombre}</span>
+          <textarea class="campo" rows={filas} maxlength="2000" bind:value={contexto[clave]}></textarea>
+          <small>{ayuda}</small>
+        </label>
+      {/each}
+      <button class="boton primario" disabled={guardandoContexto}>Guardar contexto</button>
+    </form>
+  {/if}
 
   <section class="cuota">
     <h2>Cuota de Claude</h2>
@@ -99,6 +138,18 @@
   }
   .cuota {
     margin-bottom: 2.5rem;
+  }
+  .contexto {
+    margin-bottom: 3rem;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid var(--linea);
+  }
+  .contexto h2,
+  .contexto .nota {
+    margin: 0;
+  }
+  .contexto textarea {
+    resize: vertical;
   }
   dl {
     display: grid;

@@ -1,4 +1,5 @@
 <script>
+  import { getContext } from 'svelte';
   import { onDestroy } from 'svelte';
   import { cubicOut, cubicIn } from 'svelte/easing';
   import { api } from '../lib/api.js';
@@ -15,10 +16,12 @@
   // La lámina de un nodo: brota desde el nodo pulsado y ocupa la pantalla.
   let { nodo, mapa, progreso, ref, base, glosas, desde, bloqueado = false, alCerrar, alIrA, alCambiar } = $props();
 
-  const ESTADOS = {
+  const vocabActual = getContext('vocab') ?? (() => undefined);
+  let vocab = $derived(vocabActual() ?? { hoja: 'Incógnita', fruto: 'Problema abierto', estadosIncognita: ['Abierta', 'Atacándola', 'Resuelta'], dominio: 'examen' });
+  let ESTADOS = $derived({
     estudio: [['pendiente', 'Pendiente'], ['en-curso', 'Estudiando'], ['hecho', 'Dominado']],
-    incognita: [['abierta', 'Abierta'], ['atacando', 'Atacándola'], ['resuelta', 'Resuelta']],
-  };
+    incognita: [['abierta', vocab.estadosIncognita[0]], ['atacando', vocab.estadosIncognita[1]], ['resuelta', vocab.estadosIncognita[2]]],
+  });
   const TIPO_RECURSO = { libro: 'Libro', articulo: 'Artículo', curso: 'Curso', web: 'Web', otro: 'Recurso' };
 
   let documento = $state(null);
@@ -138,7 +141,7 @@
     <header>
       <p class="clase">
         {#if nodo.tipo === 'incognita'}
-          <span class="marca-tipo">◇</span>{nodo.abierto ? 'Problema abierto' : 'Incógnita'}{#if nodo.dificultad}<span class="dif">dificultad {nodo.dificultad}</span>{/if}
+          <span class="marca-tipo">◇</span>{nodo.abierto ? vocab.fruto : vocab.hoja}{#if nodo.dificultad}<span class="dif">dificultad {nodo.dificultad}</span>{/if}
         {:else}
           <span class="marca-tipo">●</span>Ruta de estudio{#if nodo.duracion}<span class="dif">{nodo.duracion}</span>{/if}
         {/if}
@@ -148,7 +151,7 @@
       <div class="estados" role="radiogroup" aria-label="Tu progreso">
         {#each ESTADOS[nodo.tipo] as [valor, texto] (valor)}
           <button role="radio" aria-checked={estado === valor} class:elegido={estado === valor} class={valor} onclick={() => marcar(valor)}
-            title={valor === 'hecho' ? 'Requiere aprobar un examen' : valor === 'resuelta' ? 'Requiere pasar la verificación' : ''}>
+            title={valor === 'hecho' ? (vocab.dominio === 'examen' ? 'Requiere aprobar un examen' : 'Requiere superar una prueba: caso práctico o examen') : valor === 'resuelta' ? 'Requiere pasar la verificación' : ''}>
             {texto}{#if (valor === 'hecho' || valor === 'resuelta') && estado !== valor}<span class="candado" aria-hidden="true"> ⌁</span>{/if}
           </button>
         {/each}

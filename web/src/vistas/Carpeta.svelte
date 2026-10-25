@@ -4,6 +4,8 @@
   import { global, refrescar, avisar } from '../lib/estado.svelte.js';
   import { ir, enlace } from '../lib/ruta.svelte.js';
   import { ETIQUETA_ESTADO, COLOR_ESTADO } from '../lib/estados.js';
+  import { tipoDe, cargarTipos } from '../lib/tipos.svelte.js';
+  import SelectorTipo from '../componentes/SelectorTipo.svelte';
 
   let { carpetaId } = $props();
 
@@ -12,10 +14,14 @@
   let titulo = $state('');
   let nombre = $state('');
   let creando = $state(false);
+  let descripcion = $state('');
+  let cambiandoTipo = $state(false);
+  cargarTipos();
 
   let carpeta = $derived(global.carpetas.find((c) => c.id === carpetaId));
   $effect(() => {
     if (carpeta) nombre = carpeta.nombre;
+    if (carpeta) descripcion = carpeta.descripcion ?? '';
   });
   $effect(() => {
     global.resumen;
@@ -46,6 +52,23 @@
     refrescar();
   }
 
+  async function guardarDescripcion() {
+    if (descripcion.trim() === (carpeta.descripcion ?? '')) return;
+    await api.editarCarpeta(carpetaId, { descripcion }).catch((e) => avisar(e.message, 'error'));
+    refrescar();
+  }
+
+  async function cambiarTipo(t) {
+    if (t === carpeta.tipo) return (cambiandoTipo = false);
+    try {
+      await api.editarCarpeta(carpetaId, { tipo: t });
+      cambiandoTipo = false;
+      refrescar();
+    } catch (e) {
+      avisar(e.message, 'error');
+    }
+  }
+
   async function borrar() {
     if (!confirm(`¿Borrar el bancal «${carpeta.nombre}»?`)) return;
     try {
@@ -63,8 +86,20 @@
     <header style:--color={carpeta.color}>
       <input class="nombre" bind:value={nombre} onblur={renombrar} onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
         aria-label="Nombre del bancal" maxlength="60" />
-      <p>{ideas?.length ?? '…'} {ideas?.length === 1 ? 'idea' : 'ideas'}</p>
+      <p>
+        {tipoDe(carpeta)?.nombre ?? ''}, {ideas?.length ?? '…'} {ideas?.length === 1 ? 'idea' : 'ideas'}
+        <button class="enlace" onclick={() => (cambiandoTipo = !cambiandoTipo)}>{cambiandoTipo ? 'Dejar el tipo como está' : 'Cambiar el tipo'}</button>
+      </p>
+      <textarea class="descripcion" bind:value={descripcion} onblur={guardarDescripcion} rows="2" maxlength="2000"
+        aria-label="Descripción del bancal" placeholder="Añade una descripción: de qué va este bancal y qué buscas. Las sesiones la leen."></textarea>
     </header>
+
+    {#if cambiandoTipo}
+      <div class="tipo">
+        <p class="nota">El tipo decide cómo se juzgan las ideas de este bancal. Lo ya analizado no cambia; las sesiones nuevas y las que retomes usarán los criterios nuevos.</p>
+        <SelectorTipo valor={carpeta.tipo} alElegir={cambiarTipo} />
+      </div>
+    {/if}
 
     <form class="sembrar" onsubmit={nueva}>
       <input class="campo" bind:value={titulo} placeholder="Título de una idea nueva" maxlength="140" />
@@ -131,6 +166,47 @@
   header p {
     margin: 0.3rem 0 0;
     color: var(--liquen-tenue);
+  }
+  .enlace {
+    margin-left: 0.8rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--tu);
+    font: inherit;
+    cursor: pointer;
+  }
+  .enlace:hover {
+    text-decoration: underline;
+  }
+  .descripcion {
+    width: 100%;
+    margin-top: 0.7rem;
+    padding: 0.3rem 0;
+    border: 0;
+    border-bottom: 1px dashed transparent;
+    background: none;
+    color: var(--liquen);
+    font-family: var(--serif);
+    font-size: var(--t1);
+    font-style: italic;
+    resize: vertical;
+  }
+  .descripcion:hover,
+  .descripcion:focus {
+    outline: none;
+    border-bottom-color: var(--linea-viva);
+  }
+  .tipo {
+    margin-top: 1.6rem;
+    padding: 1.2rem 1.4rem 0.4rem;
+    border: 1px solid var(--linea);
+    background: var(--superficie);
+  }
+  .nota {
+    margin: 0;
+    color: var(--liquen-tenue);
+    font-size: var(--t-1);
   }
   .sembrar {
     display: flex;

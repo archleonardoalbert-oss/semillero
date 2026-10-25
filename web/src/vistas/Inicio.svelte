@@ -2,6 +2,8 @@
   import Micelio from '../componentes/Micelio.svelte';
   import BotonPrincipal from '../componentes/BotonPrincipal.svelte';
   import PanelSeleccion from '../componentes/PanelSeleccion.svelte';
+  import SelectorTipo from '../componentes/SelectorTipo.svelte';
+  import { catalogo, cargarTipos } from '../lib/tipos.svelte.js';
   import { global, refrescar, avisar } from '../lib/estado.svelte.js';
   import { api } from '../lib/api.js';
   import { ir, enlace } from '../lib/ruta.svelte.js';
@@ -13,6 +15,10 @@
   let nombre = $state('');
   let color = $state(COLORES[0]);
   let creando = $state(false);
+  let tipo = $state(null);
+  let descripcion = $state('');
+  cargarTipos();
+  const nombreTipo = (id) => catalogo.tipos.find((t) => t.id === id)?.nombre ?? '';
 
   let r = $derived(global.resumen);
   let contadores = $derived([
@@ -26,11 +32,13 @@
 
   async function crearCarpeta(ev) {
     ev.preventDefault();
-    if (!nombre.trim()) return;
+    if (!nombre.trim() || !tipo) return;
     creando = true;
     try {
-      const c = await api.crearCarpeta({ nombre, color });
+      const c = await api.crearCarpeta({ nombre, color, tipo, descripcion });
       nombre = '';
+      tipo = null;
+      descripcion = '';
       color = COLORES[(COLORES.indexOf(color) + 1) % COLORES.length];
       refrescar();
       ir(enlace.carpeta(c.id));
@@ -75,7 +83,7 @@
       <li>
         <a href={enlace.carpeta(c.id)} onclick={(e) => (e.preventDefault(), ir(enlace.carpeta(c.id)))}>
           <span class="marca" style:background={c.color}></span>
-          <span class="nombre">{c.nombre}</span>
+          <span class="nombre">{c.nombre}<small>{nombreTipo(c.tipo)}</small></span>
           <span class="semillas" aria-hidden="true">
             {#each c.ideas as i (i.id)}<span style:background={COLOR_ESTADO[i.estado]}></span>{/each}
           </span>
@@ -92,7 +100,14 @@
               style:background={k} onclick={() => (color = k)}></button>
           {/each}
         </div>
-        <button class="boton" disabled={!nombre.trim() || creando}>Crear bancal</button>
+        {#if nombre.trim()}
+          <div class="detalle">
+            <SelectorTipo valor={tipo} alElegir={(t) => (tipo = t)} />
+            <textarea class="campo" bind:value={descripcion} rows="3" maxlength="2000"
+              placeholder="Descripción (opcional): de qué va este bancal, qué buscas con estas ideas. Las sesiones la leerán."></textarea>
+          </div>
+        {/if}
+        <button class="boton" disabled={!nombre.trim() || !tipo || creando} title={nombre.trim() && !tipo ? 'Elige antes el tipo del bancal' : ''}>Crear bancal</button>
       </form>
     </li>
   </ul>
@@ -237,6 +252,18 @@
   }
   .nuevo .campo {
     flex: 1 1 18rem;
+  }
+  .detalle {
+    flex: 1 1 100%;
+  }
+  .detalle textarea {
+    width: 100%;
+    resize: vertical;
+  }
+  .bancales .nombre small {
+    display: block;
+    color: var(--liquen-apagado);
+    font-size: var(--t-1);
   }
   .colores {
     display: flex;

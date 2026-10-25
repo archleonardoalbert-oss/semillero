@@ -73,6 +73,7 @@ export const api = {
   activas: () => pedir('GET', '/api/activas'),
   analisis: (accion, refs) => pedir('POST', `/api/analisis/${accion}`, { refs }),
   ajustes: () => pedir('GET', '/api/ajustes'),
+  tipos: () => pedir('GET', '/api/tipos'),
   guardarAjustes: (datos) => pedir('PUT', '/api/ajustes', datos),
 };
 

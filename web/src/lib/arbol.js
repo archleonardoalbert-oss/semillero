@@ -33,7 +33,7 @@ function niveles(lista, porId, filtro) {
   return nivel;
 }
 
-export function disponer(mapa, { raices = [] } = {}) {
+export function disponer(mapa, { raices = [], vocab = { hoja: 'Incógnita', fruto: 'Problema abierto' } } = {}) {
   const nodos = mapa?.nodos ?? [];
   const porId = new Map(nodos.map((n) => [n.id, { ...n, depende: n.depende ?? [] }]));
   const estudios = [...porId.values()].filter((n) => n.tipo === 'estudio');
@@ -155,7 +155,7 @@ export function disponer(mapa, { raices = [] } = {}) {
     lista.forEach((n, k) => {
       const y = ys[k] - exceso;
       const texto = truncar(n.nodo.titulo);
-      const sub = n.tipo === 'incognita' ? `${n.nodo.abierto ? 'Problema abierto' : 'Incógnita'}${n.nodo.dificultad ? `, dificultad ${n.nodo.dificultad}` : ''}` : (n.nodo.duracion ?? 'Estudio');
+      const sub = n.tipo === 'incognita' ? `${n.nodo.abierto ? vocab.fruto : vocab.hoja}${n.nodo.dificultad ? `, dificultad ${n.nodo.dificultad}` : ''}` : (n.nodo.duracion ?? 'Estudio');
       const ancho = Math.max(anchoTexto(texto), anchoTexto(sub) - 10);
       const x = lado === 'izq' ? izquierda : derecha;
       n.etq = {

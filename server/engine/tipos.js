@@ -21,6 +21,7 @@ export const TIPOS = {
       'Comprobar si una arquitectura de red reproduce un fenómeno del cerebro.',
     ],
     vocab: {
+      recuento: ['Problemas', 'abiertos', 'atacándolos', 'resueltos'],
       estudio: 'Lo que estudiar', hoja: 'Incógnita', fruto: 'Problema abierto',
       estadosIncognita: ['Abierta', 'Atacándola', 'Resuelta'], resuelta: 'Resuelta',
       dominio: 'examen', enviarResultado: 'la demostración, el experimento, los datos o el código',
@@ -54,6 +55,7 @@ export const TIPOS = {
       'Importar y revender un producto que no se encuentra en tu país.',
     ],
     vocab: {
+      recuento: ['Hipótesis', 'sin validar', 'validándolas', 'validadas'],
       estudio: 'Lo que dominar', hoja: 'Hipótesis que validar', fruto: 'Riesgo crítico',
       estadosIncognita: ['Sin validar', 'Validando', 'Validada'], resuelta: 'Validada',
       dominio: 'caso', enviarResultado: 'la evidencia de mercado: ventas o reservas, cartas de intención, métricas de una prueba, datos de entrevistas',
@@ -101,6 +103,7 @@ La mayoría de los negocios nuevos no sobreviven: en EE. UU. solo la mitad de lo
       'Una herramienta de línea de comandos que automatiza tu flujo de trabajo.',
     ],
     vocab: {
+      recuento: ['Preguntas', 'abiertas', 'atacándolas', 'resueltas'],
       estudio: 'Lo que dominar', hoja: 'Pregunta técnica', fruto: 'Reto técnico',
       estadosIncognita: ['Abierta', 'Atacándola', 'Resuelta'], resuelta: 'Resuelta',
       dominio: 'mixto', enviarResultado: 'el prototipo, el código, las mediciones o la demostración de que funciona',
@@ -138,6 +141,7 @@ Usa los cuatro grandes riesgos de producto (Marty Cagan): **valor** (¿lo querr�
       'Un álbum conceptual o una serie de ilustraciones.',
     ],
     vocab: {
+      recuento: ['Decisiones', 'abiertas', 'trabajándolas', 'logradas'],
       estudio: 'Lo que dominar', hoja: 'Decisión creativa', fruto: 'Reto de oficio',
       estadosIncognita: ['Abierta', 'Trabajándola', 'Lograda'], resuelta: 'Lograda',
       dominio: 'caso', enviarResultado: 'la pieza o un fragmento (capítulo, nivel jugable, maqueta, bocetos)',
@@ -176,6 +180,7 @@ Separa siempre dos preguntas: **¿vale la pena como obra?** y **¿vale la pena c
       'Aprender piano para tocar jazz.',
     ],
     vocab: {
+      recuento: ['Metas', 'pendientes', 'en marcha', 'conseguidas'],
       estudio: 'Lo que estudiar', hoja: 'Meta práctica', fruto: 'Reto de nivel',
       estadosIncognita: ['Pendiente', 'En marcha', 'Conseguida'], resuelta: 'Conseguida',
       dominio: 'examen', enviarResultado: 'la prueba de que lo consigues: un proyecto, una grabación, un examen oficial, un portafolio',
@@ -236,6 +241,7 @@ El usuario quiere saber si esta habilidad **merece su tiempo hoy**. Sé riguroso
       'Lanzar una iniciativa de voluntariado.',
     ],
     vocab: {
+      recuento: ['Objetivos', 'pendientes', 'en marcha', 'conseguidos'],
       estudio: 'Lo que dominar', hoja: 'Objetivo', fruto: 'Obstáculo',
       estadosIncognita: ['Pendiente', 'En marcha', 'Conseguido'], resuelta: 'Conseguido',
       dominio: 'caso', enviarResultado: 'la evidencia de que lo conseguiste',

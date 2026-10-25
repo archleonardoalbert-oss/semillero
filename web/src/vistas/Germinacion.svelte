@@ -9,12 +9,18 @@
   import Cuestionario from '../componentes/Cuestionario.svelte';
   import LaminaNodo from '../componentes/LaminaNodo.svelte';
   import EnVivo from '../componentes/EnVivo.svelte';
+  import { setContext } from 'svelte';
+  import { vocabDe, cargarTipos } from '../lib/tipos.svelte.js';
 
   // La página de una idea que germina: el árbol (o la plántula mientras se prepara) a pantalla completa.
   // `nodo`: si la ruta lo trae (p. ej. desde una conexión de otro taller), su lámina se abre al cargar.
   let { idea, ref, base, glosas, carpeta, nodo: nodoInicial = undefined, alVerManuscrito } = $props();
 
   let datos = $state(null);
+  // El vocabulario del tipo del bancal («Hipótesis que validar», «Validada»…) para todo lo que cuelga de aquí.
+  cargarTipos();
+  let vocab = $derived(vocabDe(carpeta));
+  setContext('vocab', () => vocab);
   let lamina = $state(null); // { nodo, desde }: se conserva mientras la lámina se cierra
   let laminaAbierta = $state(false);
   const abrirLamina = (nodo, desde) => ((lamina = { nodo, desde }), (laminaAbierta = true));
@@ -174,7 +180,7 @@
       {#if mapa?.fase === 'mapa'}
         <dl class="recuento">
           <div><dt>Estudio</dt><dd><span>{recuento.pendiente}</span> pendientes, <span class="c">{recuento['en-curso']}</span> estudiando, <span class="d">{recuento.hecho}</span> dominados</dd></div>
-          <div><dt>Problemas</dt><dd><span>{recuento.abierta}</span> abiertos, <span class="c">{recuento.atacando}</span> atacándolos, <span class="r">{recuento.resuelta}</span> resueltos</dd></div>
+          <div><dt>{vocab.recuento[0]}</dt><dd><span>{recuento.abierta}</span> {vocab.recuento[1]}, <span class="c">{recuento.atacando}</span> {vocab.recuento[2]}, <span class="r">{recuento.resuelta}</span> {vocab.recuento[3]}</dd></div>
         </dl>
       {/if}
       {#if estadoTexto}<p class="estado" class:error={idea.estado === 'error'}>{estadoTexto}</p>{/if}
@@ -196,9 +202,9 @@
 
     {#if mapa?.fase === 'mapa'}
       <ul class="leyenda" aria-label="Leyenda">
-        <li><span class="l-estudio"></span>Tronco: lo que estudiar</li>
-        <li><span class="l-incognita"></span>Hoja: incógnita</li>
-        <li><span class="l-abierto"></span>Fruto: problema abierto</li>
+        <li><span class="l-estudio"></span>Tronco: {vocab.estudio.toLowerCase()}</li>
+        <li><span class="l-incognita"></span>Hoja: {vocab.hoja.toLowerCase()}</li>
+        <li><span class="l-abierto"></span>Fruto: {vocab.fruto.toLowerCase()}</li>
         <li><span class="l-raiz"></span>Raíces: el manuscrito</li>
         <li class="pista">Arrastra para moverte, usa la rueda para ampliar y haz doble clic para encajar</li>
       </ul>

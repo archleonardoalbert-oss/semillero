@@ -1,5 +1,5 @@
 <script>
-  import { onDestroy } from 'svelte';
+  import { onDestroy, getContext } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import { api } from '../lib/api.js';
@@ -13,8 +13,11 @@
   // con `inicial` (un examen del registro) se muestra en su estado: abierto, corrigiendo o corregido.
   let { ref, nodo, base, inicial = null, alCerrar } = $props();
 
+  // En los bancales que no son de investigación la prueba suele ser un caso práctico aplicado a la idea.
+  const vocabActual = getContext('vocab') ?? (() => undefined);
+  const conCaso = (vocabActual()?.dominio ?? 'examen') !== 'examen';
   const NIVELES = [
-    { id: 'suficiente', nombre: 'Suficiente', tiempo: '4 h 30 min',
+    { id: 'suficiente', nombre: 'Suficiente', tiempo: conCaso ? '4 h 30 min si es examen' : '4 h 30 min',
       texto: 'Lo que vas a necesitar más adelante en tu idea para entender y atacar sus incógnitas y problemas abiertos. Ni más ni menos.' },
     { id: 'avanzado', nombre: 'Avanzado', tiempo: 'Sin límite',
       texto: 'Demuestra que estás completamente cómodo con toda la rama: teoremas centrales, demostraciones, técnicas y casos límite.' },
@@ -124,7 +127,7 @@
 <div class="examen {nivel?.id}" role="dialog" aria-label="Examen de {nodo.titulo}" transition:fly={{ y: 30, duration: 420, easing: cubicOut }}>
   <header>
     <div>
-      <p class="de">Examen de dominio{examen ? `: ${nivel.nombre}` : ''}</p>
+      <p class="de">{examen?.modo === 'caso' ? 'Caso práctico' : examen ? 'Examen de dominio' : conCaso ? 'Prueba de dominio' : 'Examen de dominio'}{examen ? `: ${nivel.nombre}` : ''}</p>
       <h2>{nodo.titulo}</h2>
     </div>
     {#if restante !== null && examen?.estado === 'abierto'}
@@ -135,7 +138,11 @@
 
   <div class="cuerpo">
     {#if !examen}
-      <p class="intro">Para marcar este tema como dominado tienes que demostrarlo. Elige la dificultad: la sesión generará un examen nuevo ahora mismo, distinto en cada intento.</p>
+      {#if conCaso}
+        <p class="intro">Para marcar este tema como dominado tienes que demostrarlo. Elige la dificultad: la sesión preparará ahora mismo una prueba nueva. Si el tema se aplica a tu idea, será un caso práctico con entregables reales sobre ella, sin límite de tiempo; si es teoría pura, un examen.</p>
+      {:else}
+        <p class="intro">Para marcar este tema como dominado tienes que demostrarlo. Elige la dificultad: la sesión generará un examen nuevo ahora mismo, distinto en cada intento.</p>
+      {/if}
       <div class="niveles" role="radiogroup" aria-label="Dificultad">
         {#each NIVELES as n (n.id)}
           <button class="nivel {n.id}" class:elegido={elegida === n.id} role="radio" aria-checked={elegida === n.id} onclick={() => (elegida = n.id)}>
@@ -146,7 +153,7 @@
         {/each}
       </div>
       <p class="pie-info">Se aprueba con 3 sobre 5. Puedes responder con texto y fórmulas, y adjuntar fotos o documentos en cada pregunta. Todos los intentos quedan en el registro.</p>
-      <div class="acciones"><button class="boton primario" disabled={pidiendo} onclick={generar}>Generar examen {nivel.nombre.toLowerCase()}</button></div>
+      <div class="acciones"><button class="boton primario" disabled={pidiendo} onclick={generar}>Generar {conCaso ? 'prueba' : 'examen'} {nivel.nombre.toLowerCase()}</button></div>
     {:else if examen.estado === 'generando' || examen.estado === 'corrigiendo'}
       <div class="espera">
         <span class="luz"></span>
@@ -172,7 +179,7 @@
           </li>
         {/each}
       </ol>
-      <div class="acciones fija"><span>Se guarda solo.</span><button class="boton primario" onclick={entregar}>Entregar examen</button></div>
+      <div class="acciones fija"><span>Se guarda solo.</span><button class="boton primario" onclick={entregar}>Entregar {examen.modo === 'caso' ? 'el caso' : 'examen'}</button></div>
     {:else}
       {#if examen.correccion}
         {@const c = examen.correccion}

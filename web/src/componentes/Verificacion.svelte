@@ -1,5 +1,5 @@
 <script>
-  import { onDestroy } from 'svelte';
+  import { onDestroy, getContext } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import { api } from '../lib/api.js';
@@ -12,6 +12,9 @@
   // Enviar la solución de una incógnita al verificador independiente y ver su informe.
   // Con `inicial` se muestra una verificación del registro.
   let { ref, nodo, base, inicial = null, alCerrar } = $props();
+
+  const vocabActual = getContext('vocab') ?? (() => undefined);
+  const vocab = vocabActual() ?? { resuelta: 'Resuelta', enviarResultado: 'la demostración, el experimento, los datos o el código' };
 
   let v = $state(inicial);
   let texto = $state('');
@@ -47,7 +50,7 @@
     try {
       v = await api.verificar(ref.carpetaId, ref.ideaId, nodo.id, { texto, adjuntos });
     } catch (e) {
-      avisar({ 'en-proceso': 'Ya hay una verificación o una ejecución en marcha en esta idea.', 'ya-resuelta': 'Esta incógnita ya está resuelta.', cuota: 'La investigación está pausada por cuota.' }[e.message] ?? `No se pudo enviar: ${e.message}`, 'error');
+      avisar({ 'en-proceso': 'Ya hay una verificación o una ejecución en marcha en esta idea.', 'ya-resuelta': `Este nodo ya está marcado como «${vocab.resuelta}».`, cuota: 'La investigación está pausada por cuota.' }[e.message] ?? `No se pudo enviar: ${e.message}`, 'error');
     } finally {
       enviando = false;
     }
@@ -73,8 +76,8 @@
   <div class="cuerpo">
     {#if !v}
       <p class="intro">
-        Envía lo que te permite afirmar que lo has resuelto: la demostración, el experimento, los datos o el código. Lo juzgará
-        una sesión independiente con rigor total: solo se marca como resuelto un resultado concluyente que cierre el problema.
+        Envía lo que te permite afirmarlo: {vocab.enviarResultado}. Lo juzgará una sesión independiente con rigor total:
+        solo se marca como «{vocab.resuelta}» un resultado concluyente que cierre exactamente lo planteado.
         El taller puede ayudarte a redactarlo, pero la decisión es del verificador.
       </p>
       <div class="editor">
@@ -93,7 +96,7 @@
       <p class="fallo">La verificación no pudo completarse: {v.error}</p>
     {:else}
       <div class="veredicto">
-        <div class="sello">{v.estado === 'aceptada' ? 'Resuelta' : 'No concluyente'}</div>
+        <div class="sello">{v.estado === 'aceptada' ? vocab.resuelta : 'No concluyente'}</div>
         <p class="resumen">{v.resumen}</p>
       </div>
       {#if v.aviso}<p class="aviso">{v.aviso}</p>{/if}

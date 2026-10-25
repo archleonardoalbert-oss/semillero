@@ -1,4 +1,5 @@
 <script>
+  import { getContext } from 'svelte';
   import { onMount } from 'svelte';
   import { disponer, trazo, trazoRaiz } from '../lib/arbol.js';
 
@@ -14,7 +15,8 @@
   let arrastre = null;
   let encima = $state(null);
 
-  let d = $derived(disponer(mapa, { raices }));
+  const vocabActual = getContext('vocab') ?? (() => undefined);
+  let d = $derived(disponer(mapa, { raices, vocab: vocabActual() }));
   let porId = $derived(new Map(d.nodos.map((n) => [n.id, n])));
 
   // Al pasar por un nodo se ilumina lo que lo sostiene: sus dependencias, hasta el suelo.
@@ -186,7 +188,7 @@
         {@const dom = e === 'hecho' ? progreso?.nodos?.[n.id]?.dominio : null}
         <g class="nodo {n.forma} {e} {dom ? `dominio-${dom.dificultad}` : ''}" class:perfecto={dom?.nota === 5} class:florece={nuevos.has(n.id)} class:apagada={atenuado(n.id)}
           style:--retraso="{retraso(n)}ms" transform="translate({n.x} {n.y})" role="button" tabindex="0"
-          aria-label="{n.forma === 'tronco' ? 'Estudio' : n.forma === 'fruto' ? 'Problema abierto' : 'Incógnita'}: {n.nodo.titulo}"
+          aria-label="{n.forma === 'tronco' ? 'Estudio' : n.forma === 'fruto' ? (vocabActual()?.fruto ?? 'Problema abierto') : (vocabActual()?.hoja ?? 'Incógnita')}: {n.nodo.titulo}"
           onclick={(ev) => abrir(n, ev)} onkeydown={(ev) => ev.key === 'Enter' && abrir(n, ev)}
           onpointerenter={() => (encima = n.id)} onpointerleave={() => (encima = null)}>
           <g class="forma">
