@@ -5,7 +5,8 @@ import { TIPO_POR_DEFECTO, esTipo } from '../engine/tipos.js';
 
 const MAX_DESCRIPCION = 2000;
 // Los bancales anteriores a los tipos se tratan como académicos.
-const normalizar = (c) => (c ? { descripcion: '', ...c, tipo: esTipo(c.tipo) ? c.tipo : TIPO_POR_DEFECTO } : c);
+// El tipo se elige una sola vez (al crear el bancal o, en uno antiguo, la primera vez que se elige): `tipoFijado`.
+const normalizar = (c) => (c ? { descripcion: '', ...c, tipo: esTipo(c.tipo) ? c.tipo : TIPO_POR_DEFECTO, tipoFijado: esTipo(c.tipo) } : c);
 function validarTipo(tipo) {
   if (tipo !== undefined && !esTipo(tipo)) throw new Error('tipo-invalido');
 }
@@ -74,9 +75,13 @@ export function crearAlmacenCarpetas(cfg, { alEscribir = async () => {}, protege
     }
     if (parche.descripcion !== undefined) parche = { ...parche, descripcion: String(parche.descripcion ?? '').trim().slice(0, MAX_DESCRIPCION) };
     return proteger([`carpetas/${id}/carpeta.json`], async () => {
-      const carpeta = { ...(await obtener(id)), ...parche, id };
-      await escribirJSON(rutaJson(id), carpeta);
-      return carpeta;
+      // Se parte del archivo tal cual: guardar lo normalizado fijaría «académico» en un bancal antiguo sin preguntar.
+      const actual = await leerJSON(rutaJson(id), null);
+      if (!actual) throw new Error('carpeta-no-existe');
+      if (parche.tipo !== undefined && esTipo(actual.tipo) && parche.tipo !== actual.tipo) throw new Error('tipo-fijo');
+      const { tipoFijado: _f, ...limpio } = { ...actual, ...parche, id };
+      await escribirJSON(rutaJson(id), limpio);
+      return normalizar(limpio);
     });
   }
 

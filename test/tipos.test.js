@@ -185,7 +185,9 @@ test('R1: en un bancal académico la prueba es siempre un examen con su límite'
   assert.doesNotMatch(promptExamen('academico'), /"modo": "caso"/);
   assert.match(promptExamen('aprendizaje'), /"modo": "caso"/);
   const x = await negocio();
-  await x.carpetas.actualizar('negocios', { tipo: 'academico' });
+  // El tipo es fijo: para este caso se reescribe el bancal como si se hubiera creado académico.
+  const rc = path.join(x.cfg.datos, 'carpetas/negocios/carpeta.json');
+  await fs.writeFile(rc, JSON.stringify({ ...JSON.parse(await fs.readFile(rc, 'utf8')), tipo: 'academico' }));
   await x.ideas.actualizar('negocios', x.ref.ideaId, { estado: 'aceptada', trabajo: 'germinacion' });
   const ef = falso();
   const almacen = crearAlmacenExamenes(x.cfg, { proteger: x.guard.proteger });
@@ -212,4 +214,20 @@ test('R5: una descripción nula se guarda vacía', async () => {
   const c = await carpetas.crear({ nombre: 'N', tipo: 'negocio', descripcion: 'algo' });
   await carpetas.actualizar(c.id, { descripcion: null });
   assert.equal((await carpetas.obtener(c.id)).descripcion, '');
+});
+
+test('el tipo se elige una sola vez: al crear el bancal o, en uno antiguo, la primera vez', async () => {
+  const cfg = await cfgTemporal();
+  const carpetas = crearAlmacenCarpetas(cfg);
+  const c = await carpetas.crear({ nombre: 'Negocios', tipo: 'negocio' });
+  assert.equal((await carpetas.obtener(c.id)).tipoFijado, true);
+  await assert.rejects(carpetas.actualizar(c.id, { tipo: 'creativo' }), /tipo-fijo/);
+  await carpetas.actualizar(c.id, { descripcion: 'sigue editable' });
+  assert.equal((await carpetas.obtener(c.id)).tipo, 'negocio');
+  // Un bancal antiguo, sin tipo elegido: se trata como académico hasta que se elige, y solo una vez.
+  await fs.writeFile(path.join(cfg.datos, 'carpetas/negocios/carpeta.json'), JSON.stringify({ id: 'negocios', nombre: 'Negocios', orden: 0 }));
+  assert.equal((await carpetas.obtener('negocios')).tipoFijado, false);
+  await carpetas.actualizar('negocios', { tipo: 'producto' });
+  assert.equal((await carpetas.obtener('negocios')).tipo, 'producto');
+  await assert.rejects(carpetas.actualizar('negocios', { tipo: 'academico' }), /tipo-fijo/);
 });

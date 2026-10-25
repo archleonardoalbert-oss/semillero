@@ -103,6 +103,7 @@
         {#if nombre.trim()}
           <div class="detalle">
             <SelectorTipo valor={tipo} alElegir={(t) => (tipo = t)} />
+            <p class="aviso-tipo">El tipo se elige una sola vez: después de crear el bancal no se puede cambiar.</p>
             <textarea class="campo" bind:value={descripcion} rows="3" maxlength="2000"
               placeholder="Descripción (opcional): de qué va este bancal, qué buscas con estas ideas. Las sesiones la leerán."></textarea>
           </div>
@@ -255,6 +256,11 @@
   }
   .detalle {
     flex: 1 1 100%;
+  }
+  .aviso-tipo {
+    margin: -0.4rem 0 0.9rem;
+    color: var(--liquen-apagado);
+    font-size: var(--t-1);
   }
   .detalle textarea {
     width: 100%;

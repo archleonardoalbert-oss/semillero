@@ -67,13 +67,14 @@
   }
 
   async function cambiarTipo(t) {
-    if (t === carpeta.tipo) return (cambiandoTipo = false);
+    const nombreTipo = tipoDe({ tipo: t })?.nombre ?? t;
+    if (!confirm(`¿Fijar «${nombreTipo}» como tipo de este bancal? No se podrá cambiar después.`)) return;
     try {
       await api.editarCarpeta(carpetaId, { tipo: t });
       cambiandoTipo = false;
       refrescar();
     } catch (e) {
-      avisar(e.message, 'error');
+      avisar(e.message === 'tipo-fijo' ? 'El tipo de este bancal ya está fijado.' : e.message, 'error');
     }
   }
 
@@ -96,16 +97,18 @@
         aria-label="Nombre del bancal" maxlength="60" />
       <p>
         {tipoDe(carpeta)?.nombre ?? ''}, {ideas?.length ?? '…'} {ideas?.length === 1 ? 'idea' : 'ideas'}
-        <button class="enlace" onclick={() => (cambiandoTipo = !cambiandoTipo)}>{cambiandoTipo ? 'Dejar el tipo como está' : 'Cambiar el tipo'}</button>
+        {#if !carpeta.tipoFijado}
+          <button class="enlace" onclick={() => (cambiandoTipo = !cambiandoTipo)}>{cambiandoTipo ? 'Elegirlo más tarde' : 'Elegir el tipo'}</button>
+        {/if}
       </p>
       <textarea class="descripcion" bind:value={descripcion} onblur={guardarDescripcion} rows="2" maxlength="2000"
         aria-label="Descripción del bancal" placeholder="Añade una descripción: de qué va este bancal y qué buscas. Las sesiones la leen."></textarea>
     </header>
 
-    {#if cambiandoTipo}
+    {#if cambiandoTipo && !carpeta.tipoFijado}
       <div class="tipo">
-        <p class="nota">El tipo decide cómo se juzgan las ideas de este bancal. Lo ya analizado no cambia; las sesiones nuevas y las que retomes usarán los criterios nuevos.</p>
-        <SelectorTipo valor={carpeta.tipo} alElegir={cambiarTipo} />
+        <p class="nota">Este bancal es anterior a los tipos y se está juzgando como Investigación académica. El tipo decide cómo se juzgan sus ideas y <strong>solo se elige una vez</strong>: después ya no se puede cambiar. Lo ya analizado no cambia; las sesiones nuevas y las que retomes usarán sus criterios.</p>
+        <SelectorTipo valor={null} alElegir={cambiarTipo} />
       </div>
     {/if}
 
