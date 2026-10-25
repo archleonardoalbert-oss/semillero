@@ -183,7 +183,7 @@ Separa siempre dos preguntas: **¿vale la pena como obra?** y **¿vale la pena c
       recuento: ['Metas', 'pendientes', 'en marcha', 'conseguidas'],
       estudio: 'Lo que estudiar', hoja: 'Meta práctica', fruto: 'Reto de nivel',
       estadosIncognita: ['Pendiente', 'En marcha', 'Conseguida'], resuelta: 'Conseguida',
-      dominio: 'examen', enviarResultado: 'la prueba de que lo consigues: un proyecto, una grabación, un examen oficial, un portafolio',
+      dominio: 'mixto', enviarResultado: 'la prueba de que lo consigues: un proyecto, una grabación, un examen oficial, un portafolio',
     },
     analisis: `## Cómo juzgar si vale la pena aprender algo
 
@@ -260,7 +260,10 @@ El usuario quiere saber si esta habilidad **merece su tiempo hoy**. Sé riguroso
   },
 };
 
-export const tipoDe = (carpeta) => (TIPOS[carpeta?.tipo] ? carpeta.tipo : TIPO_POR_DEFECTO);
+export const esTipo = (t) => typeof t === 'string' && Object.hasOwn(TIPOS, t);
+export const tipoDe = (carpeta) => (esTipo(carpeta?.tipo) ? carpeta.tipo : TIPO_POR_DEFECTO);
+// Solo la investigación académica se examina siempre con examen clásico (y su límite en Suficiente).
+export const admiteCaso = (tipo) => TIPOS[esTipo(tipo) ? tipo : TIPO_POR_DEFECTO].vocab.dominio !== 'examen';
 export const datosTipo = (carpeta) => TIPOS[tipoDe(carpeta)];
 
 // Lo que necesita la interfaz (sin las instrucciones internas de las sesiones).

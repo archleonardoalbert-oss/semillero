@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import path from 'node:path';
 import { ejecutar as ejecutarReal } from './runner.js';
-import { tipoDe, bloqueBancal } from './tipos.js';
+import { tipoDe, bloqueBancal, admiteCaso } from './tipos.js';
 import { argsEvaluacion, promptExamen, mensajeGenerarExamen, mensajeCorregirExamen, parsearExamen, parsearCorreccion } from './prompt.js';
 
 export const LIMITE_SUFICIENTE_MS = 4.5 * 3600 * 1000; // decisión del usuario: 4 h 30 min; avanzado y experto, sin límite
@@ -118,6 +118,7 @@ export function crearMotorExamenes({
         const { r, sesion } = await lanzar(ref, n, e.id, { sessionId: null, mensaje });
         await cerrarEjecucion(ref, n, e.id);
         const ex = !r.resultado?.is_error && parsearExamen(r.resultado?.result);
+        if (ex && !admiteCaso(tipoDe(carpeta))) ex.modo = 'examen';
         if (!ex) final = { estado: 'error', error: r.resultado && !r.resultado.is_error ? 'La sesión no devolvió un examen válido' : textoFallo(r), sessionId: sesion };
         else {
           const inicio = new Date(reloj()).toISOString();
@@ -201,7 +202,9 @@ export function crearMotorExamenes({
       let { r, sesion } = await lanzar(ref, n, e.id, { sessionId: e.sessionId, mensaje: mensajeCorregirExamen({ examen: e, rutaIdea }) });
       // Sesión perdida: se corrige en otra con el examen completo (la rúbrica se rehace).
       if (e.sessionId && /No conversation found/i.test(r.stderr ?? '')) {
-        ({ r, sesion } = await lanzar(ref, n, e.id, { sessionId: null, mensaje: mensajeCorregirExamen({ examen: e, rutaIdea, sesionNueva: true }) }));
+        const carpeta = await carpetas?.obtener(ref.carpetaId).catch(() => null);
+        const prefijo = `${bloqueBancal(carpeta, (await ajustes.leer()).contexto)}\n\n${e.modo === 'caso' ? 'Esta prueba es un **caso práctico**: corrige cada respuesta como un entregable aplicado a la idea.\n\n' : ''}`;
+        ({ r, sesion } = await lanzar(ref, n, e.id, { sessionId: null, mensaje: prefijo + mensajeCorregirExamen({ examen: e, rutaIdea, sesionNueva: true }) }));
       }
       await cerrarEjecucion(ref, n, e.id);
       const c = !r.resultado?.is_error && parsearCorreccion(r.resultado?.result, e.preguntas);

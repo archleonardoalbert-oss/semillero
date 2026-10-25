@@ -14,7 +14,7 @@
   let { ref, nodo, base, inicial = null, alCerrar } = $props();
 
   const vocabActual = getContext('vocab') ?? (() => undefined);
-  const vocab = vocabActual() ?? { resuelta: 'Resuelta', enviarResultado: 'la demostración, el experimento, los datos o el código' };
+  let vocab = $derived(vocabActual() ?? { resuelta: 'Resuelta', enviarResultado: 'la demostración, el experimento, los datos o el código' });
 
   let v = $state(inicial);
   let texto = $state('');

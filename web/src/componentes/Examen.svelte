@@ -15,9 +15,9 @@
 
   // En los bancales que no son de investigación la prueba suele ser un caso práctico aplicado a la idea.
   const vocabActual = getContext('vocab') ?? (() => undefined);
-  const conCaso = (vocabActual()?.dominio ?? 'examen') !== 'examen';
+  let conCaso = $derived((vocabActual()?.dominio ?? 'examen') !== 'examen');
   const NIVELES = [
-    { id: 'suficiente', nombre: 'Suficiente', tiempo: conCaso ? '4 h 30 min si es examen' : '4 h 30 min',
+    { id: 'suficiente', nombre: 'Suficiente', tiempo: '4 h 30 min',
       texto: 'Lo que vas a necesitar más adelante en tu idea para entender y atacar sus incógnitas y problemas abiertos. Ni más ni menos.' },
     { id: 'avanzado', nombre: 'Avanzado', tiempo: 'Sin límite',
       texto: 'Demuestra que estás completamente cómodo con toda la rama: teoremas centrales, demostraciones, técnicas y casos límite.' },
@@ -147,7 +147,7 @@
         {#each NIVELES as n (n.id)}
           <button class="nivel {n.id}" class:elegido={elegida === n.id} role="radio" aria-checked={elegida === n.id} onclick={() => (elegida = n.id)}>
             <span class="nombre">{n.nombre}</span>
-            <span class="t">{n.tiempo}</span>
+            <span class="t">{n.id === 'suficiente' && conCaso ? '4 h 30 min si es examen' : n.tiempo}</span>
             <span class="texto">{n.texto}</span>
           </button>
         {/each}

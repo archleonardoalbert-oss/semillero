@@ -179,3 +179,37 @@ test('un caso práctico Suficiente no tiene límite de tiempo', async () => {
   assert.equal(ex.modo, 'caso');
   assert.equal(ex.limite, null);
 });
+
+// --- Hallazgos de la revisión final ---
+test('R1: en un bancal académico la prueba es siempre un examen con su límite', async () => {
+  assert.doesNotMatch(promptExamen('academico'), /"modo": "caso"/);
+  assert.match(promptExamen('aprendizaje'), /"modo": "caso"/);
+  const x = await negocio();
+  await x.carpetas.actualizar('negocios', { tipo: 'academico' });
+  await x.ideas.actualizar('negocios', x.ref.ideaId, { estado: 'aceptada', trabajo: 'germinacion' });
+  const ef = falso();
+  const almacen = crearAlmacenExamenes(x.cfg, { proteger: x.guard.proteger });
+  const examenes = crearMotorExamenes({ ...x, examenes: almacen, ejecutar: ef.ejecutar, temporizar: () => {} });
+  const e = await examenes.generar(x.ref, 'e1', { dificultad: 'suficiente' });
+  await hasta(() => ef.llamadas[0]);
+  ef.llamadas[0].resolve({ codigo: 0, abortado: false, resultado: { is_error: false, result: '```semillero-examen\n{"modo":"caso","preguntas":[{"id":"p1","enunciado":"x","puntos":10}]}\n```' } });
+  await hasta(async () => (await almacen.leer('negocios', x.ref.ideaId, 'e1', e.id)).estado === 'abierto');
+  const ex = await almacen.leer('negocios', x.ref.ideaId, 'e1', e.id);
+  assert.equal(ex.modo, 'examen');
+  assert.ok(ex.limite);
+});
+
+test('R4: los nombres heredados de Object no son tipos', async () => {
+  const cfg = await cfgTemporal();
+  const carpetas = crearAlmacenCarpetas(cfg);
+  for (const t of ['constructor', '__proto__', 'toString']) await assert.rejects(carpetas.crear({ nombre: 'x' + t, tipo: t }), /tipo-invalido/);
+  assert.match(promptGerminacion('constructor'), /Investigación académica/);
+});
+
+test('R5: una descripción nula se guarda vacía', async () => {
+  const cfg = await cfgTemporal();
+  const carpetas = crearAlmacenCarpetas(cfg);
+  const c = await carpetas.crear({ nombre: 'N', tipo: 'negocio', descripcion: 'algo' });
+  await carpetas.actualizar(c.id, { descripcion: null });
+  assert.equal((await carpetas.obtener(c.id)).descripcion, '');
+});

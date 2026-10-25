@@ -20,7 +20,7 @@ import { crearAlmacenVerificaciones } from '../store/verificaciones.js';
 import { crearMotorVerificacion } from '../engine/verificacion.js';
 import { crearMotorGlosas } from '../engine/glosas.js';
 import { validarMapa } from '../engine/mapa.js';
-import { tiposParaInterfaz } from '../engine/tipos.js';
+import { tiposParaInterfaz, esTipo } from '../engine/tipos.js';
 import { rutaSegura, slugify } from '../store/fsutil.js';
 import { registrarWs } from './ws.js';
 
@@ -121,9 +121,12 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
   app.post('/api/carpetas', async (req, reply) => reply.code(201).send(await carpetas.crear(req.body ?? {})));
   app.patch('/api/carpetas/:c', async (req) => {
     const { nombre, color, tipo, descripcion } = req.body ?? {};
-    if (tipo !== undefined || descripcion !== undefined) await carpetas.actualizar(req.params.c, { ...(tipo !== undefined && { tipo }), ...(descripcion !== undefined && { descripcion }) });
+    // Se valida todo antes de escribir nada: o se aplica el cambio entero o ninguna parte.
+    if (nombre !== undefined && !String(nombre ?? '').trim()) throw new Error('nombre-vacio');
+    if (tipo !== undefined && !esTipo(tipo)) throw new Error('tipo-invalido');
+    const parche = { ...(tipo !== undefined && { tipo }), ...(descripcion !== undefined && { descripcion }), ...(color !== undefined && { color }) };
+    if (Object.keys(parche).length) await carpetas.actualizar(req.params.c, parche);
     if (nombre !== undefined) await carpetas.renombrar(req.params.c, nombre);
-    if (color !== undefined) await carpetas.actualizar(req.params.c, { color });
     return carpetas.obtener(req.params.c);
   });
   app.delete('/api/carpetas/:c', async (req, reply) => {

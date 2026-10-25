@@ -1,7 +1,7 @@
 // Prompt de sistema y mensajes de cada ejecución de una sesión de análisis.
-import { TIPOS, TIPO_POR_DEFECTO } from './tipos.js';
+import { TIPOS, TIPO_POR_DEFECTO, esTipo, admiteCaso } from './tipos.js';
 
-const tipoValido = (t) => (TIPOS[t] ? t : TIPO_POR_DEFECTO);
+const tipoValido = (t) => (esTipo(t) ? t : TIPO_POR_DEFECTO);
 
 function promptSistemaBase() {
   return `# Eres un analista de ideas en Semillero
@@ -558,6 +558,7 @@ SOLO la carpeta de figuras que se te indica. Puedes leer todo el semillero.
 }
 
 export function promptExamen(tipo = TIPO_POR_DEFECTO) {
+  if (!admiteCaso(tipo)) return promptExamenBase() + seccionTipo(tipo, (t) => `**Formato de la prueba para este tipo:** ${t.dominio} Siempre es un examen (\`"modo": "examen"\`), nunca un caso práctico.`);
   return promptExamenBase() + seccionTipo(tipo, (t) => `**Formato de la prueba para este tipo:** ${t.dominio}
 
 Si eliges **caso práctico**, pon \`"modo": "caso"\` en el bloque \`semillero-examen\` (por defecto es \`"modo": "examen"\`):

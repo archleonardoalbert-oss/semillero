@@ -17,11 +17,19 @@
   let descripcion = $state('');
   let cambiandoTipo = $state(false);
   cargarTipos();
+  // La descripción solo se sincroniza cuando cambia en el servidor, no con cada refresco: así no pisa lo que se escribe.
+  let descripcionGuardada = null;
+  $effect(() => {
+    const d = carpeta?.descripcion ?? '';
+    if (d !== descripcionGuardada) {
+      if (descripcion === (descripcionGuardada ?? '')) descripcion = d;
+      descripcionGuardada = d;
+    }
+  });
 
   let carpeta = $derived(global.carpetas.find((c) => c.id === carpetaId));
   $effect(() => {
     if (carpeta) nombre = carpeta.nombre;
-    if (carpeta) descripcion = carpeta.descripcion ?? '';
   });
   $effect(() => {
     global.resumen;

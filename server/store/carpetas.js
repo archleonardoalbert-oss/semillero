@@ -1,13 +1,13 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { slugify, slugUnico, escribirAtomico, escribirJSON, leerJSON, existe } from './fsutil.js';
-import { TIPOS, TIPO_POR_DEFECTO } from '../engine/tipos.js';
+import { TIPO_POR_DEFECTO, esTipo } from '../engine/tipos.js';
 
 const MAX_DESCRIPCION = 2000;
 // Los bancales anteriores a los tipos se tratan como académicos.
-const normalizar = (c) => (c ? { descripcion: '', ...c, tipo: TIPOS[c.tipo] ? c.tipo : TIPO_POR_DEFECTO } : c);
+const normalizar = (c) => (c ? { descripcion: '', ...c, tipo: esTipo(c.tipo) ? c.tipo : TIPO_POR_DEFECTO } : c);
 function validarTipo(tipo) {
-  if (tipo !== undefined && !TIPOS[tipo]) throw new Error('tipo-invalido');
+  if (tipo !== undefined && !esTipo(tipo)) throw new Error('tipo-invalido');
 }
 
 export async function asegurarNotasGlobales(datos) {
@@ -72,7 +72,7 @@ export function crearAlmacenCarpetas(cfg, { alEscribir = async () => {}, protege
     } catch (e) {
       return Promise.reject(e);
     }
-    if (parche.descripcion !== undefined) parche = { ...parche, descripcion: String(parche.descripcion).trim().slice(0, MAX_DESCRIPCION) };
+    if (parche.descripcion !== undefined) parche = { ...parche, descripcion: String(parche.descripcion ?? '').trim().slice(0, MAX_DESCRIPCION) };
     return proteger([`carpetas/${id}/carpeta.json`], async () => {
       const carpeta = { ...(await obtener(id)), ...parche, id };
       await escribirJSON(rutaJson(id), carpeta);
