@@ -71,19 +71,19 @@ test('no se exporta nada de sesiones, estados, notas ni archivos sin usar', asyn
   const s = await sitioDe(x);
   const todo = JSON.stringify(JSON.parse(await fs.readFile(path.join(s, 'datos.json'), 'utf8')));
   for (const prohibido of ['NOTAS PRIVADAS', '"estado"', 'Mi réplica privada', 'Dictamen viejo', 'progreso']) assert.ok(!todo.includes(prohibido), prohibido);
-  const base = path.join(s, 'archivos/idea');
-  assert.ok(await existe(path.join(base, 'germinacion/recursos/geva.pdf')));
-  for (const f of ['e1', 'e2', 'i1', 'dictamen']) assert.ok(await existe(path.join(base, `figuras/${f}.png`)), f);
-  for (const no of ['germinacion/recursos/huerfano.pdf', 'germinacion/talleres', 'germinacion/examenes', 'figuras/examenes', 'germinacion/progreso.json', 'hilo'])
-    assert.ok(!(await existe(path.join(base, no))), no);
+  const manifiesto = JSON.parse(await fs.readFile(path.join(s, 'archivos.json'), 'utf8'));
+  const incluidos = Object.keys(manifiesto).sort();
+  assert.deepEqual(incluidos, ['figuras/dictamen.png', 'figuras/e1.png', 'figuras/e2.png', 'figuras/i1.png', 'germinacion/recursos/geva.pdf']);
+  for (const dst of Object.values(manifiesto)) assert.ok(await existe(path.join(s, 'archivos', dst)), dst);
+  assert.equal((await fs.readdir(path.join(s, 'archivos'))).length, incluidos.length);
 });
 
 test('una referencia que sale de la idea no se copia', async () => {
   const x = await germinada();
   await fs.writeFile(path.join(x.dir, 'germinacion/nodos/e1.md'), '![x](../../../../../../etc/passwd) ![y](/etc/hosts)');
   const s = await sitioDe(x);
-  const listar = async (d) => (await fs.readdir(d, { recursive: true })).join('\n');
-  assert.doesNotMatch(await listar(s), /passwd|hosts/);
+  const manifiesto = JSON.parse(await fs.readFile(path.join(s, 'archivos.json'), 'utf8'));
+  assert.doesNotMatch(Object.keys(manifiesto).join('\n'), /passwd|hosts/);
 });
 
 test('sin mapa no hay nada que exportar', async () => {
@@ -170,7 +170,78 @@ test('la API descarga el ejecutable con su nombre y rechaza lo que no se puede e
   assert.equal(pedidos[0].datos.titulo, 'Cafetería');
 
   assert.equal((await pedir(`${base}/macos`)).statusCode, 400);
-  await fs.writeFile(path.join(x.dir, 'germinacion/mapa.json'), JSON.stringify(DIAGNOSTICO));
+  // Con una sesión trabajando en la idea no se exporta (el mapa puede estar cambiando).
+  await x.ideas.actualizar('negocios', x.ref.ideaId, { estado: 'en-proceso' });
   assert.equal((await pedir(`${base}/linux`)).statusCode, 409);
+  await x.ideas.actualizar('negocios', x.ref.ideaId, { estado: 'aceptada' });
+  // Una idea sin germinar no tiene nada que exportar.
+  const otra = await x.ideas.crear('negocios', { titulo: 'Sin germinar', cuerpo: 'x' });
+  assert.equal((await pedir(`/api/carpetas/negocios/ideas/${otra.id}/exportar/linux`)).statusCode, 409);
   await app.close();
+});
+
+// --- Hallazgos de la revisión final ---
+test('R1: un mapa a medio escribir o inválido usa el último bueno, y si no hay ninguno se rechaza', async () => {
+  const x = await germinada();
+  const ruta = path.join(x.dir, 'germinacion/mapa.json');
+  const bueno = await fs.readFile(ruta, 'utf8');
+  await fs.writeFile(ruta, '{"version":1,"fase":"ma');
+  const destino = await fs.mkdtemp(path.join(os.tmpdir(), 'semillero-sitio-'));
+  const d = await prepararSitio({ ...x, destino, visor: null, respaldo: async () => bueno });
+  assert.equal(d.mapa.nodos.length, 3);
+  // Un mapa que apunta fuera de nodos/ y recursos/ no se acepta.
+  const malo = { ...MAPA, nodos: MAPA.nodos.map((n, k) => (k ? n : { ...n, documento: '../hilo/002-claude.md' })) };
+  await fs.writeFile(ruta, JSON.stringify(malo));
+  await assert.rejects(sitioDe(x), /sin-mapa/);
+});
+
+test('R2: nombres que go:embed no admite se embeben con nombre seguro y se sirven por su ruta original', { timeout: 240000 }, async () => {
+  const x = await germinada();
+  const g = path.join(x.dir, 'germinacion');
+  const raros = ["o'neill — notas².pdf", 'aux.pdf', 'final.'];
+  const mapa = { ...MAPA, recursos: [...MAPA.recursos, ...raros.map((f, k) => ({ id: `r${k + 9}`, tipo: 'otro', titulo: f, archivo: `recursos/${f}` }))] };
+  mapa.nodos = mapa.nodos.map((n) => (n.id === 'e1' ? { ...n, recursos: [...n.recursos, 'r9', 'r10', 'r11'] } : n));
+  await fs.writeFile(path.join(g, 'mapa.json'), JSON.stringify(mapa));
+  for (const f of raros) await fs.writeFile(path.join(g, 'recursos', f), `%PDF ${f}`);
+  await fs.writeFile(path.join(x.dir, 'figuras/aux.png'), 'PNG-AUX');
+  await fs.writeFile(path.join(x.dir, 'figuras/a b.png'), 'PNG-ESPACIO');
+  await fs.writeFile(path.join(x.dir, 'figuras/c.png'), 'PNG-C');
+  await fs.writeFile(path.join(g, 'nodos/e1.md'), '![aux](figuras/aux.png) ![x](<figuras/a b.png>) ![f en $[0,1]$](figuras/c.png)');
+  const s = await sitioDe(x);
+  await fs.writeFile(path.join(s, 'index.html'), 'visor');
+  const salida = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'semillero-bin-')), 'visor');
+  await compilar({ sitio: s, so: 'linux', salida });
+  const puerto = 20000 + Math.floor(Math.random() * 20000);
+  const p = spawn(salida, ['-sin-navegador', '-puerto', String(puerto)]);
+  try {
+    const url = `http://127.0.0.1:${puerto}`;
+    let r;
+    for (let k = 0; k < 50 && !r; k++) r = await fetch(`${url}/datos.json`).catch(() => new Promise((ok) => setTimeout(ok, 100)));
+    const pedir = async (ruta) => (await fetch(`${url}/archivos/idea/${ruta.split('/').map(encodeURIComponent).join('/')}`)).text();
+    for (const f of raros) assert.equal(await pedir(`germinacion/recursos/${f}`), `%PDF ${f}`);
+    assert.equal(await pedir('figuras/aux.png'), 'PNG-AUX');
+    assert.equal(await pedir('figuras/a b.png'), 'PNG-ESPACIO');
+    assert.equal(await pedir('figuras/c.png'), 'PNG-C');
+    // Un enlace del documento a un recurso (relativo a la página) también llega al archivo.
+    assert.equal(await (await fetch(`${url}/germinacion/recursos/aux.pdf`)).text(), '%PDF aux.pdf');
+  } finally {
+    p.kill();
+  }
+});
+
+test('R3: un recurso con % en el nombre se copia con su nombre literal', async () => {
+  const x = await germinada();
+  const g = path.join(x.dir, 'germinacion');
+  await fs.writeFile(path.join(g, 'recursos/50%.pdf'), '%PDF');
+  await fs.writeFile(path.join(g, 'mapa.json'), JSON.stringify({ ...MAPA, recursos: [{ ...MAPA.recursos[0], archivo: 'recursos/50%.pdf' }] }));
+  const s = await sitioDe(x);
+  assert.ok(JSON.parse(await fs.readFile(path.join(s, 'archivos.json'), 'utf8'))['germinacion/recursos/50%.pdf']);
+});
+
+test('R5: solo se copian imágenes de verdad, nunca datos internos citados como imagen', async () => {
+  const x = await germinada();
+  await fs.writeFile(path.join(x.dir, 'germinacion/nodos/e1.md'), '![](germinacion/progreso.json) ![](germinacion/talleres/i1/hilo.jsonl) ![](hilo/003-usuario.md)');
+  const s = await sitioDe(x);
+  const claves = Object.keys(JSON.parse(await fs.readFile(path.join(s, 'archivos.json'), 'utf8')));
+  assert.doesNotMatch(claves.join('\n'), /progreso|talleres|hilo/);
 });

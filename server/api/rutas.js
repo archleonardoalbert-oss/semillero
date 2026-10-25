@@ -321,10 +321,15 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
   app.get('/api/carpetas/:c/ideas/:i/exportar/:so', async (req, reply) => {
     const { c, i, so } = req.params;
     if (!Object.hasOwn(SISTEMAS, so)) throw new Error('so-invalido');
+    // Con una sesión trabajando en la idea el mapa y los documentos pueden estar a medio reescribir.
+    if ((await ideas.obtener(c, i)).estado === 'en-proceso') throw new Error('en-proceso');
     const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'semillero-exportar-'));
     const limpiar = () => fsp.rm(tmp, { recursive: true, force: true });
     try {
-      await prepararSitio({ cfg, ideas, carpetas, ref: { carpetaId: c, ideaId: i }, destino: path.join(tmp, 'sitio'), visor: visorExportacion });
+      await prepararSitio({
+        cfg, ideas, carpetas, ref: { carpetaId: c, ideaId: i }, destino: path.join(tmp, 'sitio'), visor: visorExportacion,
+        respaldo: () => guard.commiteado(`carpetas/${c}/ideas/${i}/germinacion/mapa.json`),
+      });
       const nombre = `${slugify((await ideas.obtener(c, i)).titulo) || 'idea'}-germinacion${so === 'windows' ? '.exe' : '-linux'}`;
       const salida = path.join(tmp, nombre);
       await compilarExportacion({ sitio: path.join(tmp, 'sitio'), so, salida });

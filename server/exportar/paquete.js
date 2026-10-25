@@ -2,20 +2,49 @@
 // usan los documentos incluidos y los recursos. Nada de sesiones, estados, notas, talleres ni exámenes.
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { Marked } from 'marked';
 import { datosTipo } from '../engine/tipos.js';
+import { validarMapa } from '../engine/mapa.js';
 
 export const RUTA_VISOR = fileURLToPath(new URL('../../web/dist-visor/', import.meta.url));
 
-// Imágenes de Markdown y <img src>: lo único que el renderizador resuelve contra la carpeta de la idea.
 // Los bloques internos de Semillero (caminos, propuestas…) son interacción con la sesión: fuera.
 const sinBloques = (md) => String(md ?? '').replace(/```semillero-[a-z-]+[^\n]*\n[\s\S]*?```[ \t]*\n?/g, '');
-const RE_IMAGEN = /!\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+["'][^)]*["'])?\s*\)|<img\b[^>]*\bsrc=["']([^"']+)["']/gi;
 
-export async function prepararSitio({ cfg, ideas, carpetas, ref, destino, visor = RUTA_VISOR }) {
+// Las imágenes solo pueden salir de estas carpetas de la idea y ser imágenes de verdad.
+const RE_IMAGEN_PERMITIDA = /^(figuras|adjuntos|germinacion\/recursos)\/.+\.(png|jpe?g|gif|webp|svg|avif)$/i;
+const RE_RECURSO = /^germinacion\/recursos\/[^/\\]+$/;
+
+// Las imágenes que citan los textos, tal como las lee el renderizador (texto alternativo con corchetes,
+// rutas entre <> con espacios…). Las URL externas y absolutas no son archivos de la idea.
+function imagenesDe(md) {
+  const rutas = [];
+  const marked = new Marked();
+  marked.walkTokens(marked.lexer(String(md ?? '')), (t) => {
+    if (t.type === 'image' && t.href && !/^([a-z][a-z0-9+.-]*:|\/|\\)/i.test(t.href)) rutas.push(t.href);
+  });
+  return rutas;
+}
+
+async function leerMapa(dirIdea, respaldo) {
+  const valido = (texto) => {
+    try {
+      const v = texto && validarMapa(JSON.parse(texto));
+      return v?.ok && v.mapa.fase === 'mapa' ? v.mapa : null;
+    } catch {
+      return null;
+    }
+  };
+  // Mientras una sesión escribe, el mapa en disco puede estar a medias: entonces vale el último bueno.
+  return valido(await fs.readFile(path.join(dirIdea, 'germinacion/mapa.json'), 'utf8').catch(() => null)) ?? valido(await respaldo?.());
+}
+
+export async function prepararSitio({ cfg, ideas, carpetas, ref, destino, visor = RUTA_VISOR, respaldo = null }) {
   const dirIdea = path.join(cfg.datos, 'carpetas', ref.carpetaId, 'ideas', ref.ideaId);
-  const mapa = JSON.parse(await fs.readFile(path.join(dirIdea, 'germinacion/mapa.json'), 'utf8').catch(() => 'null'));
-  if (mapa?.fase !== 'mapa') throw new Error('sin-mapa');
+  const mapa = await leerMapa(dirIdea, respaldo);
+  if (!mapa) throw new Error('sin-mapa');
   const [idea, carpeta] = await Promise.all([ideas.obtener(ref.carpetaId, ref.ideaId), carpetas.obtener(ref.carpetaId)]);
 
   const documentos = {};
@@ -46,31 +75,43 @@ export async function prepararSitio({ cfg, ideas, carpetas, ref, destino, visor 
   await fs.mkdir(destino, { recursive: true });
   if (visor) await fs.cp(visor, destino, { recursive: true });
   await fs.writeFile(path.join(destino, 'datos.json'), JSON.stringify(datos));
+  // El puerto preferido del visor depende de la idea, no de la fecha: así el navegador recuerda lo visto.
+  await fs.writeFile(path.join(destino, 'puerto'), String(41000 + (crypto.createHash('sha1').update(`${ref.carpetaId}/${ref.ideaId}`).digest().readUInt32BE(0) % 8000)));
 
-  // Archivos: las imágenes que citan los textos (relativas a la idea) y los recursos (relativos a germinacion/).
-  const textos = [...Object.values(documentos), mapa.resumen ?? '', ...raices.map((r) => r.md), ...(mapa.recursos ?? []).map((r) => r.nota ?? '')];
+  // Archivos: las imágenes que citan los textos (relativas a la idea, con su codificación de URL deshecha)
+  // y los recursos (nombre literal, relativo a germinacion/).
   const rutas = new Set();
-  for (const t of textos) for (const m of String(t).matchAll(RE_IMAGEN)) rutas.add(m[1] ?? m[2]);
-  for (const r of mapa.recursos ?? []) if (r.archivo) rutas.add(`germinacion/${r.archivo}`);
-  const base = await fs.realpath(dirIdea);
-  for (const ruta of rutas) await copiarDentro(base, ruta, path.join(destino, 'archivos/idea'));
-  return datos;
-}
-
-// Copia una ruta relativa de la idea solo si de verdad está dentro de ella (ni `..`, ni absolutas, ni enlaces que salgan).
-async function copiarDentro(base, ruta, destinoBase) {
-  if (/^[a-z][a-z0-9+.-]*:|^\/|^\\/i.test(ruta)) return;
-  let rel;
-  try {
-    rel = path.posix.normalize(decodeURIComponent(ruta.replace(/^\.\//, '')));
-  } catch {
-    return;
+  const textos = [...Object.values(documentos), mapa.resumen ?? '', ...raices.map((r) => r.md), ...(mapa.recursos ?? []).map((r) => r.nota ?? '')];
+  for (const t of textos) {
+    for (const href of imagenesDe(t)) {
+      let rel;
+      try {
+        rel = path.posix.normalize(decodeURIComponent(href.replace(/^\.\//, '')));
+      } catch {
+        continue;
+      }
+      if (RE_IMAGEN_PERMITIDA.test(rel)) rutas.add(rel);
+    }
   }
-  if (rel.startsWith('..') || path.isAbsolute(rel)) return;
-  const real = await fs.realpath(path.join(base, rel)).catch(() => null);
-  if (!real || !real.startsWith(base + path.sep)) return;
-  if (!(await fs.stat(real)).isFile()) return;
-  const destino = path.join(destinoBase, rel);
-  await fs.mkdir(path.dirname(destino), { recursive: true });
-  await fs.copyFile(real, destino);
+  for (const r of mapa.recursos ?? []) {
+    const rel = r.archivo && path.posix.normalize(`germinacion/${r.archivo}`);
+    if (rel && RE_RECURSO.test(rel)) rutas.add(rel);
+  }
+
+  // Cada archivo se embebe con un nombre seguro (go:embed rechaza muchos nombres: «aux», apóstrofos, rayas…);
+  // archivos.json dice qué ruta original corresponde a cada uno y el lanzador la traduce al servirla.
+  const manifiesto = {};
+  const base = await fs.realpath(dirIdea);
+  await fs.mkdir(path.join(destino, 'archivos'), { recursive: true });
+  for (const rel of rutas) {
+    if (rel.startsWith('..') || path.isAbsolute(rel)) continue;
+    const real = await fs.realpath(path.join(base, rel)).catch(() => null);
+    if (!real || !real.startsWith(base + path.sep) || !(await fs.stat(real)).isFile()) continue;
+    const ext = (path.extname(rel).toLowerCase().match(/^\.[a-z0-9]{1,8}$/) ?? [''])[0];
+    const seguro = crypto.createHash('sha1').update(rel).digest('hex').slice(0, 20) + ext;
+    await fs.copyFile(real, path.join(destino, 'archivos', seguro));
+    manifiesto[rel] = seguro;
+  }
+  await fs.writeFile(path.join(destino, 'archivos.json'), JSON.stringify(manifiesto));
+  return datos;
 }

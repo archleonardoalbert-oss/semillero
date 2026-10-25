@@ -158,7 +158,7 @@
       avisar(`Descargado ${nombre}.`);
     } catch (e) {
       avisar(
-        { 'sin-mapa': 'Esta germinación todavía no tiene árbol que exportar.', 'visor-no-construido': 'Falta construir el visor: ejecuta npm run build.' }[e.message]
+        { 'sin-mapa': 'Esta germinación todavía no tiene árbol que exportar.', 'en-proceso': 'Espera a que la sesión termine: el árbol está cambiando.', 'visor-no-construido': 'Falta construir el visor: ejecuta npm run build.' }[e.message]
           ?? `No se pudo exportar: ${e.message}`,
         'error',
       );
@@ -244,7 +244,7 @@
         <p>Un solo archivo con el árbol completo, los documentos de cada nodo, la Visión del camino, tu idea, el dictamen y todos los recursos descargados. Al abrirlo se abre en el navegador, solo para leer: sin sesiones ni estados.</p>
         <div class="pie">
           {#each ['linux', 'windows'] as so (so)}
-            <button class="boton" disabled={compilando !== null} onclick={() => exportar(so)}>
+            <button class="boton" disabled={compilando !== null || enProceso} onclick={() => exportar(so)}>
               {compilando === so ? `Generando para ${NOMBRE_SO[so]}…` : `Para ${NOMBRE_SO[so]}`}
             </button>
           {/each}

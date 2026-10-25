@@ -4,9 +4,9 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
 	"flag"
 	"fmt"
-	"hash/fnv"
 	"io/fs"
 	"mime"
 	"net"
@@ -14,6 +14,8 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -41,7 +43,7 @@ func main() {
 	}
 	vida := &vigilante{}
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServerFS(raiz))
+	mux.Handle("/", servir(raiz))
 	mux.HandleFunc("/__vivo", vida.conexion)
 
 	ln, err := escuchar(*puerto)
@@ -59,17 +61,37 @@ func main() {
 	}
 }
 
-// El puerto preferido depende del contenido: así el navegador recuerda lo visto de una vez a otra.
+// Los archivos de la idea van embebidos con nombres seguros; archivos.json traduce la ruta original.
+// Se sirven en /archivos/idea/<ruta> (imágenes y botones del visor) y en /<ruta> (enlaces de los documentos).
+func servir(raiz fs.FS) http.Handler {
+	manifiesto := map[string]string{}
+	if datos, err := fs.ReadFile(raiz, "archivos.json"); err == nil {
+		if err := json.Unmarshal(datos, &manifiesto); err != nil {
+			fatal(err)
+		}
+	}
+	estatico := http.FileServerFS(raiz)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ruta := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/"), "archivos/idea/")
+		if destino, ok := manifiesto[ruta]; ok {
+			http.ServeFileFS(w, r, raiz, "archivos/"+destino)
+			return
+		}
+		estatico.ServeHTTP(w, r)
+	})
+}
+
+// El puerto preferido depende de la idea: así el navegador recuerda lo visto de una vez a otra.
 func escuchar(fijo int) (net.Listener, error) {
 	if fijo != 0 {
 		return net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", fijo))
 	}
-	h := fnv.New32a()
-	if datos, err := sitio.ReadFile("sitio/datos.json"); err == nil {
-		h.Write(datos[:min(len(datos), 4096)])
-	}
-	if ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", 41000+int(h.Sum32()%8000))); err == nil {
-		return ln, nil
+	if texto, err := sitio.ReadFile("sitio/puerto"); err == nil {
+		if p, err := strconv.Atoi(strings.TrimSpace(string(texto))); err == nil {
+			if ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", p)); err == nil {
+				return ln, nil
+			}
+		}
 	}
 	return net.Listen("tcp", "127.0.0.1:0")
 }
