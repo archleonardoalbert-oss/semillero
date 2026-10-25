@@ -1,9 +1,12 @@
 // Prompt de sistema y mensajes de cada ejecución de una sesión de análisis.
+import { TIPOS, TIPO_POR_DEFECTO } from './tipos.js';
 
-export function promptSistema() {
+const tipoValido = (t) => (TIPOS[t] ? t : TIPO_POR_DEFECTO);
+
+function promptSistemaBase() {
   return `# Eres un analista de ideas en Semillero
 
-Semillero es el almacén de pensamientos de una persona con muchas más ideas que tiempo: IA, neurociencia, hardware, física, matemáticas y proyectos posibles. Tu trabajo es analizar UNA idea suya y darle un dictamen firme. Esta conversación es la sesión permanente de esa idea: cuando el usuario responda a tu dictamen, la retomarás con todo este contexto.
+Semillero es el almacén de pensamientos de una persona con muchas más ideas que tiempo, de cualquier tipo: investigación, negocios, productos, obras creativas, aprendizaje y más. Cada idea vive en un bancal con un TIPO; al final de estas instrucciones está la sección «Este bancal», con los criterios específicos para juzgarla: síguelos al pie de la letra. Tu trabajo es analizar UNA idea suya y darle un dictamen firme. Esta conversación es la sesión permanente de esa idea: cuando el usuario responda a tu dictamen, la retomarás con todo este contexto.
 
 ## Tono: honestidad total
 
@@ -92,7 +95,7 @@ etiqueta: 2 a 6 palabras con el porqué concreto
 ---
 \`\`\`
 
-Después, el cuerpo con calidad de artículo científico:
+Después, el cuerpo, con el formato que pide la sección «Este bancal». Herramientas de formato disponibles:
 - Matemáticas en LaTeX compatible con KaTeX: \`$…$\` en línea y \`$$…$$\` en bloque. Numera las ecuaciones importantes con \`\\tag{1}\`.
 - Entornos formales como citas: \`> **Definición 1.** …\`, \`> **Teorema 1.** …\`, \`> **Lema 1.**\`, \`> **Proposición 1.**\`, \`> **Corolario 1.**\`, \`> **Observación 1.**\`.
 - Figuras cuando aporten: genera gráficos con \`python3\` y matplotlib (fondo transparente u oscuro, texto claro, datos reales con su fuente) y guárdalos en la carpeta \`figuras/\` de la idea; o descarga imágenes de las fuentes con \`curl\` a \`figuras/\`. Inclúyelas con \`![Figura N. Pie descriptivo. Fuente: …](figuras/archivo.png)\`. La ruta es relativa a la carpeta de la idea.
@@ -108,6 +111,15 @@ Tu directorio de trabajo es la carpeta de datos de Semillero.
   3. el \`notas.md\` de tu carpeta y \`notas-globales.md\`, que son la memoria permanente compartida. **Solo añade al final**, nunca reescribas ni borres lo que hay, porque otras sesiones escriben a la vez. Cada entrada empieza con \`### <título de la idea> · <fecha>\`. Anota lo que una futura sesión necesitaría saber: hechos verificados del campo, preferencias o capacidades del usuario que descubras, conexiones entre ideas.
 - **Prohibido:** modificar lo que escribió el usuario (\`*-usuario.md\`, \`idea.json\`, \`adjuntos/\`), los dictámenes de otras ideas, o escribir fuera de la carpeta de datos. Cualquier cambio así se revierte automáticamente.
 `;
+}
+
+function seccionTipo(tipo, cuerpo) {
+  const t = TIPOS[tipoValido(tipo)];
+  return `\n\n# Este bancal: ${t.nombre}\n\n${cuerpo(t)}\n`;
+}
+
+export function promptSistema(tipo = TIPO_POR_DEFECTO) {
+  return promptSistemaBase() + seccionTipo(tipo, (t) => `${t.analisis}\n\n**Formato del cuerpo del dictamen para este tipo:** ${t.formato}`);
 }
 
 export function mensajeEjecucion({ tipo, idea, carpeta, rutaIdea, archivoDestino, replica }) {
@@ -212,7 +224,7 @@ export function mensajeGlosa({ tipo, rutaDocumento, fragmento, prompt, carpetaFi
 
 export const mensajeSeguimientoGlosa = (prompt) => `Pregunta de seguimiento del usuario sobre esta misma glosa (las figuras, en la misma carpeta de antes):\n\n${prompt.trim()}`;
 
-export function promptGerminacion() {
+function promptGerminacionBase() {
   return `# Germinación en Semillero
 
 Esta es la sesión permanente de una idea del usuario que ya ACEPTASTE tras analizarla. Ahora empieza la germinación: vais a trabajar juntos para llevarla a cabo. Ya no emites dictámenes. Tu trabajo es trazar y mantener un MAPA claro de lo que el usuario debe estudiar y de los problemas a los que se enfrenta. El mismo tono que en el análisis: honestidad total, sin complacencia y sin relleno.
@@ -287,6 +299,21 @@ SOLO esto:
 `;
 }
 
+export function promptGerminacion(tipo = TIPO_POR_DEFECTO) {
+  return promptGerminacionBase() + seccionTipo(tipo, (t) => `${t.germinacion}
+
+En el mapa, para este tipo:
+- los nodos \`estudio\` son «${t.vocab.estudio}»;
+- los nodos \`incognita\` son «${t.vocab.hoja}»;
+- los nodos \`incognita\` con \`"abierto": true\` son «${t.vocab.fruto}».
+
+El usuario los verá con esos nombres. Mantén la estructura de documentos de las incógnitas («Cómo se llegó a este problema», «El problema», «Qué representaría resolverlo»), pero adáptala a lo que son aquí. En una hipótesis de negocio, por ejemplo, «El problema» es la hipótesis formulada de forma comprobable, con su criterio de éxito, y debe incluir el experimento más barato que la valida o la refuta.
+
+Criterios para evaluar con este tipo de idea (para orientar la ruta y las prioridades):
+
+${t.analisis}`);
+}
+
 function listaRespuestas(mapa, respuestas) {
   return (mapa?.diagnostico?.preguntas ?? [])
     .map((p) => `### ${p.texto}\n\n${String(respuestas?.[p.id] ?? '').trim() || '_(sin respuesta)_'}`)
@@ -348,7 +375,7 @@ export function mensajeGerminacion({ idea, carpeta, rutaIdea, mapa, progreso, ca
   ].join('\n');
 }
 
-export function promptTaller() {
+function promptTallerBase() {
   return `# Taller de una incógnita en Semillero
 
 Eres el asesor dedicado a UNA incógnita (o problema abierto) de la germinación de una idea del usuario. Él investiga el problema y tú le acompañas de forma continua hasta la solución correcta. No eres un buscador de respuestas: eres su director de tesis más exigente y más útil.
@@ -389,6 +416,14 @@ El usuario decidirá si la aplica. No propongas por proponer: solo cuando el pro
 
 SOLO la ruta de propuesta y la carpeta de figuras que se te indican. Puedes leer todo el semillero. Cualquier otro cambio se revierte.
 `;
+}
+
+export function promptTaller(tipo = TIPO_POR_DEFECTO) {
+  return promptTallerBase() + seccionTipo(tipo, (t) => `Aquí el nodo es una «${t.vocab.hoja}» (o un «${t.vocab.fruto}» si es abierto). Asesora con los criterios de este tipo:
+
+${t.analisis}
+
+**Cómo se verificará al final** (prepara al usuario para ello): ${t.verificacion}`);
 }
 
 // Primer mensaje de un taller: contexto justo de la incógnita, sin el peso de toda la germinación.
@@ -460,18 +495,18 @@ export function parsearRespuestaTaller(texto) {
   return { cuerpo: cuerpo.trim(), propuesta, conexiones };
 }
 
-export function argsTaller({ sessionId, ajustes, mensaje }) {
+export function argsTaller({ sessionId, ajustes, mensaje, tipo }) {
   return [
     '-p', mensaje, ...COMUNES,
     ...(sessionId ? ['--resume', sessionId] : []),
     // Siempre Opus (decisión del usuario); el esfuerzo sí sale de Ajustes.
     '--model', 'opus', '--effort', ajustes.esfuerzo,
-    '--append-system-prompt', promptTaller(),
+    '--append-system-prompt', promptTaller(tipo),
     ...PERMISOS,
   ];
 }
 
-export function promptExamen() {
+function promptExamenBase() {
   return `# Examinador de Semillero
 
 Eres el examinador de UN nodo de estudio de la germinación de una idea del usuario. Tu examen decide si el usuario domina de verdad ese contenido. Generas el examen al momento: cada intento es distinto, así que no hay respuestas que memorizar.
@@ -520,6 +555,16 @@ La nota de cada pregunta va de 0 a sus puntos.
 
 SOLO la carpeta de figuras que se te indica. Puedes leer todo el semillero.
 `;
+}
+
+export function promptExamen(tipo = TIPO_POR_DEFECTO) {
+  return promptExamenBase() + seccionTipo(tipo, (t) => `**Formato de la prueba para este tipo:** ${t.dominio}
+
+Si eliges **caso práctico**, pon \`"modo": "caso"\` en el bloque \`semillero-examen\` (por defecto es \`"modo": "examen"\`):
+- cada «pregunta» es un entregable concreto aplicado a la idea del usuario (qué entregar, en qué formato y con qué criterios se evaluará);
+- se responde con texto y adjuntos (hojas de cálculo exportadas a PDF o CSV, documentos, imágenes, código);
+- la dificultad se refleja en la exigencia del entregable y en la profundidad que se pide;
+- en experto, usa casos reales y difíciles del sector, endurecidos.`);
 }
 
 const NOMBRE_DIFICULTAD = { suficiente: 'Suficiente', avanzado: 'Avanzado', experto: 'Experto' };
@@ -581,7 +626,7 @@ export function parsearExamen(texto) {
       ids.add(p.id);
     }
     const lista = preguntas.map((p) => ({ id: p.id, enunciado: p.enunciado.trim(), puntos: Number(p.puntos) }));
-    return { instrucciones: String(j.instrucciones ?? ''), preguntas: lista, puntos: lista.reduce((a, p) => a + p.puntos, 0) };
+    return { modo: j.modo === 'caso' ? 'caso' : 'examen', instrucciones: String(j.instrucciones ?? ''), preguntas: lista, puntos: lista.reduce((a, p) => a + p.puntos, 0) };
   } catch {
     return null;
   }
@@ -618,7 +663,7 @@ export function argsEvaluacion({ sessionId, ajustes, mensaje, sistema }) {
   ];
 }
 
-export function promptVerificador() {
+function promptVerificadorBase() {
   return `# Verificador de Semillero
 
 El usuario afirma haber RESUELTO una incógnita o un problema abierto de la germinación de una de sus ideas. Tú decides si es verdad. Eres independiente: no eres su asesor ni su taller, eres el revisor más riguroso que existe. Un problema solo queda marcado como resuelto si tú lo aceptas.
@@ -665,6 +710,14 @@ SOLO:
 
 No modifiques ningún documento existente: se revierte.
 `;
+}
+
+export function promptVerificador(tipo = TIPO_POR_DEFECTO) {
+  return promptVerificadorBase() + seccionTipo(tipo, (t) => `En este tipo, «resuelto» se llama «${t.vocab.resuelta}» y el nodo es una «${t.vocab.hoja}» (o un «${t.vocab.fruto}» si es abierto).
+
+**Qué cuenta como ${t.vocab.resuelta.toLowerCase()}:** ${t.verificacion}
+
+Mantén el bloque \`semillero-veredicto\` con \`"resuelto": true | false\`.`);
 }
 
 export function mensajeVerificacion({ idea, rutaIdea, nodo, texto, adjuntos, rutas }) {

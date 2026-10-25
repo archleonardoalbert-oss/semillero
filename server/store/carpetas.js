@@ -1,6 +1,14 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { slugify, slugUnico, escribirAtomico, escribirJSON, leerJSON, existe } from './fsutil.js';
+import { TIPOS, TIPO_POR_DEFECTO } from '../engine/tipos.js';
+
+const MAX_DESCRIPCION = 2000;
+// Los bancales anteriores a los tipos se tratan como académicos.
+const normalizar = (c) => (c ? { descripcion: '', ...c, tipo: TIPOS[c.tipo] ? c.tipo : TIPO_POR_DEFECTO } : c);
+function validarTipo(tipo) {
+  if (tipo !== undefined && !TIPOS[tipo]) throw new Error('tipo-invalido');
+}
 
 export async function asegurarNotasGlobales(datos) {
   const ruta = path.join(datos, 'notas-globales.md');
@@ -21,18 +29,19 @@ export function crearAlmacenCarpetas(cfg, { alEscribir = async () => {}, protege
   async function obtener(id) {
     const c = await leerJSON(rutaJson(id), null);
     if (!c) throw new Error('carpeta-no-existe');
-    return c;
+    return normalizar(c);
   }
 
   async function listar() {
     await fs.mkdir(raiz, { recursive: true });
     const ids = await fs.readdir(raiz);
     const todas = await Promise.all(ids.map((id) => leerJSON(path.join(raiz, id, 'carpeta.json'), null)));
-    return todas.filter(Boolean).sort((a, b) => a.orden - b.orden);
+    return todas.filter(Boolean).map(normalizar).sort((a, b) => a.orden - b.orden);
   }
 
-  async function crear({ nombre, color = '#7aa2ff' }) {
+  async function crear({ nombre, color = '#7aa2ff', tipo = TIPO_POR_DEFECTO, descripcion = '' }) {
     if (!String(nombre ?? '').trim()) throw new Error('nombre-vacio');
+    validarTipo(tipo);
     const existentes = await listar();
     return proteger(
       (c) => [`carpetas/${c.id}/carpeta.json`, `carpetas/${c.id}/notas.md`, 'notas-globales.md'],
@@ -44,6 +53,8 @@ export function crearAlmacenCarpetas(cfg, { alEscribir = async () => {}, protege
           id,
           nombre: nombre.trim(),
           color,
+          tipo,
+          descripcion: String(descripcion ?? '').trim().slice(0, MAX_DESCRIPCION),
           creada: new Date().toISOString(),
           orden: existentes.reduce((m, c) => Math.max(m, c.orden), -1) + 1,
         };
@@ -56,6 +67,12 @@ export function crearAlmacenCarpetas(cfg, { alEscribir = async () => {}, protege
   }
 
   function actualizar(id, parche) {
+    try {
+      validarTipo(parche.tipo);
+    } catch (e) {
+      return Promise.reject(e);
+    }
+    if (parche.descripcion !== undefined) parche = { ...parche, descripcion: String(parche.descripcion).trim().slice(0, MAX_DESCRIPCION) };
     return proteger([`carpetas/${id}/carpeta.json`], async () => {
       const carpeta = { ...(await obtener(id)), ...parche, id };
       await escribirJSON(rutaJson(id), carpeta);

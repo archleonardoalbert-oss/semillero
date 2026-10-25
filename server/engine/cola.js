@@ -4,9 +4,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ESTADOS_PENDIENTES } from '../store/ideas.js';
 import { ejecutar as ejecutarReal } from './runner.js';
-import { argsClaude, mensajeEjecucion, mensajeGerminacion, promptGerminacion } from './prompt.js';
+import { argsClaude, mensajeEjecucion, mensajeGerminacion, promptGerminacion, promptSistema } from './prompt.js';
 import { validarMapa } from './mapa.js';
 import { VEREDICTOS } from './veredicto.js';
+import { tipoDe as tipoBancal, bloqueBancal } from './tipos.js';
 import { parsearDictamen } from './veredicto.js';
 import { notificar as notificarReal } from './notificar.js';
 
@@ -181,9 +182,10 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
       a.enmendadosEnviados = idea.enmendados ?? [];
       const cambios = await germinacion.cambiosDesdeEnvio(ref.carpetaId, ref.ideaId, a.mapaAntes);
       await cambiar(ref, { interrumpida: true, archivoDestino: null });
+      const { contexto } = await ajustes.leer();
       return {
-        sistema: promptGerminacion(),
-        mensaje: mensajeGerminacion({ idea, carpeta, rutaIdea, mapa: a.mapaAntes, progreso, cambios, reanudar: tipo === 'reanudar' }),
+        sistema: promptGerminacion(tipoBancal(carpeta)),
+        mensaje: `${bloqueBancal(carpeta, contexto)}\n\n${mensajeGerminacion({ idea, carpeta, rutaIdea, mapa: a.mapaAntes, progreso, cambios, reanudar: tipo === 'reanudar' })}`,
       };
     }
     a.enmendadosEnviados = idea.enmendados ?? [];
@@ -191,7 +193,10 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
     a.objetivos = [`${rutaIdea}/hilo/${a.archivoDestino}`, `${rutaIdea}/figuras/**`, `carpetas/${ref.carpetaId}/notas.md`];
     await cambiar(ref, { interrumpida: true, archivoDestino: a.archivoDestino });
     const ultimo = idea.hilo.at(-1);
+    const { contexto } = await ajustes.leer();
     return {
+      sistema: promptSistema(tipoBancal(carpeta)),
+      prefijo: bloqueBancal(carpeta, contexto),
       mensaje: mensajeEjecucion({
         tipo, idea, carpeta, rutaIdea,
         archivoDestino: `${rutaIdea}/hilo/${a.archivoDestino}`,
@@ -212,7 +217,10 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
       const nueva = !idea.sessionId;
       const sessionId = idea.sessionId ?? crypto.randomUUID();
       if (nueva) await cambiar(ref, { sessionId });
-      const { mensaje, sistema } = await preparar(a, idea, carpeta, tipo);
+      const preparado = await preparar(a, idea, carpeta, tipo);
+      const { sistema } = preparado;
+      // El bloque del bancal va delante; el mensaje termina en «Escribe tu dictamen en …».
+      const mensaje = preparado.prefijo ? `${preparado.prefijo}\n\n${preparado.mensaje}` : preparado.mensaje;
       const marca = new Date().toISOString().replace(/[:.]/g, '-');
       // Pausada o detenida mientras se preparaba: no llega a lanzar claude.
       const r = control.signal.aborted ? { codigo: null, abortado: true } : await ejecutar({

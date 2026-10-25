@@ -4,6 +4,7 @@ import path from 'node:path';
 import { ejecutar as ejecutarReal } from './runner.js';
 import { argsEvaluacion, promptVerificador, mensajeVerificacion, parsearVeredictoVerificacion } from './prompt.js';
 import { validarMapa } from './mapa.js';
+import { tipoDe, bloqueBancal } from './tipos.js';
 
 const RE_ADJUNTO = /^germinacion\/verificaciones\/[a-z0-9-]{1,40}\/adjuntos\/[^/\\]+$/;
 const MAX_TEXTO = 100000;
@@ -12,7 +13,7 @@ const sinComodin = (p) => p.replace(/\/\*\*$/, '');
 // Verificación rigurosa de una incógnita que el usuario dice haber resuelto. Una sesión nueva e
 // independiente juzga; si acepta, el nodo queda resuelto y el árbol puede crecer con los problemas
 // que el resultado abre.
-export function crearMotorVerificacion({ cfg, ideas, verificaciones, germinacion, guard, cola, ajustes, ejecutar = ejecutarReal }) {
+export function crearMotorVerificacion({ cfg, ideas, carpetas = null, verificaciones, germinacion, guard, cola, ajustes, ejecutar = ejecutarReal }) {
   const emisor = new EventEmitter();
   const activas = new Map(); // 'c/i/n' → objetivos
   const objetivosActivos = () => [...activas.values()].flat();
@@ -63,11 +64,15 @@ export function crearMotorVerificacion({ cfg, ideas, verificaciones, germinacion
     const objetivos = activas.get(k);
     let sesion = null;
     let final;
+    const carpeta = await carpetas?.obtener(ref.carpetaId).catch(() => null);
     try {
       const marca = new Date().toISOString().replace(/[:.]/g, '-');
       const r = await ejecutar({
         cfg,
-        args: argsEvaluacion({ sessionId: null, ajustes: await ajustes.leer(), sistema: promptVerificador(), mensaje: mensajeVerificacion({ idea, rutaIdea, nodo, texto: v.texto, adjuntos: v.adjuntos, rutas }) }),
+        args: argsEvaluacion({
+          sessionId: null, ajustes: await ajustes.leer(), sistema: promptVerificador(tipoDe(carpeta)),
+          mensaje: `${bloqueBancal(carpeta, (await ajustes.leer()).contexto)}\n\n${mensajeVerificacion({ idea, rutaIdea, nodo, texto: v.texto, adjuntos: v.adjuntos, rutas })}`,
+        }),
         cwd: cfg.datos,
         rutaRegistro: path.join(ideas.dirIdea(ref.carpetaId, ref.ideaId), 'registro', 'verificaciones', `${n}-${v.id}-${marca}.jsonl`),
         alEvento: (ev) => {

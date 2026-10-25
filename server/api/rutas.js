@@ -20,6 +20,7 @@ import { crearAlmacenVerificaciones } from '../store/verificaciones.js';
 import { crearMotorVerificacion } from '../engine/verificacion.js';
 import { crearMotorGlosas } from '../engine/glosas.js';
 import { validarMapa } from '../engine/mapa.js';
+import { tiposParaInterfaz } from '../engine/tipos.js';
 import { rutaSegura, slugify } from '../store/fsutil.js';
 import { registrarWs } from './ws.js';
 
@@ -36,7 +37,7 @@ const ESTADO_HTTP = {
   'tipo-invalido': 400, 'documento-invalido': 400, 'prompt-vacio': 400, 'fragmento-vacio': 400,
   'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404, 'glosa-no-existe': 404, cuota: 409,
   'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409, 'no-germinable': 409, 'no-disponible': 409,
-  'respuestas-invalidas': 400, 'requiere-examen': 409, 'examen-abierto': 409, 'examen-cerrado': 409, 'tiempo-agotado': 409,
+  'respuestas-invalidas': 400, 'tipo-invalido': 400, 'requiere-examen': 409, 'examen-abierto': 409, 'examen-cerrado': 409, 'tiempo-agotado': 409,
   'dificultad-invalida': 400, 'pregunta-invalida': 400, 'examen-no-existe': 404, 'verificacion-no-existe': 404, 'ya-resuelta': 409, 'requiere-verificacion': 409, 'sin-propuesta': 409, 'version-invalida': 400, 'camino-invalido': 400, 'ya-analizada': 409, 'nodo-invalido': 400, 'estado-invalido': 400,
 };
 
@@ -63,13 +64,13 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
   const motorGlosas = crearMotorGlosas({ cfg, ideas, glosas, guard, cola, ajustes, ...(ejecutarGlosa && { ejecutar: ejecutarGlosa }) });
   app.decorate('glosas', motorGlosas);
   const talleres = crearAlmacenTalleres(cfg, { proteger: guard.proteger });
-  const motorTaller = crearMotorTaller({ cfg, ideas, talleres, germinacion, guard, cola, ajustes, ...(ejecutarTaller && { ejecutar: ejecutarTaller }) });
+  const motorTaller = crearMotorTaller({ cfg, ideas, carpetas, talleres, germinacion, guard, cola, ajustes, ...(ejecutarTaller && { ejecutar: ejecutarTaller }) });
   app.decorate('talleres', motorTaller);
   const examenes = crearAlmacenExamenes(cfg, { proteger: guard.proteger });
-  const motorExamenes = crearMotorExamenes({ cfg, ideas, examenes, germinacion, guard, cola, ajustes, ...(ejecutarEvaluacion && { ejecutar: ejecutarEvaluacion }) });
+  const motorExamenes = crearMotorExamenes({ cfg, ideas, carpetas, examenes, germinacion, guard, cola, ajustes, ...(ejecutarEvaluacion && { ejecutar: ejecutarEvaluacion }) });
   app.decorate('examenes', motorExamenes);
   const verificaciones = crearAlmacenVerificaciones(cfg, { proteger: guard.proteger });
-  const motorVerificacion = crearMotorVerificacion({ cfg, ideas, verificaciones, germinacion, guard, cola, ajustes, ...(ejecutarEvaluacion && { ejecutar: ejecutarEvaluacion }) });
+  const motorVerificacion = crearMotorVerificacion({ cfg, ideas, carpetas, verificaciones, germinacion, guard, cola, ajustes, ...(ejecutarEvaluacion && { ejecutar: ejecutarEvaluacion }) });
   app.decorate('verificaciones', motorVerificacion);
 
   // Solo esta máquina: Host contra DNS rebinding y Origin contra webs ajenas abiertas en el navegador.
@@ -119,7 +120,8 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
   });
   app.post('/api/carpetas', async (req, reply) => reply.code(201).send(await carpetas.crear(req.body ?? {})));
   app.patch('/api/carpetas/:c', async (req) => {
-    const { nombre, color } = req.body ?? {};
+    const { nombre, color, tipo, descripcion } = req.body ?? {};
+    if (tipo !== undefined || descripcion !== undefined) await carpetas.actualizar(req.params.c, { ...(tipo !== undefined && { tipo }), ...(descripcion !== undefined && { descripcion }) });
     if (nombre !== undefined) await carpetas.renombrar(req.params.c, nombre);
     if (color !== undefined) await carpetas.actualizar(req.params.c, { color });
     return carpetas.obtener(req.params.c);
@@ -307,6 +309,7 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
   }
 
   app.get('/api/ajustes', async () => ajustes.leer());
+  app.get('/api/tipos', async () => tiposParaInterfaz());
   app.put('/api/ajustes', async (req) => ajustes.guardar(req.body ?? {}));
 
   app.get('/archivos/*', async (req, reply) => {

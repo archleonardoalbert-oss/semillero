@@ -4,6 +4,7 @@ import path from 'node:path';
 import { ejecutar as ejecutarReal } from './runner.js';
 import { argsTaller, mensajeInicialTaller, mensajeTaller, parsearRespuestaTaller } from './prompt.js';
 import { validarMapa } from './mapa.js';
+import { tipoDe, bloqueBancal } from './tipos.js';
 
 const MAX_TEXTO = 30000;
 const RE_ADJUNTO = /^germinacion\/talleres\/[a-z0-9-]{1,40}\/adjuntos\/[^/\\]+$/;
@@ -11,7 +12,7 @@ const sinComodin = (p) => p.replace(/\/\*\*$/, '');
 
 // Talleres: una sesión dedicada a cada incógnita, con el contexto justo, que acompaña al usuario
 // mientras la investiga. Corre al momento, como las glosas, coordinada con la cola por el guard.
-export function crearMotorTaller({ cfg, ideas, talleres, germinacion, guard, cola, ajustes, ejecutar = ejecutarReal }) {
+export function crearMotorTaller({ cfg, ideas, carpetas = null, talleres, germinacion, guard, cola, ajustes, ejecutar = ejecutarReal }) {
   const emisor = new EventEmitter();
   const activos = new Map(); // 'c/i/n' → objetivos
   const reservados = new Set();
@@ -98,7 +99,9 @@ export function crearMotorTaller({ cfg, ideas, talleres, germinacion, guard, col
     const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
     const { mapa, nodo } = await incognita(ref, n);
     const progreso = await germinacion.leerProgreso(ref.carpetaId, ref.ideaId);
-    return mensajeInicialTaller({
+    const carpeta = await carpetas?.obtener(ref.carpetaId).catch(() => null);
+    const { contexto } = await ajustes.leer();
+    return `${bloqueBancal(carpeta, contexto)}\n\n` + mensajeInicialTaller({
       idea, mapa, nodo, rutaIdea: ideas.relIdea(ref.carpetaId, ref.ideaId),
       notas: progreso.nodos?.[n]?.notas ?? '', indice: await indiceGlobal(), historial,
       texto: peticion.texto, adjuntos: peticion.adjuntos, rutas: rutas(ref, n),
@@ -118,7 +121,7 @@ export function crearMotorTaller({ cfg, ideas, talleres, germinacion, guard, col
         const marca = new Date().toISOString().replace(/[:.]/g, '-');
         return ejecutar({
           cfg,
-          args: argsTaller({ sessionId, ajustes: await ajustes.leer(), mensaje }),
+          args: argsTaller({ sessionId, ajustes: await ajustes.leer(), mensaje, tipo: tipoDe(await carpetas?.obtener(ref.carpetaId).catch(() => null)) }),
           cwd: cfg.datos,
           rutaRegistro: path.join(ideas.dirIdea(ref.carpetaId, ref.ideaId), 'registro', 'talleres', `${n}-${marca}.jsonl`),
           alEvento: (ev) => {

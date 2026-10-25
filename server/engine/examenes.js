@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events';
 import path from 'node:path';
 import { ejecutar as ejecutarReal } from './runner.js';
+import { tipoDe, bloqueBancal } from './tipos.js';
 import { argsEvaluacion, promptExamen, mensajeGenerarExamen, mensajeCorregirExamen, parsearExamen, parsearCorreccion } from './prompt.js';
 
 export const LIMITE_SUFICIENTE_MS = 4.5 * 3600 * 1000; // decisión del usuario: 4 h 30 min; avanzado y experto, sin límite
@@ -17,7 +18,7 @@ const herramientasDe = (ev) => {
 // Exámenes de dominio de los nodos de estudio: se generan al momento con la dificultad elegida y los
 // corrige la misma sesión, que es la única que conoce la rúbrica. Aprobar (≥ 3/5) domina el nodo.
 export function crearMotorExamenes({
-  cfg, ideas, examenes, germinacion, guard, cola, ajustes, ejecutar = ejecutarReal,
+  cfg, ideas, carpetas = null, examenes, germinacion, guard, cola, ajustes, ejecutar = ejecutarReal,
   reloj = Date.now, temporizar = (fn, ms) => setTimeout(fn, Math.min(ms, 2 ** 31 - 1)).unref?.(),
 }) {
   const emisor = new EventEmitter();
@@ -59,7 +60,7 @@ export function crearMotorExamenes({
     const marca = new Date(reloj()).toISOString().replace(/[:.]/g, '-');
     const r = await ejecutar({
       cfg,
-      args: argsEvaluacion({ sessionId, ajustes: await ajustes.leer(), mensaje, sistema: promptExamen() }),
+      args: argsEvaluacion({ sessionId, ajustes: await ajustes.leer(), mensaje, sistema: promptExamen(tipoDe(await carpetas?.obtener(ref.carpetaId).catch(() => null))) }),
       cwd: cfg.datos,
       rutaRegistro: path.join(ideas.dirIdea(ref.carpetaId, ref.ideaId), 'registro', 'examenes', `${n}-${id}-${marca}.jsonl`),
       alEvento: (ev) => {
@@ -107,7 +108,8 @@ export function crearMotorExamenes({
     const e = await examenes.crear(ref.carpetaId, ref.ideaId, n, { dificultad });
     emitir(ref, n, e);
     activos.set(clave(ref, n, e.id), [`${figuras(ref, e.id)}/**`]);
-    const mensaje = mensajeGenerarExamen({
+    const carpeta = await carpetas?.obtener(ref.carpetaId).catch(() => null);
+    const mensaje = `${bloqueBancal(carpeta, (await ajustes.leer()).contexto)}\n\n` + mensajeGenerarExamen({
       idea, mapa, nodo, dificultad, rutaIdea: ideas.relIdea(ref.carpetaId, ref.ideaId), aguasAbajo: aguasAbajo(mapa, n), figuras: figuras(ref, e.id),
     });
     (async () => {
@@ -119,8 +121,9 @@ export function crearMotorExamenes({
         if (!ex) final = { estado: 'error', error: r.resultado && !r.resultado.is_error ? 'La sesión no devolvió un examen válido' : textoFallo(r), sessionId: sesion };
         else {
           const inicio = new Date(reloj()).toISOString();
-          const limite = dificultad === 'suficiente' ? new Date(reloj() + LIMITE_SUFICIENTE_MS).toISOString() : null;
-          final = { estado: 'abierto', sessionId: sesion, instrucciones: ex.instrucciones, preguntas: ex.preguntas, inicio, limite };
+          // El límite de 4 h 30 min es para el examen Suficiente; un caso práctico (un entregable real) no lo tiene.
+          const limite = dificultad === 'suficiente' && ex.modo === 'examen' ? new Date(reloj() + LIMITE_SUFICIENTE_MS).toISOString() : null;
+          final = { estado: 'abierto', sessionId: sesion, modo: ex.modo, instrucciones: ex.instrucciones, preguntas: ex.preguntas, inicio, limite };
           if (limite) programarLimite(ref, n, e.id, LIMITE_SUFICIENTE_MS);
         }
       } catch (err) {
