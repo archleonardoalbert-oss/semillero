@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
@@ -23,6 +24,8 @@ import { validarMapa } from '../engine/mapa.js';
 import { tiposParaInterfaz, esTipo } from '../engine/tipos.js';
 import { rutaSegura, slugify } from '../store/fsutil.js';
 import { registrarWs } from './ws.js';
+import { prepararSitio, RUTA_VISOR } from '../exportar/paquete.js';
+import { compilar, SISTEMAS } from '../exportar/compilar.js';
 
 const DIST = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../web/dist');
 
@@ -37,7 +40,7 @@ const ESTADO_HTTP = {
   'tipo-invalido': 400, 'documento-invalido': 400, 'prompt-vacio': 400, 'fragmento-vacio': 400,
   'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404, 'glosa-no-existe': 404, cuota: 409,
   'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409, 'no-germinable': 409, 'no-disponible': 409,
-  'respuestas-invalidas': 400, 'tipo-invalido': 400, 'requiere-examen': 409, 'examen-abierto': 409, 'examen-cerrado': 409, 'tiempo-agotado': 409,
+  'respuestas-invalidas': 400, 'so-invalido': 400, 'sin-mapa': 409, 'visor-no-construido': 409, 'tipo-invalido': 400, 'requiere-examen': 409, 'examen-abierto': 409, 'examen-cerrado': 409, 'tiempo-agotado': 409,
   'dificultad-invalida': 400, 'pregunta-invalida': 400, 'examen-no-existe': 404, 'verificacion-no-existe': 404, 'ya-resuelta': 409, 'requiere-verificacion': 409, 'sin-propuesta': 409, 'version-invalida': 400, 'camino-invalido': 400, 'ya-analizada': 409, 'nodo-invalido': 400, 'estado-invalido': 400,
 };
 
@@ -50,7 +53,7 @@ function agrupar(carpetas, ideas, extra = () => ({})) {
     .filter((g) => g.ideas.length);
 }
 
-export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ejecutarTaller, ejecutarEvaluacion } = {}) {
+export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ejecutarTaller, ejecutarEvaluacion, compilarExportacion = compilar, visorExportacion = RUTA_VISOR } = {}) {
   const app = Fastify({ logger: false, bodyLimit: 2 * 1024 * 1024 });
   const guard = crearGuard(cfg);
   await guard.iniciar();
@@ -313,6 +316,28 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
 
   app.get('/api/ajustes', async () => ajustes.leer());
   app.get('/api/tipos', async () => tiposParaInterfaz());
+
+  // Exportar la germinación como un ejecutable autónomo (Linux o Windows) que se descarga.
+  app.get('/api/carpetas/:c/ideas/:i/exportar/:so', async (req, reply) => {
+    const { c, i, so } = req.params;
+    if (!Object.hasOwn(SISTEMAS, so)) throw new Error('so-invalido');
+    const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'semillero-exportar-'));
+    const limpiar = () => fsp.rm(tmp, { recursive: true, force: true });
+    try {
+      await prepararSitio({ cfg, ideas, carpetas, ref: { carpetaId: c, ideaId: i }, destino: path.join(tmp, 'sitio'), visor: visorExportacion });
+      const nombre = `${slugify((await ideas.obtener(c, i)).titulo) || 'idea'}-germinacion${so === 'windows' ? '.exe' : '-linux'}`;
+      const salida = path.join(tmp, nombre);
+      await compilarExportacion({ sitio: path.join(tmp, 'sitio'), so, salida });
+      const flujo = fs.createReadStream(salida);
+      flujo.on('close', limpiar);
+      reply.header('content-disposition', `attachment; filename="${nombre}"`);
+      reply.header('content-length', (await fsp.stat(salida)).size);
+      return reply.type('application/octet-stream').send(flujo);
+    } catch (e) {
+      await limpiar();
+      throw e;
+    }
+  });
   app.put('/api/ajustes', async (req) => ajustes.guardar(req.body ?? {}));
 
   app.get('/archivos/*', async (req, reply) => {
