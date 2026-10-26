@@ -2,7 +2,7 @@
 // sesiones que redactan cada asignatura (nodo de estudio). La pedagogía sale de la investigación citada en
 // docs/superpowers/specs/2026-10-25-cursos-design.md; la API de escenas, del motor de web/src/escena.
 import { fileURLToPath } from 'node:url';
-import { PERMISOS_BASE, COMUNES, HERRAMIENTAS } from './prompt.js';
+import { PERMISOS_BASE, COMUNES, HERRAMIENTAS, NOTA_INTERRUPCION } from './prompt.js';
 
 export const PROBAR_ESCENA = fileURLToPath(new URL('../escenas/hijo.mjs', import.meta.url));
 
@@ -222,7 +222,7 @@ ${INDICE}
 
 export function mensajeRedaccion({ idea, rutaIdea, nodo, mapa, dependencias, respuestasDiagnostico, idiomas, reintento = null, continuar = false }) {
   if (continuar) {
-    return `Tu redacción del nodo «${nodo.titulo}» (${nodo.id}) se interrumpió porque la cuota de Claude llegó al límite. Continúa donde lo dejaste, sin repetir trabajo: revisa lo que ya escribiste en las carpetas del nodo, termina lo que falte, comprueba las escenas y escribe el índice al final.`;
+    return `Tu redacción del nodo «${nodo.titulo}» (${nodo.id}) se interrumpió porque la cuota de Claude llegó al límite. ${NOTA_INTERRUPCION} Continúa donde lo dejaste, sin repetir trabajo: revisa lo que ya escribiste en las carpetas del nodo, termina lo que falte, comprueba las escenas y escribe el índice al final.`;
   }
   if (reintento) {
     return [

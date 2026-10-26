@@ -13,10 +13,10 @@ import { tipoDe, bloqueBancal } from './tipos.js';
 import { argsRedaccion, mensajeRedaccion } from './curso.js';
 import { listaRespuestas } from './prompt.js';
 import { probarEscena } from '../escenas/probar.js';
+import { RE_LIMITE } from './cola.js';
 
 const INTENTOS = 2; // la redacción y una corrección en la misma sesión
 const sinComodin = (p) => p.replace(/\/\*\*$/, '');
-const RE_LIMITE = /usage limit|rate limit|limit reached|límite/i; // el mismo criterio que la cola
 
 export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, cola, ajustes, ejecutar = ejecutarReal, probar = probarEscena }) {
   const emisor = new EventEmitter();

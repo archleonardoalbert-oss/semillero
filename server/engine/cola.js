@@ -12,7 +12,8 @@ import { parsearDictamen } from './veredicto.js';
 import { notificar as notificarReal } from './notificar.js';
 
 const clave = (r) => `${r.carpetaId}/${r.ideaId}`;
-const RE_LIMITE = /usage limit|rate limit|limit reached|límite/i;
+// Los avisos de Claude cuando se agota la cuota («You've hit your session limit · resets 2:10am», «weekly limit»…).
+export const RE_LIMITE = /usage limit|rate limit|limit reached|session limit|weekly limit|hit your [a-z ]{0,20}limit|límite/i;
 
 // Gestiona las ejecuciones: máximo `paralelo` a la vez, el resto en cola.
 export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = null, ejecutar = ejecutarReal, notificar = notificarReal }) {
@@ -325,7 +326,8 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
     const fallo = r.errorArranque ?? (r.resultado?.is_error || !r.resultado
       ? String(r.resultado?.result || r.stderr?.trim().split('\n').at(-1) || 'La sesión terminó sin responder')
       : null);
-    if (fallo) return { estado: 'error', error: fallo, interrumpida: false, ...olvidar };
+    // Si la sesión llegó a trabajar, lo que hizo sigue en su conversación: «Retomar» le pide continuar, no empezar.
+    if (fallo) return { estado: 'error', error: fallo, interrumpida: Boolean(a.arranco) && !('sessionId' in olvidar), ...olvidar };
     if (!v || !v.ok) {
       const motivo = v ? `Mapa inválido: ${v.motivo}` : 'La sesión terminó sin escribir germinacion/mapa.json';
       return { estado: 'error', error: motivo, interrumpida: false };

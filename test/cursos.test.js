@@ -291,3 +291,48 @@ test('R2/R3 API: no se borra una idea cuyo curso se está redactando', async () 
   assert.equal(r.statusCode, 409);
   await app.close();
 });
+
+// --- Límite de sesión de Claude a mitad de una germinación (caso real del 2026-10-26) ---
+async function cortarGerminacion(x, n, resultado) {
+  await hasta(() => x.falso.llamadas[n]);
+  x.falso.llamadas[n].resolve({ codigo: 1, abortado: false, resultado });
+  await hasta(async () => (await x.ideas.obtener(x.ref.carpetaId, x.ref.ideaId)).estado !== 'en-proceso');
+}
+
+test('«You\'ve hit your session limit» pausa la germinación (no es un error) y al reanudar se pide continuar', async () => {
+  const x = await aceptadaYGerminando();
+  await terminarGerminacion(x, 1, DIAGNOSTICO);
+  await x.germinacion.guardarRespuestas(x.ref.carpetaId, x.ref.ideaId, { p1: 'Algo' });
+  await x.cola.germinar(x.ref, {});
+  await cortarGerminacion(x, 2, { subtype: 'success', is_error: true, result: "You've hit your session limit · resets 2:10am (America/Havana)" });
+  const idea = await x.ideas.obtener(x.ref.carpetaId, x.ref.ideaId);
+  assert.equal(idea.estado, 'pausada');
+  assert.equal(idea.error ?? null, null);
+  assert.equal(x.cola.estado().pausadaPorCuota, true);
+  await x.cola.reanudar([x.ref]);
+  await hasta(() => x.falso.llamadas[3]);
+  assert.match(x.falso.llamadas[3].mensaje, /continúa donde la dejaste/);
+  assert.doesNotMatch(x.falso.llamadas[3].mensaje, /Ahora investiga a fondo/);
+});
+
+test('tras un error a mitad de trabajo, «Retomar» pide continuar en la misma sesión, no empezar de nuevo', async () => {
+  const x = await aceptadaYGerminando();
+  await terminarGerminacion(x, 1, DIAGNOSTICO);
+  await x.germinacion.guardarRespuestas(x.ref.carpetaId, x.ref.ideaId, { p1: 'Algo' });
+  await x.cola.germinar(x.ref, {});
+  await cortarGerminacion(x, 2, { subtype: 'error_during_execution', is_error: true, result: 'API Error: 500 Internal server error' });
+  assert.equal((await x.ideas.obtener(x.ref.carpetaId, x.ref.ideaId)).estado, 'error');
+  await x.cola.germinar(x.ref, {});
+  await hasta(() => x.falso.llamadas[3]);
+  assert.match(x.falso.llamadas[3].mensaje, /continúa donde la dejaste/);
+});
+
+test('al reanudar, la sesión sabe que la interrupción fue una pausa de Semillero y no una decisión del usuario', async () => {
+  const x = await aceptadaYGerminando();
+  await terminarGerminacion(x, 1, DIAGNOSTICO);
+  await x.cola.germinar(x.ref, {});
+  await cortarGerminacion(x, 2, { subtype: 'success', is_error: true, result: "You've hit your weekly limit · resets Oct 31" });
+  await x.cola.reanudar([x.ref]);
+  await hasta(() => x.falso.llamadas[3]);
+  assert.match(x.falso.llamadas[3].mensaje, /no fue el usuario/i);
+});

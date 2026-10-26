@@ -122,6 +122,9 @@ export function promptSistema(tipo = TIPO_POR_DEFECTO) {
   return promptSistemaBase() + seccionTipo(tipo, (t) => `${t.analisis}\n\n**Formato del cuerpo del dictamen para este tipo:** ${t.formato}`);
 }
 
+// Tras una pausa, la sesión ve sus herramientas cortadas como «interrumpidas por el usuario»: hay que aclararlo.
+export const NOTA_INTERRUPCION = 'La interrupción la causó Semillero (cuota de Claude o una parada), no fue el usuario: si alguna herramienta aparece como interrumpida o rechazada por el usuario, no lo es; repítela si la necesitas.';
+
 export function mensajeEjecucion({ tipo, idea, carpeta, rutaIdea, archivoDestino, replica }) {
   const cierre = `Escribe tu dictamen en ${archivoDestino}`;
   if (tipo === 'inicial') {
@@ -148,7 +151,8 @@ export function mensajeEjecucion({ tipo, idea, carpeta, rutaIdea, archivoDestino
     ].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');
   }
   return [
-    `Tu ejecución sobre «${idea.titulo}» se interrumpió (pausa por cuota o parada). Sigue en ${rutaIdea}.`,
+    `Tu ejecución sobre «${idea.titulo}» se interrumpió (pausa por cuota, parada o un fallo). Sigue en ${rutaIdea}.`,
+    NOTA_INTERRUPCION,
     'Revisa lo que ya hiciste y continúa donde la dejaste, sin repetir búsquedas innecesarias.',
     ...(replica ? ['', 'Ten en cuenta la respuesta del usuario a la que estabas contestando:', '', replica, ''] : []),
     cierre,
@@ -349,7 +353,8 @@ export function mensajeGerminacion({ idea, carpeta, rutaIdea, mapa, progreso, ca
   const cierre = `${rechazo ? `${rechazo.trim()}\n` : ''}Escribe el mapa en ${destino}`;
   if (reanudar) {
     return [
-      `Tu ejecución de germinación de «${idea.titulo}» se interrumpió (pausa por cuota o parada). Sigue en ${rutaIdea}.`,
+      `Tu ejecución de germinación de «${idea.titulo}» se interrumpió (pausa por cuota, parada o un fallo). Sigue en ${rutaIdea}.`,
+      NOTA_INTERRUPCION,
       'Revisa lo que ya hiciste (documentos de nodos y recursos descargados) y continúa donde la dejaste, sin repetir trabajo.',
       ...(mapa?.fase === 'diagnostico' && Object.keys(progreso?.respuestas ?? {}).length
         ? ['', 'Respuestas del usuario al diagnóstico:', '', listaRespuestas(mapa, progreso.respuestas)]
