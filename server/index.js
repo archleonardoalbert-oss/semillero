@@ -8,6 +8,7 @@ await app.talleres.recuperar();
 await app.examenes.recuperar();
 await app.verificaciones.recuperar();
 await app.cola.recuperar();
+await app.redaccion.recuperar(); // después de la cola: necesita saber si la investigación está pausada
 app.examenes.reanudarCorrecciones();
 await app.listen({ host: cfg.host, port: cfg.puerto });
 console.log(`Semillero en http://localhost:${cfg.puerto} · datos en ${cfg.datos}`);

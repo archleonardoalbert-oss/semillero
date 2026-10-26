@@ -20,6 +20,7 @@ import { crearMotorExamenes } from '../engine/examenes.js';
 import { crearAlmacenVerificaciones } from '../store/verificaciones.js';
 import { crearMotorVerificacion } from '../engine/verificacion.js';
 import { crearMotorGlosas } from '../engine/glosas.js';
+import { crearMotorRedaccion } from '../engine/redaccion.js';
 import { validarMapa } from '../engine/mapa.js';
 import { tiposParaInterfaz, esTipo } from '../engine/tipos.js';
 import { rutaSegura, slugify } from '../store/fsutil.js';
@@ -40,7 +41,7 @@ const ESTADO_HTTP = {
   'tipo-invalido': 400, 'documento-invalido': 400, 'prompt-vacio': 400, 'fragmento-vacio': 400,
   'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404, 'glosa-no-existe': 404, cuota: 409,
   'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409, 'no-germinable': 409, 'no-disponible': 409,
-  'respuestas-invalidas': 400, 'so-invalido': 400, 'tipo-fijo': 409, 'sin-mapa': 409, 'visor-no-construido': 409, 'tipo-invalido': 400, 'requiere-examen': 409, 'examen-abierto': 409, 'examen-cerrado': 409, 'tiempo-agotado': 409,
+  'respuestas-invalidas': 400, 'so-invalido': 400, redactando: 409, 'tipo-fijo': 409, 'sin-mapa': 409, 'visor-no-construido': 409, 'tipo-invalido': 400, 'requiere-examen': 409, 'examen-abierto': 409, 'examen-cerrado': 409, 'tiempo-agotado': 409,
   'dificultad-invalida': 400, 'pregunta-invalida': 400, 'examen-no-existe': 404, 'verificacion-no-existe': 404, 'ya-resuelta': 409, 'requiere-verificacion': 409, 'sin-propuesta': 409, 'version-invalida': 400, 'camino-invalido': 400, 'ya-analizada': 409, 'nodo-invalido': 400, 'estado-invalido': 400,
 };
 
@@ -53,7 +54,7 @@ function agrupar(carpetas, ideas, extra = () => ({})) {
     .filter((g) => g.ideas.length);
 }
 
-export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ejecutarTaller, ejecutarEvaluacion, compilarExportacion = compilar, visorExportacion = RUTA_VISOR } = {}) {
+export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ejecutarTaller, ejecutarEvaluacion, ejecutarRedaccion, compilarExportacion = compilar, visorExportacion = RUTA_VISOR } = {}) {
   const app = Fastify({ logger: false, bodyLimit: 2 * 1024 * 1024 });
   const guard = crearGuard(cfg);
   await guard.iniciar();
@@ -75,6 +76,9 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
   const verificaciones = crearAlmacenVerificaciones(cfg, { proteger: guard.proteger });
   const motorVerificacion = crearMotorVerificacion({ cfg, ideas, carpetas, verificaciones, germinacion, guard, cola, ajustes, ...(ejecutarEvaluacion && { ejecutar: ejecutarEvaluacion }) });
   app.decorate('verificaciones', motorVerificacion);
+  const motorRedaccion = crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, cola, ajustes, ...(ejecutarRedaccion && { ejecutar: ejecutarRedaccion }) });
+  app.decorate('redaccion', motorRedaccion);
+  app.addHook('onClose', async () => motorRedaccion.detenerLatido());
 
   // Solo esta máquina: Host contra DNS rebinding y Origin contra webs ajenas abiertas en el navegador.
   const hostsValidos = new Set([`127.0.0.1:${cfg.puerto}`, `localhost:${cfg.puerto}`]);
@@ -96,7 +100,7 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     (req, body, done) => done(null, body));
 
   await app.register(fastifyWebsocket);
-  registrarWs(app, cola, motorGlosas, motorTaller, motorExamenes, motorVerificacion);
+  registrarWs(app, cola, motorGlosas, motorTaller, motorExamenes, motorVerificacion, motorRedaccion);
 
   const refsDe = (body) => {
     const refs = body?.refs;
@@ -204,11 +208,17 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
       elegido = idea.hilo.findLast((m) => m.autor === 'claude')?.caminos.find((x) => x.id === camino && x.tipo === 'variacion');
       if (!elegido) throw new Error('camino-invalido');
     }
+    // Mientras las asignaturas de un curso se redactan, el plan de estudios no se toca.
+    if (motorRedaccion.ocupada(refDe(req))) throw new Error('redactando');
     await cola.germinar(refDe(req), {
       peticion: String(peticion ?? '').slice(0, 20000), forzar: Boolean(forzar), camino: elegido, comentario: String(comentario ?? '').slice(0, 5000),
       ...(typeof cuerpo === 'string' && { cuerpo }),
     });
     return ideas.obtener(req.params.c, req.params.i);
+  });
+  app.post('/api/carpetas/:c/ideas/:i/germinacion/redaccion/:n/reintentar', async (req) => {
+    await motorRedaccion.reintentar(refDe(req), req.params.n);
+    return motorRedaccion.estado(refDe(req));
   });
   app.get('/api/carpetas/:c/ideas/:i/germinacion', async (req) => {
     await ideas.obtener(req.params.c, req.params.i);
@@ -226,7 +236,7 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
         v = null;
       }
     }
-    return { mapa: v?.ok ? v.mapa : null, progreso };
+    return { mapa: v?.ok ? v.mapa : null, progreso, redaccion: await motorRedaccion.estado(refDe(req)) };
   });
   app.put('/api/carpetas/:c/ideas/:i/germinacion/respuestas', async (req) => {
     await ideas.obtener(req.params.c, req.params.i);

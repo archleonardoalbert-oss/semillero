@@ -1,5 +1,5 @@
 // Retransmite a todos los navegadores conectados lo que ocurre en la cola.
-export function registrarWs(app, cola, glosas, talleres, examenes, verificaciones) {
+export function registrarWs(app, cola, glosas, talleres, examenes, verificaciones, redaccion) {
   const clientes = new Set();
   const enviar = (msg) => {
     const texto = JSON.stringify(msg);
@@ -31,6 +31,9 @@ export function registrarWs(app, cola, glosas, talleres, examenes, verificacione
     verificaciones.on('verificacion-evento', ({ ref, nodo, id, ev }) => enviar({ tipo: 'verificacion-evento', ref, nodo, id, ev }));
     verificaciones.on('idea', ({ ref, idea }) => enviar({ tipo: 'idea', ref, idea }));
   }
+
+  // Solo el estado de cada asignatura de un curso; lo que hace la sesión por dentro no sale del servidor.
+  if (redaccion) redaccion.on('redaccion', ({ ref, nodos }) => enviar({ tipo: 'redaccion', ref, nodos }));
 
   app.get('/ws', { websocket: true }, (socket) => {
     clientes.add(socket);

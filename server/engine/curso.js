@@ -220,17 +220,20 @@ ${INDICE}
 5. Escribe el índice al final. Responde con un resumen breve de lo que hiciste.`;
 }
 
-export function mensajeRedaccion({ idea, rutaIdea, nodo, mapa, dependencias, respuestasDiagnostico, idiomas, reintento = null }) {
-  const plan = (nodo.plan ?? []).map((c, k) => `${k + 1}. ${c.titulo}${c.objetivos?.length ? ` — objetivos: ${c.objetivos.join('; ')}` : ''}`).join('\n');
-  const deps = dependencias.length
-    ? dependencias.map((d) => `- «${d.titulo}» (${rutaIdea}/germinacion/${d.documento})${d.indice ? `: ya redactado, índice en ${rutaIdea}/germinacion/nodos/${d.id}/indice.json` : ''}`).join('\n')
-    : '- (ninguno: es un nodo de entrada)';
+export function mensajeRedaccion({ idea, rutaIdea, nodo, mapa, dependencias, respuestasDiagnostico, idiomas, reintento = null, continuar = false }) {
+  if (continuar) {
+    return `Tu redacción del nodo «${nodo.titulo}» (${nodo.id}) se interrumpió porque la cuota de Claude llegó al límite. Continúa donde lo dejaste, sin repetir trabajo: revisa lo que ya escribiste en las carpetas del nodo, termina lo que falte, comprueba las escenas y escribe el índice al final.`;
+  }
   if (reintento) {
     return [
       `Tu redacción del nodo «${nodo.titulo}» (${nodo.id}) no se aceptó: ${reintento}`,
       'Corrige exactamente eso (revisa también el resto por si hay más fallos del mismo tipo) y vuelve a escribir el índice.',
     ].join('\n\n');
   }
+  const plan = (nodo.plan ?? []).map((c, k) => `${k + 1}. ${c.titulo}${c.objetivos?.length ? ` — objetivos: ${c.objetivos.join('; ')}` : ''}`).join('\n');
+  const deps = dependencias.length
+    ? dependencias.map((d) => `- «${d.titulo}» (${rutaIdea}/germinacion/${d.documento})${d.indice ? `: ya redactado, índice en ${rutaIdea}/germinacion/nodos/${d.id}/indice.json` : ''}`).join('\n')
+    : '- (ninguno: es un nodo de entrada)';
   return [
     `Redacta la asignatura «${nodo.titulo}» (nodo \`${nodo.id}\`) del curso «${idea.titulo}». La idea está en ${rutaIdea}.`,
     `Presentación del nodo, escrita por quien diseñó el plan: ${rutaIdea}/germinacion/${nodo.documento}. Mapa completo: ${rutaIdea}/germinacion/mapa.json.`,

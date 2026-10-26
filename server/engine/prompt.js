@@ -315,7 +315,7 @@ Criterios para evaluar con este tipo de idea (para orientar la ruta y las priori
 ${t.analisis}`);
 }
 
-function listaRespuestas(mapa, respuestas) {
+export function listaRespuestas(mapa, respuestas) {
   return (mapa?.diagnostico?.preguntas ?? [])
     .map((p) => {
       const r = respuestas?.[p.id];
