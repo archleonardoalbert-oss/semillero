@@ -71,9 +71,13 @@ export async function prepararSitio({ cfg, ideas, carpetas, ref, destino, visor 
     raices,
   };
 
-  if (visor && !(await fs.stat(path.join(visor, 'index.html')).catch(() => null))) throw new Error('visor-no-construido');
+  if (visor && !(await fs.stat(path.join(visor, 'visor.html')).catch(() => null))) throw new Error('visor-no-construido');
   await fs.mkdir(destino, { recursive: true });
-  if (visor) await fs.cp(visor, destino, { recursive: true });
+  if (visor) {
+    // La página del visor es la portada del ejecutable; escena.html reproduce las escenas de los cursos.
+    await fs.cp(visor, destino, { recursive: true });
+    await fs.rename(path.join(destino, 'visor.html'), path.join(destino, 'index.html'));
+  }
   await fs.writeFile(path.join(destino, 'datos.json'), JSON.stringify(datos));
   // El puerto preferido del visor depende de la idea, no de la fecha: así el navegador recuerda lo visto.
   await fs.writeFile(path.join(destino, 'puerto'), String(41000 + (crypto.createHash('sha1').update(`${ref.carpetaId}/${ref.ideaId}`).digest().readUInt32BE(0) % 8000)));

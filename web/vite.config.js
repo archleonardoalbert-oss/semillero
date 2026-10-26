@@ -8,7 +8,11 @@ const servidor = 'http://127.0.0.1:4417';
 export default defineConfig({
   root: raiz,
   plugins: [svelte()],
-  build: { outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 4000 },
+  build: {
+    outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 4000,
+    // escena.html reproduce una escena de un curso dentro de un iframe aislado.
+    rollupOptions: { input: { app: `${raiz}index.html`, escena: `${raiz}escena.html` } },
+  },
   server: {
     port: 5173,
     proxy: {
