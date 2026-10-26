@@ -233,7 +233,7 @@ Esta es la sesión permanente de una idea del usuario que ya ACEPTASTE tras anal
 
 1. **Diagnóstico.** Antes de trazar nada, averigua cuánto sabe el usuario de cada cosa que la idea exige. Lee todo lo que tengas: la idea, tus dictámenes, las réplicas, las notas de su carpeta y \`notas-globales.md\`, y sus otras ideas. Haz búsquedas breves solo si necesitas saber qué prerrequisitos tiene el campo. Escribe el mapa con \`"fase": "diagnostico"\` y las preguntas imprescindibles, normalmente de 4 a 10.
    - Preguntas concretas, que discriminen niveles. «¿Sabes cálculo?» no sirve; «¿Podrías derivar la retropropagación de una red de dos capas?» sí.
-   - Tipos: \`escala\` (5 niveles, del 0 al 4, cada uno descrito con precisión), \`opciones\` (al menos 2) o \`abierta\`.
+   - Tipos: \`escala\` (5 niveles, del 0 al 4, cada uno descrito con precisión), \`opciones\` (al menos 2, se elige una), \`multiple\` (al menos 2, se marcan varias), \`abierta\` o \`prueba\` (un ejercicio corto de verdad, con \`"area"\`, que corriges tú al recibir las respuestas).
 2. **Mapa.** Con las respuestas, haz una investigación profunda y actualizada, como en la etapa 2 o más: el estado del arte, los grupos que trabajan en ello, los artículos más recientes, los mejores libros y cursos. Después escribe el mapa completo con \`"fase": "mapa"\`:
    - **Nodos \`estudio\`**: la ruta de aprendizaje. Qué aprender, en qué orden (\`depende\`) y cuánto tiempo orientativo (\`duracion\`). Empieza donde está el usuario según el diagnóstico, ni antes ni después.
    - **Nodos \`incognita\`**: los objetivos que el usuario debe ir resolviendo para avanzar. NO son tareas triviales ni simplemente trabajosas: son las preguntas de verdad del proyecto, y pueden ser problemas abiertos de la ciencia. Marca \`"abierto": true\` si nadie lo ha resuelto y estima la \`dificultad\`. En su documento explica qué se sabe, quién lo ataca y con qué resultados, y qué se desprendería de resolverla. Si no se puede anticipar, dilo: NUNCA inventes consecuencias. Pueden depender de nodos de estudio y de otras incógnitas, intercalándose con la ruta.
@@ -275,6 +275,7 @@ Reglas:
 - \`documento\` es siempre \`nodos/<id>.md\`.
 - Cada recurso tiene \`url\` o \`archivo\`.
 - Mantén \`diagnostico\` también en la fase \`mapa\`, porque es el historial.
+- Opcional, solo en nodos de estudio y cuando el tipo del bancal lo pida (cursos): \`"plan": [{ "titulo": "…", "objetivos": ["…"] }]\`, las conferencias previstas de la asignatura.
 - Escribe primero los documentos y los recursos, y el \`mapa.json\` AL FINAL, de una vez. Si no es válido, el servidor lo descarta y conserva el anterior.
 
 ## Los documentos de los nodos (germinacion/nodos/<id>.md)
@@ -783,11 +784,12 @@ export const HERRAMIENTAS = 'Read Glob Grep WebSearch WebFetch Write Edit Bash(p
 
 // Sin snapshot: el CLI grabaría el prompt de sistema de la primera petición y lo reutilizaría al reanudar,
 // ignorando el que pasemos (germinación y glosas usan prompts distintos al del análisis).
-const COMUNES = [
+export const COMUNES = [
   '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--thinking-display', 'summarized',
   '--system-prompt-snapshot', 'off',
 ];
-const PERMISOS = ['--permission-mode', 'dontAsk', '--allowedTools', HERRAMIENTAS, '--safe-mode'];
+export const PERMISOS_BASE = ['--permission-mode', 'dontAsk', '--allowedTools'];
+const PERMISOS = [...PERMISOS_BASE, HERRAMIENTAS, '--safe-mode'];
 
 // Glosa: bifurca la sesión principal (--fork-session), retoma la suya o empieza de cero.
 export function argsGlosa({ sessionId, bifurcar, ajustes, mensaje }) {

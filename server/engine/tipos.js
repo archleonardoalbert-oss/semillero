@@ -5,6 +5,9 @@
 
 export const TIPO_POR_DEFECTO = 'academico';
 
+// Resumen de la pedagogía de los cursos para quien diseña el plan (la completa la reciben los redactores).
+const PEDAGOGIA_BREVE = 'prerrequisitos explícitos y en orden; objetivos verificables por conferencia (alineación constructiva); andamiaje ajustado al nivel diagnosticado (efecto de inversión de la pericia); ejemplos resueltos y práctica de recuperación, espaciada e intercalada; problemas de fracaso productivo en los conceptos clave; escenas animadas solo donde representen algo que el texto estático no puede; dominio antes de avanzar.';
+
 export const TIPOS = {
   academico: {
     nombre: 'Investigación académica',
@@ -189,6 +192,10 @@ Separa siempre dos preguntas: **¿vale la pena como obra?** y **¿vale la pena c
 
 El usuario quiere saber si esta habilidad **merece su tiempo hoy**. Sé riguroso y concreto, con datos actuales.
 
+**Dos reglas de este tipo (decisión del usuario):**
+- **Nunca rechaces rotundamente la idea de aprender algo.** El veredicto puede ser «aceptada», «cambios» (por ejemplo, aprender una versión más útil o empezar por otra base), «no-recomendada» o «aclaracion», pero NUNCA «rechazada». Aprender siempre se puede germinar. Si no compensa, dilo sin suavizarlo con «no-recomendada» y explica por qué y qué aprendería en su lugar.
+- **Estas ideas suelen ser cortas y directas** («Quiero aprender topología algebraica»), a veces con un porqué. No las penalices por breves: deduce el objetivo por su contexto y sus otras ideas, y pide aclaración solo si el veredicto depende de verdad de algo que no puedes deducir.
+
 1. **Para qué.** Aclara su objetivo (empleo, ingresos, un proyecto propio, placer, base para otra idea). El veredicto depende de él. Si no lo dice, deduce por su contexto o pide aclaración.
 2. **Demanda actual: el criterio de MÁS peso (decisión del usuario).** Haz una investigación EXHAUSTIVA y GLOBAL de cuánto se demanda hoy la habilidad, aunque el objetivo del usuario no sea solo profesional: la demanda dice si la habilidad tiene futuro y salida.
    - **Portales de empleo, con la misma búsqueda en cada uno:** usa los términos exactos de la habilidad y sus sinónimos en los idiomas de cada mercado, y apunta el número de ofertas, la fecha y la URL.
@@ -221,7 +228,31 @@ El usuario quiere saber si esta habilidad **merece su tiempo hoy**. Sé riguroso
 6. **Encaje y base.** Qué sabe ya el usuario (lee su contexto y sus otras ideas) y qué le falta como base. ¿Hay prerrequisitos que cambian el coste?
 7. **Plan de comprobación.** Cómo sabrá que lo domina: exámenes oficiales (JLPT, DELE…), proyectos, competiciones o métricas.`,
     formato: 'Escribe un informe claro, con datos fechados y fuentes. La sección de demanda global va primero y es la más extensa (tablas por países y sectores, salarios, tendencia y la tabla de fuentes). Después, exposición a la IA, estimación de horas, alternativas y retorno, y Referencias.',
-    germinacion: 'El tronco es **la ruta de estudio** detallada, por etapas, con las mejores fuentes actuales (libros, cursos, profesores, plataformas) y horas estimadas. Las hojas son **metas prácticas** que demuestran avance real («mantener una conversación de 10 minutos», «sintetizar un procesador de 8 bits en una FPGA»). Los frutos son **retos de nivel**: hitos exigentes de alto nivel (aprobar el JLPT N2, tocar una pieza difícil en público).',
+    germinacion: `La germinación de un curso es un **plan de estudios universitario completo**, al nivel de un curso avanzado del tema, personalizado al nivel real del usuario. Tiene que ser mejor que cualquier curso existente. Tú diseñas el plan; después, una sesión dedicada redacta cada asignatura (las conferencias, las clases prácticas, las demostraciones y las escenas animadas). Tu plan es su guía, así que tiene que ser impecable.
+
+**Fase de diagnóstico: no supongas NADA sobre lo que sabe.**
+- Identifica todas las áreas previas que el objetivo exige: el grafo de prerrequisitos completo, hasta la base.
+- Para cada área, combina:
+  - **autoevaluación fina**, con preguntas \`escala\` u \`opciones\` sobre lo que ha estudiado y hecho, con niveles concretos («he resuelto sistemas lineales a mano» y no «sé álgebra»);
+  - **prueba real**, con preguntas de tipo \`prueba\` (\`"tipo": "prueba", "area": "…", "texto": "…"\`): 2 a 4 ejercicios cortos por área, de dificultad creciente, que se respondan en pocas líneas.
+- Los principiantes sobrestiman lo que saben (Kruger y Dunning). Por eso, cuando la autoevaluación y la prueba no coinciden, manda la prueba.
+- Las preguntas \`multiple\` (varias opciones marcables) sirven para cosas como «qué herramientas has usado».
+- NO añadas la pregunta de idiomas: Semillero la añade siempre al final.
+
+**Fase de mapa**, cuando el usuario ha respondido:
+1. **Corrige con rigor cada ejercicio de prueba** y ubica al usuario en cada área. Deja escrito el resultado en el \`resumen\` del mapa: qué domina, qué tiene a medias y qué no sabe.
+2. **Diseña hacia atrás** (Wiggins y McTighe): parte de lo que tiene que ser capaz de hacer al final y construye el grafo de prerrequisitos que lleva hasta ahí.
+   - Cubre absolutamente todas las ramificaciones que convergen en el objetivo, sin huecos.
+   - No hagas un nodo de lo que ya domina. Lo que tiene a medias va en un nodo de repaso acelerado.
+3. **Cada nodo de estudio es una asignatura o un bloque** con su \`plan\`: la lista de conferencias en orden, cada una \`{ "titulo", "objetivos": [verbos de acción verificables] }\`.
+   - Lo normal es de 6 a 14 conferencias por asignatura, las que el tema exija de verdad, como en un programa universitario real.
+   - El \`documento\` del nodo es la **presentación de la asignatura**: por qué está en el curso, prerrequisitos, objetivos, programa por conferencias con lo que cubre cada una, qué clases prácticas y demostraciones para valientes tendrá, cómo se evaluará y bibliografía principal (capítulos concretos).
+   - NO redactes las conferencias: eso lo hace la sesión dedicada.
+4. **Las hojas son metas prácticas** que demuestran avance real («calcular la homología de un toro a mano»). **Los frutos son retos de nivel** exigentes («leer y entender un artículo reciente del área»).
+5. **Los recursos del mapa son los libros y cursos troncales.** Cada asignatura descargará después los suyos.
+6. **Todo el material va en los idiomas que el usuario marcó**, y lo que escribas, en el primero.
+
+Pedagogía que el plan debe hacer posible: ${PEDAGOGIA_BREVE}`,
     dominio: 'Examen clásico (teoría y ejercicios) para el conocimiento; caso práctico (grabación, programa, traducción) cuando la habilidad es práctica. Siempre a la altura de la dificultad elegida.',
     verificacion: 'Una meta o un reto queda «conseguido» con una prueba objetiva: un certificado oficial, una grabación o un vídeo sin cortes, un proyecto que funcione, un resultado de competición o un examen superado. Comprueba que la prueba corresponde exactamente a la meta y que no hay atajos (por ejemplo, ayuda externa no declarada).',
   },

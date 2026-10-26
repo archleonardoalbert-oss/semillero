@@ -204,3 +204,24 @@ test('las escenas citadas en una conferencia se extraen de sus bloques', () => {
   assert.deepEqual(e.validas.map((x) => x.archivo), ['escenas/e1/base.js']);
   assert.equal(e.invalidas.length, 1);
 });
+
+// --- Instrucciones de las sesiones de un curso ---
+import { promptSistema, promptGerminacion } from '../server/engine/prompt.js';
+import { promptRedactor, mensajeRedaccion, argsRedaccion, PROBAR_ESCENA } from '../server/engine/curso.js';
+
+test('las sesiones de un curso reciben sus reglas: nunca rechazar, diagnóstico con prueba y plan universitario', () => {
+  assert.match(promptSistema('aprendizaje'), /NUNCA «rechazada»/);
+  assert.match(promptSistema('aprendizaje'), /cortas y directas/);
+  const g = promptGerminacion('aprendizaje');
+  for (const t of ['"tipo": "prueba"', 'plan de estudios universitario', 'Diseña hacia atrás', 'NO redactes las conferencias', 'Semillero la añade']) assert.ok(g.includes(t), t);
+  const r = promptRedactor();
+  for (const t of ['inversión de la pericia', 'Freeman', 'S.definirEscena', 'g.tex(clave', ':::pista', 'indice.json', 'NUNCA descargues de sitios piratas', PROBAR_ESCENA]) assert.ok(r.includes(t), t);
+  assert.ok(argsRedaccion({ ajustes: { esfuerzo: 'high' }, mensaje: 'x' }).some((a) => a.includes('Bash(node:*)')));
+  const m = mensajeRedaccion({
+    idea: { titulo: 'Topología' }, rutaIdea: 'carpetas/a/ideas/t', nodo: { id: 'e1', titulo: 'Grupos', documento: 'nodos/e1.md', plan: [{ titulo: 'Grupos libres', objetivos: ['Presentar un grupo'] }] },
+    mapa: {}, dependencias: [], respuestasDiagnostico: '### x', idiomas: ['English', 'Español'],
+  });
+  assert.match(m, /Escribe TODO en English/);
+  assert.match(m, /1\. Grupos libres — objetivos: Presentar un grupo/);
+  assert.match(m, /indice\.json$/);
+});
