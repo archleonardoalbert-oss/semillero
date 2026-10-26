@@ -57,7 +57,9 @@ export async function prepararSitio({ cfg, ideas, carpetas, ref, destino, visor 
   // De redaccion.json (sesiones, intentos) no sale nada.
   const indices = {};
   const escenas = new Set();
-  for (const n of mapa.nodos.filter((x) => x.tipo === 'estudio')) {
+  // Solo las asignaturas que la redacción dio por buenas: nada a medio escribir ni rechazado.
+  const redaccion = JSON.parse(await fs.readFile(path.join(dirIdea, 'germinacion/redaccion.json'), 'utf8').catch(() => '{}'));
+  for (const n of mapa.nodos.filter((x) => x.tipo === 'estudio' && redaccion.nodos?.[x.id]?.estado === 'lista')) {
     let v = null;
     try {
       v = validarIndice(JSON.parse(await fs.readFile(path.join(dirIdea, 'germinacion/nodos', n.id, 'indice.json'), 'utf8')), n.id);

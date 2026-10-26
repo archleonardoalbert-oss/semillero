@@ -273,3 +273,21 @@ test('las conferencias de un curso admiten glosas como los documentos de los nod
   for (const d of ['germinacion/nodos/e1.md', 'germinacion/nodos/e1/c01-espacios.md', 'hilo/002-claude.md']) assert.equal(documentoGlosable(d), true, d);
   for (const d of ['germinacion/nodos/e1/x/y.md', 'germinacion/nodos/../mapa.md', 'germinacion/nodos/e1/indice.json']) assert.equal(documentoGlosable(d), false, d);
 });
+
+test('R5: un «rechazada» entre comillas también se convierte, y solo en la cabecera', async () => {
+  const x = await aprendizaje();
+  await x.cola.lanzar([x.ref]);
+  await terminarConDictamen(x, 0, '---\nveredicto: "rechazada"\netapa: 1\nresumen: No\n---\n\nTexto que cita\nveredicto: rechazada\n');
+  const idea = await x.ideas.obtener(x.ref.carpetaId, x.ref.ideaId);
+  assert.equal(idea.estado, 'no-recomendada');
+  assert.match(idea.hilo.at(-1).contenido, /veredicto: rechazada/, 'el cuerpo no se toca');
+});
+
+test('R2/R3 API: no se borra una idea cuyo curso se está redactando', async () => {
+  const x = await aprendizaje();
+  const app = await construirApp(x.cfg, { cola: colaFalsa() });
+  app.redaccion.ocupada = () => true;
+  const r = await app.inject({ method: 'DELETE', url: `/api/carpetas/aprender/ideas/${x.ref.ideaId}`, headers: { host: '127.0.0.1:4417' } });
+  assert.equal(r.statusCode, 409);
+  await app.close();
+});

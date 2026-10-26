@@ -7,6 +7,7 @@ await app.glosas.recuperar(); // antes que la cola: deshace lo que dejaron a med
 await app.talleres.recuperar();
 await app.examenes.recuperar();
 await app.verificaciones.recuperar();
+await app.redaccion.restaurarInterrumpidas(); // antes que la cola: su commit de arranque no debe guardar lo escrito a medias
 await app.cola.recuperar();
 await app.redaccion.recuperar(); // después de la cola: necesita saber si la investigación está pausada
 app.examenes.reanudarCorrecciones();
@@ -16,6 +17,7 @@ console.log(`Semillero en http://localhost:${cfg.puerto} · datos en ${cfg.datos
 for (const senal of ['SIGINT', 'SIGTERM']) {
   process.on(senal, async () => {
     await app.cola.apagar();
+    await app.redaccion.apagar();
     await app.close();
     process.exit(0);
   });

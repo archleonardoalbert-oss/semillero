@@ -265,7 +265,9 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
     if (texto && !dictamen) await fs.rm(ruta, { force: true });
     // Aprender algo nuevo nunca se rechaza rotundamente (decisión del usuario): como mucho, «no recomendada».
     if (dictamen?.meta.veredicto === 'rechazada' && tipoBancal(await carpetas.obtener(ref.carpetaId).catch(() => null)) === 'aprendizaje') {
-      texto = texto.replace(/^(\uFEFF?---\r?\n[\s\S]*?)^veredicto:\s*rechazada\s*$/m, '$1veredicto: no-recomendada');
+      // Solo dentro de la cabecera, con o sin comillas (el parser las acepta).
+      const cab = texto.match(/^(\uFEFF?---\r?\n)([\s\S]*?)(\r?\n---)/);
+      if (cab) texto = cab[1] + cab[2].replace(/^veredicto:\s*(["']?)rechazada\1\s*$/m, 'veredicto: no-recomendada') + cab[3] + texto.slice(cab[0].length);
       await fs.writeFile(ruta, texto);
       dictamen = parsearDictamen(texto);
     }

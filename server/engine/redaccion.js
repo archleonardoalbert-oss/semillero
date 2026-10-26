@@ -16,7 +16,7 @@ import { probarEscena } from '../escenas/probar.js';
 
 const INTENTOS = 2; // la redacción y una corrección en la misma sesión
 const sinComodin = (p) => p.replace(/\/\*\*$/, '');
-const RE_LIMITE = /limit|usage|quota/i;
+const RE_LIMITE = /usage limit|rate limit|limit reached|límite/i; // el mismo criterio que la cola
 
 export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, cola, ajustes, ejecutar = ejecutarReal, probar = probarEscena }) {
   const emisor = new EventEmitter();
@@ -48,6 +48,8 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
     const turno = (cadenas.get(k) ?? Promise.resolve()).then(() =>
       guard.proteger([relEstado(ref)], async () => {
         const e = await leerEstado(ref);
+        // Una idea borrada mientras se redactaba: no se recrea su carpeta.
+        if (!(await fs.stat(path.join(cfg.datos, rutaIdea(ref), 'idea.json')).catch(() => null))) return e;
         e.nodos[n] = { ...(e.nodos[n] ?? {}), ...parche, actualizado: new Date().toISOString() };
         await fs.mkdir(path.dirname(path.join(cfg.datos, relEstado(ref))), { recursive: true });
         await fs.writeFile(path.join(cfg.datos, relEstado(ref)), `${JSON.stringify(e, null, 2)}\n`);
@@ -102,8 +104,10 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
       const { paralelo } = await ajustes.leer();
       while (fila.length && activas.size < paralelo && !(await sinCuota())) {
         const { ref, nodo } = fila.shift();
-        activas.set(clave(ref, nodo), { objetivos: objetivosNodo(ref, nodo), control: new AbortController(), motivo: null });
-        correr(ref, nodo).catch((e) => console.error('[redaccion]', e));
+        if (activas.has(clave(ref, nodo))) continue; // nunca dos sesiones sobre el mismo nodo
+        const a = { objetivos: objetivosNodo(ref, nodo), control: new AbortController(), motivo: null };
+        activas.set(clave(ref, nodo), a);
+        a.promesa = correr(ref, nodo).catch((e) => console.error('[redaccion]', e));
       }
     } finally {
       bombeando = false;
@@ -165,6 +169,12 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
         });
         const ajenos = [...cola.objetivosAjenos(objetivosActivos), ...[...activas].filter(([x]) => x !== k).flatMap(([, o]) => o.objetivos)];
         await guard.verificar({ propios: objetivos, ajenosActivos: ajenos });
+        if (a.motivo === 'detener') {
+          // Apagado: lo escrito a medias se descarta y el nodo empezará de nuevo en el próximo arranque.
+          await guard.restaurar(objetivos);
+          final = { estado: 'pendiente', error: null, reanudar: false };
+          break;
+        }
         if (a.motivo === 'pausa' || (r.resultado?.is_error && RE_LIMITE.test(String(r.resultado.result ?? '')))) {
           // Sin cuota: lo escrito se guarda y el nodo vuelve a la fila para seguir en la misma sesión.
           await guard.commitear(objetivos.map(sinComodin), `redacción ${k} (pausada por cuota)`);
@@ -193,11 +203,14 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
     } catch (e) {
       await guard.restaurar(objetivos).catch(() => {});
       final = { estado: 'error', error: String(e.message ?? e) };
+    }
+    // El estado final se escribe antes de liberar el hueco: un planificar en medio no vuelve a encolar el nodo.
+    try {
+      await cambiarNodo(ref, n, final);
     } finally {
       activas.delete(k);
     }
-    await cambiarNodo(ref, n, final);
-    await bombear();
+    if (a.motivo !== 'detener') await bombear();
   }
 
   // Lo que la sesión dejó: índice válido, documentos presentes y escenas que funcionan.
@@ -254,27 +267,56 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
 
   const ocupada = (ref) => [...activas.keys(), ...fila.map((f) => clave(f.ref, f.nodo))].some((k) => k.startsWith(`${ref.carpetaId}/${ref.ideaId}/`));
 
-  // Un nodo en error se vuelve a redactar desde cero.
+  // Un nodo en error se vuelve a redactar desde cero. La reserva es síncrona: dos clics no lanzan dos sesiones.
+  const reservados = new Set();
   async function reintentar(ref, n) {
-    const e = await leerEstado(ref);
-    if (e.nodos[n]?.estado !== 'error') throw new Error('estado-invalido');
-    await cambiarNodo(ref, n, { estado: 'pendiente', error: null, intentos: 0, reanudar: false });
-    fila.push({ ref, nodo: n });
+    const k = clave(ref, n);
+    if (reservados.has(k) || activas.has(k) || fila.some((f) => clave(f.ref, f.nodo) === k)) throw new Error('en-proceso');
+    reservados.add(k);
+    try {
+      const e = await leerEstado(ref);
+      if (e.nodos[n]?.estado !== 'error') throw new Error('estado-invalido');
+      await cambiarNodo(ref, n, { estado: 'pendiente', error: null, intentos: 0, reanudar: false });
+      fila.push({ ref, nodo: n });
+    } finally {
+      reservados.delete(k);
+    }
     await bombear();
   }
 
-  // Al arrancar el servidor: lo que se estaba redactando vuelve a lo último bueno y se retoma todo lo pendiente.
-  async function recuperar() {
+  // Al apagar el servidor: se detienen las sesiones (lo escrito a medias se descarta) y se espera a que cierren.
+  async function apagar() {
+    clearInterval(latido);
+    fila.length = 0;
+    const enMarcha = [...activas.values()];
+    for (const a of enMarcha) {
+      a.motivo = 'detener';
+      a.control.abort();
+    }
+    await Promise.allSettled(enMarcha.map((a) => a.promesa));
+  }
+
+  // Al arrancar, ANTES de que la cola haga commit de lo que encuentre: lo que se estaba redactando cuando se
+  // cortó vuelve a lo último bueno (si no, lo escrito a medias quedaría como bueno).
+  async function restaurarInterrumpidas() {
     for (const idea of await ideas.listar()) {
       const ref = { carpetaId: idea.carpetaId, ideaId: idea.id };
       const e = await leerEstado(ref);
       for (const [n, x] of Object.entries(e.nodos)) {
-        if (x.estado === 'redactando') {
-          await guard.restaurar(objetivosNodo(ref, n));
-          await cambiarNodo(ref, n, { estado: 'pendiente' });
-        }
+        if (x.estado !== 'redactando') continue;
+        await guard.restaurar(objetivosNodo(ref, n));
+        await cambiarNodo(ref, n, { estado: 'pendiente', reanudar: false });
       }
-      if (Object.values(e.nodos).some((x) => ['redactando', 'pendiente'].includes(x.estado))) await planificar(ref);
+    }
+  }
+
+  // Después de la cola (que ya sabe si la investigación está pausada): se retoma todo lo pendiente.
+  async function recuperar() {
+    await restaurarInterrumpidas();
+    for (const idea of await ideas.listar()) {
+      const ref = { carpetaId: idea.carpetaId, ideaId: idea.id };
+      const e = await leerEstado(ref);
+      if (Object.values(e.nodos).some((x) => x.estado === 'pendiente')) await planificar(ref);
     }
   }
 
@@ -283,5 +325,5 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
     if (idea?.trabajo === 'germinacion' && idea.estado === 'aceptada' && idea.germinacion?.fase === 'mapa') planificar(ref).catch((e) => console.error('[redaccion]', e));
   });
 
-  return Object.assign(emisor, { planificar, estado, ocupada, reintentar, recuperar, objetivosActivos, detenerLatido: () => clearInterval(latido) });
+  return Object.assign(emisor, { planificar, estado, ocupada, reintentar, recuperar, restaurarInterrumpidas, apagar, objetivosActivos, detenerLatido: () => clearInterval(latido) });
 }

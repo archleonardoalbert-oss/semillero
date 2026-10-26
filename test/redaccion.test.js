@@ -240,3 +240,48 @@ test('al reiniciar, lo que se estaba redactando vuelve a empezar desde lo últim
   await assert.rejects(fs.access(path.join(x.dir, 'germinacion/nodos/e1/c01.md')));
   assert.ok(await hasta(() => llamadas2.length === 2), 'vuelve a lanzar las dos');
 });
+
+// --- Hallazgos de la revisión final ---
+test('R1: apagar detiene las redacciones y deja el nodo como estaba; al arrancar, lo interrumpido se restaura ANTES de que la cola commitee', async () => {
+  const x = await curso({ paralelo: 1 });
+  await x.motor.planificar(x.ref);
+  await hasta(() => x.llamadas.length === 1);
+  const l = x.llamadas[0];
+  l.senal.addEventListener('abort', () => l.resolve({ codigo: 130, abortado: true }));
+  const parcial = path.join(x.dir, 'germinacion/nodos', l.nodo, 'c01.md');
+  await fs.mkdir(path.dirname(parcial), { recursive: true });
+  await fs.writeFile(parcial, 'a medias');
+  await x.motor.apagar();
+  assert.equal(await x.estadoNodo(l.nodo), 'pendiente');
+  await assert.rejects(fs.access(parcial), 'lo escrito a medias se descarta');
+
+  // Un corte de luz: el nodo quedó «redactando» con archivos a medias y el servidor arranca de nuevo.
+  const y = await curso({ paralelo: 1 });
+  await y.motor.planificar(y.ref);
+  await hasta(() => y.llamadas.length === 1);
+  const p2 = path.join(y.dir, 'germinacion/nodos', y.llamadas[0].nodo, 'c01.md');
+  await fs.mkdir(path.dirname(p2), { recursive: true });
+  await fs.writeFile(p2, 'a medias');
+  await y.motor.restaurarInterrumpidas();
+  await y.cola.recuperar(); // hace commit de «todo»: ya no debe encontrar lo de la redacción
+  await assert.rejects(fs.access(p2));
+});
+
+test('R2: reintentar dos veces seguidas lanza una sola sesión', async () => {
+  const x = await curso();
+  await fs.writeFile(path.join(x.dir, 'germinacion/redaccion.json'), JSON.stringify({ nodos: { e1: { estado: 'error', error: 'x' }, e2: { estado: 'lista' } } }));
+  await Promise.allSettled([x.motor.reintentar(x.ref, 'e1'), x.motor.reintentar(x.ref, 'e1')]);
+  await hasta(() => x.llamadas.length >= 1);
+  await esperar(300);
+  assert.equal(x.llamadas.filter((l) => l.nodo === 'e1').length, 1);
+});
+
+test('R3: si la idea ya no existe, la redacción no recrea su carpeta', async () => {
+  const x = await curso({ paralelo: 1 });
+  await x.motor.planificar(x.ref);
+  await hasta(() => x.llamadas.length === 1);
+  await x.ideas.borrar(x.ref.carpetaId, x.ref.ideaId);
+  x.llamadas[0].resolve({ codigo: 0, abortado: false, resultado: { is_error: true, result: 'fallo' } });
+  await esperar(600);
+  await assert.rejects(fs.access(path.join(x.dir, 'germinacion/redaccion.json')));
+});

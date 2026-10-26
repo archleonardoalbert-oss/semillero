@@ -66,3 +66,10 @@ test('sin definirEscena o con un alto absurdo no vale', async () => {
   assert.equal((await probarEscena(await escena('export default 42;'))).ok, false);
   assert.equal((await probarEscena(await escena('export default (S) => S.definirEscena({ pasos: 1, alto: 9000, dibujar() {} });'))).ok, false);
 });
+
+test('una escena no puede leer el repositorio (donde suelen vivir los datos del usuario)', async () => {
+  const readme = path.resolve('README.md');
+  const r = await probarEscena(await escena(`import fs from 'node:fs';\nfs.readFileSync(${JSON.stringify(readme)});\nexport default (S) => S.definirEscena({ pasos: 1, dibujar() {} });`));
+  assert.equal(r.ok, false);
+  assert.match(r.errores.join('\n'), /acceso denegado/);
+});

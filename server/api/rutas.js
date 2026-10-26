@@ -165,6 +165,8 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     return ideas.obtener(req.params.c, req.params.i);
   });
   app.delete('/api/carpetas/:c/ideas/:i', async (req, reply) => {
+    // Con su curso redactándose, las sesiones seguirían escribiendo en la carpeta borrada.
+    if (app.redaccion?.ocupada({ carpetaId: req.params.c, ideaId: req.params.i })) throw new Error('redactando');
     await ideas.borrar(req.params.c, req.params.i);
     return reply.code(204).send();
   });

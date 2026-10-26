@@ -7,10 +7,10 @@ const HIJO = fileURLToPath(new URL('./hijo.mjs', import.meta.url));
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 
 export function probarEscena(ruta, { limiteMs = 15000 } = {}) {
-  const args = [
-    '--permission', `--allow-fs-read=${REPO}`, `--allow-fs-read=${path.resolve(ruta)}`,
-    HIJO, path.resolve(ruta),
-  ];
+  // Solo puede leer el motor de escenas, KaTeX y la propia escena: nada de los datos del usuario (que suelen
+  // vivir dentro del repositorio), ni escribir, ni lanzar procesos. Node 24 aún no limita la red.
+  const lectura = ['web/src/escena/', 'server/escenas/', 'node_modules/katex/', 'package.json'].map((p) => `--allow-fs-read=${path.join(REPO, p)}`);
+  const args = ['--permission', ...lectura, `--allow-fs-read=${path.resolve(ruta)}`, HIJO, path.resolve(ruta)];
   return new Promise((resolve) => {
     execFile(process.execPath, args, { timeout: limiteMs, maxBuffer: 1024 * 1024, killSignal: 'SIGKILL' }, (err, stdout, stderr) => {
       if (err?.killed) return resolve({ ok: false, errores: [`la escena tardó más de ${limiteMs / 1000} s en dibujarse (¿un bucle sin fin?): se agotó el tiempo`] });

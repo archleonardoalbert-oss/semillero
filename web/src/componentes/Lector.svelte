@@ -1,4 +1,5 @@
 <script>
+  import { untrack } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import { renderizar } from '../lib/render.js';
@@ -27,12 +28,14 @@
   let hoja = $state();
   $effect(() => {
     const doc = pieza.documento;
+    let vigente = true; // al cambiar rápido de documento, la respuesta del anterior se descarta
     texto = null;
     fallo = null;
     cargar(`germinacion/${doc}`)
-      .then((t) => (texto = t))
-      .catch(() => (fallo = 'No se pudo cargar este documento.'));
-    hoja?.scrollTo({ top: 0 });
+      .then((t) => vigente && (texto = t))
+      .catch(() => vigente && (fallo = 'No se pudo cargar este documento.'));
+    untrack(() => hoja?.scrollTo({ top: 0 }));
+    return () => (vigente = false);
   });
 
   const archivo = (r) => `/archivos/${base}/germinacion/${r.archivo.split('/').map(encodeURIComponent).join('/')}`;

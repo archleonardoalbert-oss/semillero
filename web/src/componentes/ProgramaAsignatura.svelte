@@ -2,6 +2,15 @@
   // El programa de una asignatura de curso en la lámina de su nodo: sus conferencias, clases prácticas y
   // demostraciones para valientes, o, mientras se redacta, el plan previsto y en qué punto va.
   let { nodo, estado = null, indice = null, alAbrir, alReintentar = null } = $props();
+  let enviando = $state(false);
+  async function reintentar() {
+    enviando = true;
+    try {
+      await alReintentar();
+    } finally {
+      enviando = false;
+    }
+  }
 
   const ESTADO = {
     pendiente: 'En espera: se redactará en cuanto haya una sesión libre.',
@@ -42,7 +51,7 @@
     <h2>Programa previsto</h2>
     {#if estado?.estado === 'error'}
       <p class="aviso error">La redacción falló: {estado.error}</p>
-      {#if alReintentar}<button class="boton" onclick={alReintentar}>Volver a redactarla</button>{/if}
+      {#if alReintentar}<button class="boton" disabled={enviando} onclick={reintentar}>Volver a redactarla</button>{/if}
     {:else}
       <p class="aviso"><span class="luz" class:viva={estado?.estado === 'redactando'}></span>{ESTADO[estado?.estado] ?? ESTADO.pendiente}</p>
     {/if}

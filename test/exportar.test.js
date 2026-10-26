@@ -287,6 +287,7 @@ test('el ejecutable sirve el reproductor de escenas con su CSP y los módulos de
   await fs.writeFile(path.join(g, 'nodos/e1/c01.md'), '```escena\n{"archivo": "escenas/e1/giro.js"}\n```\n');
   await fs.writeFile(path.join(g, 'escenas/e1/giro.js'), 'export default 1;');
   await fs.writeFile(path.join(g, 'nodos/e1/indice.json'), JSON.stringify({ version: 1, conferencias: [{ id: 'c01', titulo: 'C1', documento: 'nodos/e1/c01.md' }] }));
+  await fs.writeFile(path.join(g, 'redaccion.json'), JSON.stringify({ nodos: { e1: { estado: 'lista' } } }));
   const s = await sitioDe(x);
   await fs.writeFile(path.join(s, 'index.html'), 'visor');
   await fs.writeFile(path.join(s, 'escena.html'), 'reproductor');
@@ -328,4 +329,18 @@ test('el visor exportado no importa nada de la API ni del estado de la app (WebS
   const prohibidos = [...vistos].filter((f) => /lib\/(api|estado\.svelte)\.js$/.test(f)).map((f) => path.relative(raiz, f));
   assert.deepEqual(prohibidos, []);
   assert.ok([...vistos].some((f) => f.endsWith('Lector.svelte')), 'el grafo incluye el lector');
+});
+
+test('R4: solo se exportan las asignaturas que la redacción dio por listas', async () => {
+  const x = await germinada();
+  const g = path.join(x.dir, 'germinacion');
+  for (const n of ['e1', 'e2']) {
+    await fs.mkdir(path.join(g, 'nodos', n), { recursive: true });
+    await fs.writeFile(path.join(g, 'nodos', n, 'c01.md'), `# ${n}`);
+    await fs.writeFile(path.join(g, 'nodos', n, 'indice.json'), JSON.stringify({ version: 1, conferencias: [{ id: 'c01', titulo: n, documento: `nodos/${n}/c01.md` }] }));
+  }
+  await fs.writeFile(path.join(g, 'redaccion.json'), JSON.stringify({ nodos: { e1: { estado: 'lista' }, e2: { estado: 'redactando' } } }));
+  const d = JSON.parse(await fs.readFile(path.join(await sitioDe(x), 'datos.json'), 'utf8'));
+  assert.deepEqual(Object.keys(d.indices), ['e1']);
+  assert.equal(d.documentos['nodos/e2/c01.md'], undefined);
 });
