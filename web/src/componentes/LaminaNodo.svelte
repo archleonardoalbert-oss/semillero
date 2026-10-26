@@ -12,9 +12,13 @@
   import Editor from './Editor.svelte';
   import Taller from './Taller.svelte';
   import { diferencias } from '../lib/diff.js';
+  import ProgramaAsignatura from './ProgramaAsignatura.svelte';
+  import Lector from './Lector.svelte';
 
   // La lámina de un nodo: brota desde el nodo pulsado y ocupa la pantalla.
-  let { nodo, mapa, progreso, ref, base, glosas, desde, bloqueado = false, alCerrar, alIrA, alCambiar } = $props();
+  // `curso`: en los bancales de «Aprender algo nuevo», { estado, indice } de la redacción de esta asignatura.
+  let { nodo, mapa, progreso, ref, base, glosas, desde, bloqueado = false, curso = null, alCerrar, alIrA, alCambiar, alReintentar = null } = $props();
+  let leyendo = $state(null); // id de la conferencia, práctica o demostración abierta en el lector
 
   const vocabActual = getContext('vocab') ?? (() => undefined);
   let vocab = $derived(vocabActual() ?? { hoja: 'Incógnita', fruto: 'Problema abierto', estadosIncognita: ['Abierta', 'Atacándola', 'Resuelta'], dominio: 'examen' });
@@ -121,7 +125,7 @@
 
   // Escape cierra la lámina salvo que haya una glosa o un panel abiertos encima.
   function tecla(e) {
-    if (e.key !== 'Escape' || document.querySelector('.hoja, .panel, .examen, .verificacion')) return;
+    if (e.key !== 'Escape' || document.querySelector('.hoja, .panel, .examen, .verificacion, .lector')) return;
     // Escape mientras se escribe no cierra la lámina (se perdería lo escrito en el taller).
     if (e.target.closest?.('textarea, input, [contenteditable="true"]')) return;
     if (comparando) comparando = null;
@@ -162,6 +166,10 @@
         </p>
       {/if}
     </header>
+
+    {#if curso && nodo.tipo === 'estudio'}
+      <ProgramaAsignatura {nodo} estado={curso.estado} indice={curso.indice} alAbrir={(id) => (leyendo = id)} {alReintentar} />
+    {/if}
 
     <div class="cuerpo" class:dividida={conTaller}>
       <div class="columna">
@@ -264,6 +272,10 @@
   </div>
 </div>
 
+{#if leyendo && curso?.indice}
+  <Lector {nodo} indice={curso.indice} inicial={leyendo} {base} {glosas}
+    cargar={(rel) => api.documento(ref.carpetaId, ref.ideaId, rel)} alCerrar={() => (leyendo = null)} />
+{/if}
 {#if examenAbierto}
   <Examen {ref} {nodo} {base} inicial={examenAbierto.inicial} alCerrar={() => (examenAbierto = null)} />
 {/if}

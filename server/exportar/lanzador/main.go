@@ -73,6 +73,15 @@ func servir(raiz fs.FS) http.Handler {
 	estatico := http.FileServerFS(raiz)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ruta := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/"), "archivos/idea/")
+		// Las escenas de los cursos corren en un iframe aislado (origen opaco): necesitan CORS para cargar el
+		// código del visor y sus módulos, y nada más. Su reproductor no puede conectarse a ningún sitio.
+		if strings.HasPrefix(r.URL.Path, "/assets/") || strings.HasPrefix(ruta, "germinacion/escenas/") {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+		if r.URL.Path == "/escena.html" {
+			host := "http://" + r.Host
+			w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src "+host+"; style-src "+host+" 'unsafe-inline'; font-src "+host+" data:; img-src "+host+" data:; connect-src 'none'; base-uri 'none'; form-action 'none'")
+		}
 		if destino, ok := manifiesto[ruta]; ok {
 			http.ServeFileFS(w, r, raiz, "archivos/"+destino)
 			return

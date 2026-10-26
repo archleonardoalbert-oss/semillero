@@ -35,6 +35,24 @@ const matematicas = {
   ],
 };
 
+// Cursos: `:::pista Título` / `:::solucion Título` … `:::` son desplegables con Markdown dentro.
+const desplegables = {
+  extensions: [{
+    name: 'desplegable',
+    level: 'block',
+    start: (src) => src.match(/^:::(pista|solucion)\b/m)?.index,
+    tokenizer(src) {
+      const m = src.match(/^:::(pista|solucion)[ \t]*([^\n]*)\n([\s\S]*?)\n:::[ \t]*(?:\n|$)/);
+      if (!m) return;
+      return { type: 'desplegable', raw: m[0], clase: m[1], titulo: m[2].trim() || (m[1] === 'pista' ? 'Pista' : 'Solución'), tokens: this.lexer.blockTokens(m[3], []) };
+    },
+    renderer(t) {
+      return `<details class="desplegable ${t.clase}"><summary>${escapar(t.titulo)}</summary>${this.parser.parse(t.tokens)}</details>\n`;
+    },
+  }],
+};
+const RE_ESCENA = /^escenas\/[a-z0-9-]{1,40}\/[a-z0-9-]{1,60}\.js$/;
+
 export function crearRenderizador(purificador) {
   return function renderizar(md, baseArchivos = '') {
     const resolver = (href) =>
@@ -42,6 +60,7 @@ export function crearRenderizador(purificador) {
 
     const marked = new Marked({ gfm: true, breaks: false });
     marked.use(matematicas);
+    marked.use(desplegables);
     marked.use({
       renderer: {
         image({ href, title, text }) {
@@ -55,6 +74,20 @@ export function crearRenderizador(purificador) {
           const externo = /^https?:/i.test(href);
           const t = title ? ` title="${escapar(title)}"` : '';
           return `<a href="${escapar(href)}"${t}${externo ? ' target="_blank" rel="noopener noreferrer"' : ''}>${texto}</a>`;
+        },
+        // Un bloque ```escena con {"archivo": "escenas/<nodo>/<nombre>.js", …}: el hueco donde se monta, aislada.
+        code({ text, lang }) {
+          if (lang !== 'escena') return false;
+          let e = null;
+          try {
+            e = JSON.parse(text);
+          } catch {
+            /* no es una escena: no se monta nada */
+          }
+          if (!e || !RE_ESCENA.test(e.archivo ?? '') || !baseArchivos) return '<p class="escena-rota">(escena mal citada)</p>\n';
+          const ruta = `/archivos/${baseArchivos}/germinacion/${e.archivo}`;
+          const pie = e.pie ? `<figcaption>${escapar(String(e.pie))}</figcaption>` : '';
+          return `<figure class="escena-curso" data-escena="${escapar(ruta)}" data-titulo="${escapar(String(e.titulo ?? ''))}"><div class="hueco-escena"></div>${pie}</figure>\n`;
         },
         blockquote({ tokens, raw }) {
           const cuerpo = this.parser.parse(tokens);

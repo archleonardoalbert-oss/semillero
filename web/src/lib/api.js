@@ -74,6 +74,7 @@ export const api = {
   analisis: (accion, refs) => pedir('POST', `/api/analisis/${accion}`, { refs }),
   ajustes: () => pedir('GET', '/api/ajustes'),
   tipos: () => pedir('GET', '/api/tipos'),
+  reintentarRedaccion: (c, i, n) => pedir('POST', `${idea(c, i)}/germinacion/redaccion/${encodeURIComponent(n)}/reintentar`),
   // El ejecutable autónomo de una germinación: tarda unos segundos en compilarse.
   exportar: async (c, i, so) => {
     const r = await fetch(`/api/carpetas/${encodeURIComponent(c)}/ideas/${encodeURIComponent(i)}/exportar/${so}`);

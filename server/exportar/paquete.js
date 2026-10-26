@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { Marked } from 'marked';
 import { datosTipo } from '../engine/tipos.js';
 import { validarMapa } from '../engine/mapa.js';
+import { validarIndice, escenasDe, documentosDe } from '../engine/indice.js';
 
 export const RUTA_VISOR = fileURLToPath(new URL('../../web/dist-visor/', import.meta.url));
 
@@ -15,7 +16,8 @@ const sinBloques = (md) => String(md ?? '').replace(/```semillero-[a-z-]+[^\n]*\
 
 // Las imágenes solo pueden salir de estas carpetas de la idea y ser imágenes de verdad.
 const RE_IMAGEN_PERMITIDA = /^(figuras|adjuntos|germinacion\/recursos)\/.+\.(png|jpe?g|gif|webp|svg|avif)$/i;
-const RE_RECURSO = /^germinacion\/recursos\/[^/\\]+$/;
+const RE_RECURSO = /^germinacion\/recursos\/([a-z0-9-]+\/)?[^/\\]+$/;
+const RE_ESCENA = /^germinacion\/escenas\/[a-z0-9-]+\/[a-z0-9-]+\.js$/;
 
 // Las imágenes que citan los textos, tal como las lee el renderizador (texto alternativo con corchetes,
 // rutas entre <> con espacios…). Las URL externas y absolutas no son archivos de la idea.
@@ -51,6 +53,24 @@ export async function prepararSitio({ cfg, ideas, carpetas, ref, destino, visor 
   for (const n of mapa.nodos) {
     documentos[n.id] = sinBloques(await fs.readFile(path.join(dirIdea, 'germinacion', n.documento), 'utf8').catch(() => ''));
   }
+  // Cursos: cada asignatura redactada lleva su índice y sus documentos (claves «nodos/<nodo>/<doc>.md»).
+  // De redaccion.json (sesiones, intentos) no sale nada.
+  const indices = {};
+  const escenas = new Set();
+  for (const n of mapa.nodos.filter((x) => x.tipo === 'estudio')) {
+    let v = null;
+    try {
+      v = validarIndice(JSON.parse(await fs.readFile(path.join(dirIdea, 'germinacion/nodos', n.id, 'indice.json'), 'utf8')), n.id);
+    } catch {
+      continue;
+    }
+    if (!v.ok) continue;
+    indices[n.id] = v.indice;
+    for (const doc of documentosDe(v.indice)) {
+      documentos[doc] = sinBloques(await fs.readFile(path.join(dirIdea, 'germinacion', doc), 'utf8').catch(() => ''));
+      for (const e of escenasDe(documentos[doc], n.id).validas) escenas.add(`germinacion/${e.archivo}`);
+    }
+  }
   // Raíces: la idea original y el dictamen vigente (el último); ni réplicas ni dictámenes anteriores.
   const original = idea.hilo.find((m) => m.n === 1);
   const dictamen = idea.hilo.filter((m) => m.autor === 'claude' && m.meta).at(-1);
@@ -68,6 +88,7 @@ export async function prepararSitio({ cfg, ideas, carpetas, ref, destino, visor 
     vocab: datosTipo(carpeta).vocab,
     mapa: mapaPublico,
     documentos,
+    indices,
     raices,
   };
 
@@ -85,7 +106,8 @@ export async function prepararSitio({ cfg, ideas, carpetas, ref, destino, visor 
   // Archivos: las imágenes que citan los textos (relativas a la idea, con su codificación de URL deshecha)
   // y los recursos (nombre literal, relativo a germinacion/).
   const rutas = new Set();
-  const textos = [...Object.values(documentos), mapa.resumen ?? '', ...raices.map((r) => r.md), ...(mapa.recursos ?? []).map((r) => r.nota ?? '')];
+  const recursosCurso = Object.values(indices).flatMap((x) => x.recursos);
+  const textos = [...Object.values(documentos), mapa.resumen ?? '', ...raices.map((r) => r.md), ...[...(mapa.recursos ?? []), ...recursosCurso].map((r) => r.nota ?? '')];
   for (const t of textos) {
     for (const href of imagenesDe(t)) {
       let rel;
@@ -97,10 +119,11 @@ export async function prepararSitio({ cfg, ideas, carpetas, ref, destino, visor 
       if (RE_IMAGEN_PERMITIDA.test(rel)) rutas.add(rel);
     }
   }
-  for (const r of mapa.recursos ?? []) {
+  for (const r of [...(mapa.recursos ?? []), ...recursosCurso]) {
     const rel = r.archivo && path.posix.normalize(`germinacion/${r.archivo}`);
     if (rel && RE_RECURSO.test(rel)) rutas.add(rel);
   }
+  for (const e of escenas) if (RE_ESCENA.test(e)) rutas.add(e);
 
   // Cada archivo se embebe con un nombre seguro (go:embed rechaza muchos nombres: «aux», apóstrofos, rayas…);
   // archivos.json dice qué ruta original corresponde a cada uno y el lanzador la traduce al servirla.

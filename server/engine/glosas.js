@@ -9,7 +9,9 @@ const TIPOS = new Set(['explicar', 'corregir']);
 // Explicar: superficial con Sonnet (rápida) o profunda con Opus a esfuerzo medio (decisión del usuario).
 // Corregir siempre con el modelo y esfuerzo de Ajustes.
 const PROFUNDIDAD = { superficial: { modelo: 'sonnet', esfuerzo: 'low' }, profunda: { modelo: 'opus', esfuerzo: 'medium' } };
-const RE_DOCUMENTO = /^(hilo\/\d{3}-(claude|usuario)\.md|germinacion\/nodos\/[a-z0-9-]+\.md)$/;
+// Los documentos de los nodos y, en los cursos, sus conferencias, prácticas y demostraciones (nodos/<nodo>/<doc>.md).
+const RE_DOCUMENTO = /^(hilo\/\d{3}-(claude|usuario)\.md|germinacion\/nodos\/[a-z0-9-]+(\/[a-z0-9-]+)?\.md)$/;
+export const documentoGlosable = (d) => RE_DOCUMENTO.test(String(d ?? ''));
 const RE_DICTAMEN = /^hilo\/\d{3}-claude\.md$/;
 const MAX_FRAGMENTO = 20000;
 

@@ -68,3 +68,27 @@ test('del e ins se conservan', () => {
   assert.match(html, /<del>lineal<\/del>/);
   assert.match(html, /<ins>cuadrática<\/ins>/);
 });
+
+// --- Cursos: escenas intercaladas y desplegables ---
+test('un bloque escena se convierte en el hueco donde se monta la escena aislada', () => {
+  const html = render('Texto\n\n```escena\n{"archivo": "escenas/e1/giro.js", "titulo": "Un giro", "pie": "Arrastra el punto"}\n```\n', BASE);
+  assert.match(html, /<figure class="escena-curso"[^>]*data-escena="\/archivos\/carpetas\/ia\/ideas\/x\/germinacion\/escenas\/e1\/giro\.js"/);
+  assert.match(html, /data-titulo="Un giro"/);
+  assert.match(html, /Arrastra el punto/);
+});
+
+test('un bloque escena mal formado o que sale de escenas/ no monta nada', () => {
+  for (const malo of ['no es json', '{"archivo": "../../hilo/x.js"}', '{"archivo": "escenas/e1/x.js\\"><script>"}']) {
+    const html = render(`\`\`\`escena\n${malo}\n\`\`\`\n`, BASE);
+    assert.doesNotMatch(html, /data-escena/);
+    assert.doesNotMatch(html, /<script/);
+  }
+});
+
+test(':::pista y :::solucion son desplegables con Markdown y LaTeX dentro', () => {
+  const html = render(':::pista Estrategia\nUsa **inducción** sobre $n$.\n:::\n\n:::solucion Solución modelo\nPor tanto $n^2$.\n:::\n', BASE);
+  assert.match(html, /<details class="desplegable pista"><summary>Estrategia<\/summary>/);
+  assert.match(html, /<strong>inducción<\/strong>/);
+  assert.match(html, /<details class="desplegable solucion"><summary>Solución modelo<\/summary>/);
+  assert.match(html, /class="katex"/);
+});

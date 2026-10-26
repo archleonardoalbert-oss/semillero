@@ -2,10 +2,14 @@
   import { getContext } from 'svelte';
   import { cubicOut, cubicIn } from 'svelte/easing';
   import { renderizar } from '../lib/render.js';
+  import ProgramaAsignatura from '../componentes/ProgramaAsignatura.svelte';
+  import Lector from '../componentes/Lector.svelte';
 
   // La lámina de un nodo en una germinación exportada: solo lectura. El documento, lo que requiere y abre,
   // y los recursos con su archivo embebido. Sin estados, notas, taller ni registros.
-  let { nodo, mapa, documento, base, desde, alCerrar, alIrA } = $props();
+  // `indice` y `documentos`: en un curso, la asignatura redactada (conferencias, prácticas, demostraciones).
+  let { nodo, mapa, documento, base, desde, indice = null, documentos = {}, alCerrar, alIrA } = $props();
+  let leyendo = $state(null);
 
   const vocabActual = getContext('vocab') ?? (() => undefined);
   let vocab = $derived(vocabActual() ?? { hoja: 'Incógnita', fruto: 'Problema abierto' });
@@ -27,7 +31,7 @@
   function cerrarse(_n, { x, y }) {
     return { duration: 380, easing: cubicIn, css: (t) => `clip-path: circle(${t * 150}% at ${x}px ${y}px)` };
   }
-  const tecla = (e) => e.key === 'Escape' && !document.querySelector('.lectura') && alCerrar();
+  const tecla = (e) => e.key === 'Escape' && !document.querySelector('.lectura, .lector') && alCerrar();
 </script>
 
 <svelte:window onkeydown={tecla} />
@@ -50,6 +54,10 @@
       <h1>{nodo.titulo}</h1>
       {#if nodo.resumen}<p class="resumen">{nodo.resumen}</p>{/if}
     </header>
+
+    {#if indice}
+      <ProgramaAsignatura {nodo} {indice} alAbrir={(id) => (leyendo = id)} />
+    {/if}
 
     <div class="cuerpo">
       <article class="documento manuscrito">
@@ -101,6 +109,11 @@
     </div>
   </div>
 </div>
+
+{#if leyendo && indice}
+  <Lector {nodo} {indice} inicial={leyendo} {base}
+    cargar={async (rel) => documentos[rel.replace(/^germinacion\//, '')] ?? Promise.reject(new Error('sin documento'))} alCerrar={() => (leyendo = null)} />
+{/if}
 
 <style>
   /* Los mismos estilos de lectura que LaminaNodo, sin lo interactivo (estados, taller, registro, notas). */

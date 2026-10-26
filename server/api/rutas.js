@@ -36,6 +36,10 @@ const MIME = {
   pdf: 'application/pdf', txt: 'text/plain; charset=utf-8',
 };
 
+// Lo que puede cargar una escena aislada (ver el gancho onRequest).
+const RE_PARA_ESCENAS = /^\/(escena\.html|assets\/[^/]+|archivos\/carpetas\/[a-z0-9-]+\/ideas\/[a-z0-9-]+\/germinacion\/escenas\/[a-z0-9-]+\/[a-z0-9-]+\.js)$/;
+const RE_MODULO_ESCENA = /\/germinacion\/escenas\/[a-z0-9-]+\/[a-z0-9-]+\.js$/;
+
 const ESTADO_HTTP = {
   'ruta-invalida': 400, 'extension-invalida': 400, 'nombre-vacio': 400, 'titulo-vacio': 400, 'refs-invalidos': 400,
   'tipo-invalido': 400, 'documento-invalido': 400, 'prompt-vacio': 400, 'fragmento-vacio': 400,
@@ -87,7 +91,11 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     const host = req.headers.host ?? '';
     const origen = req.headers.origin;
     const hostOk = hostsValidos.has(host) || /^(localhost|127\.0\.0\.1):5173$/.test(host);
-    if (!hostOk || (origen && !origenesValidos.has(origen))) return reply.code(403).send({ error: 'origen-no-permitido' });
+    // Las escenas de los cursos corren en un iframe aislado (origen opaco: «Origin: null»). Solo pueden pedir
+    // su reproductor, el código de la app y los módulos de escenas: nada de la API ni de los datos de la idea.
+    const deEscena = origen === 'null' && ['GET', 'HEAD'].includes(req.method) && RE_PARA_ESCENAS.test(req.url.split('?')[0]);
+    if (!hostOk || (origen && !origenesValidos.has(origen) && !deEscena)) return reply.code(403).send({ error: 'origen-no-permitido' });
+    if (deEscena) reply.header('access-control-allow-origin', '*');
   });
 
   app.setErrorHandler((err, req, reply) => {
@@ -366,11 +374,22 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     const ext = path.extname(ruta).slice(1).toLowerCase();
     reply.header('cache-control', 'no-cache');
     if (ext === 'svg') reply.header('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'");
+    // Solo los módulos de escenas se sirven como código (y solo los carga el reproductor aislado).
+    if (ext === 'js' && RE_MODULO_ESCENA.test(rel)) return reply.type('text/javascript; charset=utf-8').send(fs.createReadStream(ruta));
     return reply.type(MIME[ext] ?? 'application/octet-stream').send(fs.createReadStream(ruta));
   });
 
   if (fs.existsSync(DIST)) {
-    await app.register(fastifyStatic, { root: DIST });
+    await app.register(fastifyStatic, {
+      root: DIST,
+      // El reproductor de escenas: sin poder conectarse a nada, y solo con código de este mismo servidor.
+      setHeaders(res, ruta) {
+        if (path.basename(ruta) !== 'escena.html') return;
+        // Según la versión, @fastify/static pasa la respuesta cruda o la de Fastify.
+        const host = `http://${(res.req ?? res.request)?.headers?.host ?? '127.0.0.1'}`;
+        (res.setHeader ? res.setHeader.bind(res) : res.header.bind(res))('content-security-policy', `default-src 'none'; script-src ${host}; style-src ${host} 'unsafe-inline'; font-src ${host} data:; img-src ${host} data:; connect-src 'none'; base-uri 'none'; form-action 'none'`);
+      },
+    });
     app.setNotFoundHandler((req, reply) => {
       if (req.method === 'GET' && !req.url.startsWith('/api/')) return reply.sendFile('index.html');
       reply.code(404).send({ error: 'no-existe' });

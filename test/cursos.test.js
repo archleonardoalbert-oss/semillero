@@ -225,3 +225,51 @@ test('las sesiones de un curso reciben sus reglas: nunca rechazar, diagnóstico 
   assert.match(m, /1\. Grupos libres — objetivos: Presentar un grupo/);
   assert.match(m, /indice\.json$/);
 });
+
+// --- Escenas aisladas: qué puede pedir un iframe con origen opaco (Origin: null) ---
+import { EventEmitter } from 'node:events';
+import { construirApp } from '../server/api/rutas.js';
+
+function colaFalsa() {
+  const c = new EventEmitter();
+  for (const m of ['lanzar', 'detener', 'reanudar', 'germinar']) c[m] = async () => {};
+  c.estado = () => ({ ejecutando: [], enCola: [], pausadaPorCuota: false, cuota: null });
+  c.recuperar = async () => {};
+  c.objetivosActivos = () => [];
+  c.registrarCuota = () => {};
+  c.fijarAjenosExternos = () => {};
+  c.registrarEscritor = () => {};
+  c.objetivosAjenos = () => [];
+  return c;
+}
+
+test('un iframe aislado solo puede cargar el reproductor, los recursos de la app y los módulos de escenas', async () => {
+  const x = await aprendizaje();
+  await fs.mkdir(path.join(x.dirIdea, 'germinacion/escenas/e1'), { recursive: true });
+  await fs.writeFile(path.join(x.dirIdea, 'germinacion/escenas/e1/giro.js'), 'export default (S) => S.definirEscena({ pasos: 1, dibujar() {} });');
+  const app = await construirApp(x.cfg, { cola: colaFalsa() });
+  const pedir = (url) => app.inject({ method: 'GET', url, headers: { host: '127.0.0.1:4417', origin: 'null' } });
+  const rel = path.relative(x.cfg.datos, x.dirIdea);
+  const escena = await pedir(`/archivos/${rel}/germinacion/escenas/e1/giro.js`);
+  assert.equal(escena.statusCode, 200);
+  assert.match(escena.headers['content-type'], /text\/javascript/);
+  assert.equal(escena.headers['access-control-allow-origin'], '*');
+  assert.equal((await pedir('/api/carpetas')).statusCode, 403);
+  assert.equal((await pedir(`/archivos/${rel}/hilo/001-usuario.md`)).statusCode, 403);
+  // Un .js fuera de escenas/ no se sirve como código.
+  await fs.writeFile(path.join(x.dirIdea, 'figuras-x.js'), 'alert(1)');
+  const otro = await app.inject({ method: 'GET', url: `/archivos/${rel}/figuras-x.js`, headers: { host: '127.0.0.1:4417' } });
+  assert.doesNotMatch(otro.headers['content-type'], /javascript/);
+  const pagina = await pedir('/escena.html');
+  if (pagina.statusCode === 200) {
+    assert.match(pagina.headers['content-security-policy'], /connect-src 'none'/);
+    assert.match(pagina.headers['content-security-policy'], /script-src http:\/\/127\.0\.0\.1:4417/);
+  }
+  await app.close();
+});
+
+import { documentoGlosable } from '../server/engine/glosas.js';
+test('las conferencias de un curso admiten glosas como los documentos de los nodos', () => {
+  for (const d of ['germinacion/nodos/e1.md', 'germinacion/nodos/e1/c01-espacios.md', 'hilo/002-claude.md']) assert.equal(documentoGlosable(d), true, d);
+  for (const d of ['germinacion/nodos/e1/x/y.md', 'germinacion/nodos/../mapa.md', 'germinacion/nodos/e1/indice.json']) assert.equal(documentoGlosable(d), false, d);
+});

@@ -245,3 +245,68 @@ test('R5: solo se copian imágenes de verdad, nunca datos internos citados como 
   const claves = Object.keys(JSON.parse(await fs.readFile(path.join(s, 'archivos.json'), 'utf8')));
   assert.doesNotMatch(claves.join('\n'), /progreso|talleres|hilo/);
 });
+
+// --- Cursos: las asignaturas redactadas también se exportan ---
+test('una germinación de curso exporta conferencias, escenas y recursos de cada asignatura, y nada de su redacción', async () => {
+  const x = await germinada();
+  const g = path.join(x.dir, 'germinacion');
+  await fs.mkdir(path.join(g, 'nodos/e1'), { recursive: true });
+  await fs.mkdir(path.join(g, 'escenas/e1'), { recursive: true });
+  await fs.mkdir(path.join(g, 'recursos/e1'), { recursive: true });
+  await fs.mkdir(path.join(x.dir, 'figuras/e1'), { recursive: true });
+  await fs.writeFile(path.join(g, 'nodos/e1/c01.md'), '# C1\n\n```escena\n{"archivo": "escenas/e1/giro.js", "titulo": "Giro"}\n```\n\n![f](figuras/e1/f.png)');
+  await fs.writeFile(path.join(g, 'nodos/e1/p01.md'), '# P1');
+  await fs.writeFile(path.join(g, 'escenas/e1/giro.js'), 'export default (S) => S.definirEscena({ pasos: 1, dibujar() {} });');
+  await fs.writeFile(path.join(g, 'escenas/e1/huerfana.js'), 'export default 1;');
+  await fs.writeFile(path.join(g, 'recursos/e1/hatcher.pdf'), '%PDF hatcher');
+  await fs.writeFile(path.join(x.dir, 'figuras/e1/f.png'), 'PNG');
+  await fs.writeFile(path.join(g, 'nodos/e1/indice.json'), JSON.stringify({
+    version: 1,
+    conferencias: [{ id: 'c01', titulo: 'C1', documento: 'nodos/e1/c01.md' }],
+    practicas: [{ id: 'p01', titulo: 'P1', documento: 'nodos/e1/p01.md', conferencias: ['c01'] }],
+    valientes: [],
+    recursos: [{ id: 'r1', tipo: 'libro', titulo: 'Hatcher', archivo: 'recursos/e1/hatcher.pdf', conferencias: ['c01'] }],
+  }));
+  await fs.writeFile(path.join(g, 'redaccion.json'), JSON.stringify({ nodos: { e1: { estado: 'lista', sesion: 'SECRETO-SESION' } } }));
+  const s = await sitioDe(x);
+  const d = JSON.parse(await fs.readFile(path.join(s, 'datos.json'), 'utf8'));
+  assert.equal(d.indices.e1.conferencias[0].titulo, 'C1');
+  assert.match(d.documentos['nodos/e1/c01.md'], /escena/);
+  assert.match(d.documentos['nodos/e1/p01.md'], /P1/);
+  assert.ok(!JSON.stringify(d).includes('SECRETO-SESION'));
+  const m = JSON.parse(await fs.readFile(path.join(s, 'archivos.json'), 'utf8'));
+  for (const k of ['germinacion/escenas/e1/giro.js', 'germinacion/recursos/e1/hatcher.pdf', 'figuras/e1/f.png']) assert.ok(m[k], k);
+  assert.ok(!m['germinacion/escenas/e1/huerfana.js'], 'una escena que nadie cita no se exporta');
+});
+
+test('el ejecutable sirve el reproductor de escenas con su CSP y los módulos de escenas a un iframe aislado', { timeout: 240000 }, async () => {
+  const x = await germinada();
+  const g = path.join(x.dir, 'germinacion');
+  await fs.mkdir(path.join(g, 'nodos/e1'), { recursive: true });
+  await fs.mkdir(path.join(g, 'escenas/e1'), { recursive: true });
+  await fs.writeFile(path.join(g, 'nodos/e1/c01.md'), '```escena\n{"archivo": "escenas/e1/giro.js"}\n```\n');
+  await fs.writeFile(path.join(g, 'escenas/e1/giro.js'), 'export default 1;');
+  await fs.writeFile(path.join(g, 'nodos/e1/indice.json'), JSON.stringify({ version: 1, conferencias: [{ id: 'c01', titulo: 'C1', documento: 'nodos/e1/c01.md' }] }));
+  const s = await sitioDe(x);
+  await fs.writeFile(path.join(s, 'index.html'), 'visor');
+  await fs.writeFile(path.join(s, 'escena.html'), 'reproductor');
+  await fs.mkdir(path.join(s, 'assets'), { recursive: true });
+  await fs.writeFile(path.join(s, 'assets/escena-x.js'), 'export {}');
+  const salida = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'semillero-bin-')), 'visor');
+  await compilar({ sitio: s, so: 'linux', salida });
+  const puerto = 20000 + Math.floor(Math.random() * 20000);
+  const p = spawn(salida, ['-sin-navegador', '-puerto', String(puerto)]);
+  try {
+    const url = `http://127.0.0.1:${puerto}`;
+    let r;
+    for (let k = 0; k < 50 && !r; k++) r = await fetch(`${url}/escena.html`).catch(() => new Promise((ok) => setTimeout(ok, 100)));
+    assert.match(r.headers.get('content-security-policy') ?? '', /connect-src 'none'/);
+    const modulo = await fetch(`${url}/archivos/idea/germinacion/escenas/e1/giro.js`, { headers: { origin: 'null' } });
+    assert.equal(modulo.headers.get('access-control-allow-origin'), '*');
+    assert.match(modulo.headers.get('content-type'), /javascript/);
+    assert.equal((await fetch(`${url}/assets/escena-x.js`)).headers.get('access-control-allow-origin'), '*');
+    assert.equal((await fetch(`${url}/datos.json`)).headers.get('access-control-allow-origin'), null);
+  } finally {
+    p.kill();
+  }
+});

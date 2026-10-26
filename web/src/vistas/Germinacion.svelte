@@ -3,7 +3,8 @@
   import { cubicOut } from 'svelte/easing';
   import { api } from '../lib/api.js';
   import { renderizar } from '../lib/render.js';
-  import { avisar, refrescar } from '../lib/estado.svelte.js';
+  import { avisar, refrescar, suscribir } from '../lib/estado.svelte.js';
+  import { onDestroy } from 'svelte';
   import { ir, enlace, reemplazar } from '../lib/ruta.svelte.js';
   import Arbol from '../componentes/Arbol.svelte';
   import Cuestionario from '../componentes/Cuestionario.svelte';
@@ -44,6 +45,28 @@
   });
 
   let mapa = $derived(datos?.mapa);
+
+  // Cursos («Aprender algo nuevo»): cada asignatura la redacta una sesión dedicada; su estado llega en vivo.
+  let esCurso = $derived(carpeta?.tipo === 'aprendizaje');
+  let redaccion = $derived(datos?.redaccion ?? { nodos: {}, indices: {} });
+  let asignaturas = $derived((mapa?.nodos ?? []).filter((n) => n.tipo === 'estudio'));
+  let redactadas = $derived(asignaturas.filter((n) => redaccion.indices[n.id]).length);
+  let redactandoCurso = $derived(esCurso && asignaturas.some((n) => ['pendiente', 'redactando'].includes(redaccion.nodos[n.id]?.estado)));
+  const cursoDe = (n) => (esCurso ? { estado: redaccion.nodos[n.id] ?? null, indice: redaccion.indices[n.id] ?? null } : null);
+  const quitarRedaccion = suscribir(ref, (msg) => {
+    if (msg.tipo !== 'redaccion' || !datos) return;
+    const nueva = Object.entries(msg.nodos).some(([n, x]) => x.estado === 'lista' && !datos.redaccion?.indices?.[n]);
+    datos = { ...datos, redaccion: { ...(datos.redaccion ?? { indices: {} }), nodos: msg.nodos } };
+    if (nueva) cargar();
+  });
+  onDestroy(quitarRedaccion);
+  async function reintentarRedaccion(n) {
+    try {
+      datos = { ...datos, redaccion: await api.reintentarRedaccion(ref.carpetaId, ref.ideaId, n) };
+    } catch (e) {
+      avisar(`No se pudo reintentar: ${e.message}`, 'error');
+    }
+  }
   // El nodo de la URL se abre una vez por cada valor distinto (una conexión a otro nodo de la misma idea
   // cambia el valor); al cerrar la lámina se quita de la URL para que no se reabra.
   let atendido = null;
@@ -206,6 +229,9 @@
       {#if mapa?.fase === 'mapa'}
         <dl class="recuento">
           <div><dt>Estudio</dt><dd><span>{recuento.pendiente}</span> pendientes, <span class="c">{recuento['en-curso']}</span> estudiando, <span class="d">{recuento.hecho}</span> dominados</dd></div>
+          {#if esCurso && asignaturas.length}
+            <div><dt>Asignaturas</dt><dd><span class="d">{redactadas}</span> de {asignaturas.length} redactadas{#if redactandoCurso}, <span class="c">redactando el resto</span>{/if}</dd></div>
+          {/if}
           <div><dt>{vocab.recuento[0]}</dt><dd><span>{recuento.abierta}</span> {vocab.recuento[1]}, <span class="c">{recuento.atacando}</span> {vocab.recuento[2]}, <span class="r">{recuento.resuelta}</span> {vocab.recuento[3]}</dd></div>
         </dl>
       {/if}
@@ -219,7 +245,7 @@
       <button class="boton discreto" onclick={alVerManuscrito}>Manuscrito</button>
       {#if mapa?.resumen}<button class="boton discreto" onclick={() => (viendoVision = true)}>Visión del camino</button>{/if}
       {#if mapa?.fase === 'mapa'}
-        <button class="boton" disabled={enProceso} onclick={() => (redactando = !redactando)}>
+        <button class="boton" disabled={enProceso || redactandoCurso} title={redactandoCurso ? 'Espera a que terminen de redactarse las asignaturas' : ''} onclick={() => (redactando = !redactando)}>
           Comunicar avances{#if cambios.length}<span class="cuenta">{cambios.length}</span>{/if}
         </button>
       {/if}
@@ -287,6 +313,7 @@
 {#if laminaAbierta && lamina}
   {#key lamina.nodo.id}
     <LaminaNodo nodo={mapa?.nodos.find((n) => n.id === lamina.nodo.id) ?? lamina.nodo} desde={lamina.desde} {mapa} {progreso} {ref} {base} {glosas} bloqueado={enProceso}
+      curso={cursoDe(lamina.nodo)} alReintentar={() => reintentarRedaccion(lamina.nodo.id)}
       alCerrar={cerrarLamina} alIrA={irANodo} alCambiar={cargar} />
   {/key}
 {/if}

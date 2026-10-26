@@ -102,3 +102,13 @@
 ::highlight(glosa-corregir) { background-color: rgb(255 143 122 / 0.13); text-decoration: underline 1px rgb(255 143 122 / 0.75); text-underline-offset: 0.22em; }
 ::highlight(glosa-viva) { background-color: rgb(230 200 110 / 0.16); text-decoration: underline dotted 1.5px rgb(230 200 110 / 0.8); text-underline-offset: 0.22em; }
 ::highlight(glosa-foco) { background-color: rgb(216 226 220 / 0.2); }
+
+/* Cursos: escenas animadas intercaladas y desplegables (pistas y soluciones). */
+.manuscrito figure.escena-curso { margin: 2.2rem 0; text-align: left; }
+.manuscrito figure.escena-curso figcaption { margin-top: 0.5rem; color: var(--liquen-tenue); font-size: var(--t-1); font-style: italic; }
+.marco-escena { display: block; width: 100%; border: 0; background: transparent; }
+.manuscrito .escena-rota { color: var(--rechazada); font-size: var(--t-1); }
+.manuscrito details.desplegable { margin: 1rem 0; padding: 0.15rem 1rem; border-left: 3px solid var(--c, var(--proceso)); border-radius: 0 var(--radio-s) var(--radio-s) 0; background: var(--humus-hondo); }
+.manuscrito details.desplegable.solucion { --c: var(--aceptada); }
+.manuscrito details.desplegable summary { cursor: pointer; padding: 0.55rem 0; color: var(--c, var(--proceso)); font-family: var(--sans); font-size: var(--t-1); font-weight: 600; }
+.manuscrito details.desplegable[open] summary { margin-bottom: 0.2rem; }

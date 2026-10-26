@@ -12,7 +12,14 @@
   let respuestas = $state({ ...iniciales });
   let enviando = $state(false);
   let preguntas = $derived(diagnostico.preguntas);
-  let hechas = $derived(preguntas.filter((p) => String(respuestas[p.id] ?? '').trim()).length);
+  // Una respuesta de varias opciones es una lista (en el orden en que se marcaron); las demás, texto.
+  const tiene = (v) => (Array.isArray(v) ? v.length > 0 : Boolean(String(v ?? '').trim()));
+  let hechas = $derived(preguntas.filter((p) => tiene(respuestas[p.id])).length);
+  function alternar(id, opcion) {
+    const actual = Array.isArray(respuestas[id]) ? respuestas[id] : [];
+    poner(id, actual.includes(opcion) ? actual.filter((x) => x !== opcion) : [...actual, opcion]);
+  }
+  const orden = (p, o) => (Array.isArray(respuestas[p.id]) ? respuestas[p.id].indexOf(o) : -1);
 
   const guardado = crearAutoguardado((r) => alGuardar(r), 800);
   onDestroy(() => guardado.vaciar());
@@ -47,8 +54,9 @@
 
   <ol>
     {#each preguntas as p, i (p.id)}
-      <li class:respondida={String(respuestas[p.id] ?? '').trim()} in:fly={{ y: 20, duration: 500, delay: 120 + i * 70, easing: cubicOut }}>
+      <li class:respondida={tiene(respuestas[p.id])} class:prueba={p.tipo === 'prueba'} in:fly={{ y: 20, duration: 500, delay: 120 + i * 70, easing: cubicOut }}>
         <span class="num">{i + 1}</span>
+        {#if p.tipo === 'prueba'}<p class="rotulo-prueba">Ejercicio de prueba{p.area ? `: ${p.area}` : ''}</p>{/if}
         <div class="enunciado manuscrito">{@html renderizar(p.texto, base)}</div>
         {#if p.tipo === 'escala'}
           <div class="escala" role="radiogroup" aria-label="Nivel">
@@ -67,9 +75,19 @@
               <button class:elegido={respuestas[p.id] === o} onclick={() => poner(p.id, o)}>{o}</button>
             {/each}
           </div>
+        {:else if p.tipo === 'multiple'}
+          <div class="opciones multiple" role="group" aria-label="Marca todas las que correspondan">
+            {#each p.opciones as o, k (k)}
+              <button role="checkbox" aria-checked={orden(p, o) >= 0} class:elegido={orden(p, o) >= 0} onclick={() => alternar(p.id, o)}>
+                {#if orden(p, o) >= 0}<span class="orden">{orden(p, o) + 1}</span>{/if}{o}
+              </button>
+            {/each}
+          </div>
+          {#if p.id === 'idiomas'}<p class="descripcion">El orden en que los marcas cuenta: las conferencias se escribirán en el primero.</p>{/if}
         {:else}
           <div class="abierta">
-            <Editor valor={respuestas[p.id] ?? ''} {base} alCambiar={(md) => poner(p.id, md)} marcador="Cuéntalo con tus palabras; puedes escribir fórmulas con $…$" />
+            <Editor valor={respuestas[p.id] ?? ''} {base} alCambiar={(md) => poner(p.id, md)}
+              marcador={p.tipo === 'prueba' ? 'Resuélvelo como sepas, sin buscarlo: sirve para saber de dónde partes. Fórmulas con $…$' : 'Cuéntalo con tus palabras; puedes escribir fórmulas con $…$'} />
           </div>
         {/if}
       </li>
@@ -96,6 +114,24 @@
     font-weight: 400;
     font-size: var(--t4);
     line-height: 1.1;
+  }
+  .rotulo-prueba {
+    margin: 0 0 0.3rem;
+    color: var(--cambios);
+    font-size: var(--t-1);
+    font-weight: 600;
+  }
+  .orden {
+    display: inline-grid;
+    place-items: center;
+    width: 1.2rem;
+    height: 1.2rem;
+    margin-right: 0.45rem;
+    border-radius: 50%;
+    background: var(--tu);
+    color: var(--humus);
+    font-size: 0.75rem;
+    font-weight: 700;
   }
   .intro {
     color: var(--liquen-tenue);

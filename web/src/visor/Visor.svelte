@@ -84,6 +84,7 @@
   {#if laminaAbierta && lamina}
     {#key lamina.nodo.id}
       <LaminaLectura nodo={lamina.nodo} desde={lamina.desde} mapa={datos.mapa} documento={datos.documentos[lamina.nodo.id] ?? ''} base={BASE}
+        indice={datos.indices?.[lamina.nodo.id] ?? null} documentos={datos.documentos}
         alCerrar={() => (laminaAbierta = false)} alIrA={irANodo} />
     {/key}
   {/if}
