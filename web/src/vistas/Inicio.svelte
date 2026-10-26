@@ -16,6 +16,8 @@
   let color = $state(COLORES[0]);
   let creando = $state(false);
   let tipo = $state(null);
+  // El formulario se despliega (tipo y descripción) en cuanto se empieza a crear un bancal, antes del nombre.
+  let creandoBancal = $state(false);
   let descripcion = $state('');
   cargarTipos();
   const nombreTipo = (id) => catalogo.tipos.find((t) => t.id === id)?.nombre ?? '';
@@ -39,6 +41,7 @@
       nombre = '';
       tipo = null;
       descripcion = '';
+      creandoBancal = false;
       color = COLORES[(COLORES.indexOf(color) + 1) % COLORES.length];
       refrescar();
       ir(enlace.carpeta(c.id));
@@ -93,14 +96,14 @@
     {/each}
     <li class="nuevo">
       <form onsubmit={crearCarpeta}>
-        <input class="campo" bind:value={nombre} placeholder="Nuevo bancal: IA, Neurociencia, Teoría de Números…" maxlength="60" />
+        <input class="campo" bind:value={nombre} onfocus={() => (creandoBancal = true)} placeholder="Nuevo bancal: IA, Neurociencia, Teoría de Números…" maxlength="60" />
         <div class="colores" role="radiogroup" aria-label="Color del bancal">
           {#each COLORES as k (k)}
             <button type="button" role="radio" aria-checked={color === k} aria-label="Color {k}" class:elegido={color === k}
               style:background={k} onclick={() => (color = k)}></button>
           {/each}
         </div>
-        {#if nombre.trim()}
+        {#if creandoBancal || nombre.trim()}
           <div class="detalle">
             <SelectorTipo valor={tipo} alElegir={(t) => (tipo = t)} />
             <p class="aviso-tipo">El tipo se elige una sola vez: después de crear el bancal no se puede cambiar.</p>
@@ -108,7 +111,11 @@
               placeholder="Descripción (opcional): de qué va este bancal, qué buscas con estas ideas. Las sesiones la leerán."></textarea>
           </div>
         {/if}
-        <button class="boton" disabled={!nombre.trim() || !tipo || creando} title={nombre.trim() && !tipo ? 'Elige antes el tipo del bancal' : ''}>Crear bancal</button>
+        {#if creandoBancal || nombre.trim()}
+          <button type="button" class="boton discreto" onclick={() => ((creandoBancal = false), (nombre = ''), (tipo = null), (descripcion = ''))}>Cancelar</button>
+        {/if}
+        <button class="boton" disabled={!nombre.trim() || !tipo || creando}
+          title={!nombre.trim() ? 'Escribe el nombre del bancal' : !tipo ? 'Elige antes el tipo del bancal' : ''}>Crear bancal</button>
       </form>
     </li>
   </ul>
