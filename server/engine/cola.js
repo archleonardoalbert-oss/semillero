@@ -258,9 +258,15 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
     if (a.germinacion) return cerrarGerminacion(a, r, propios);
 
     const ruta = path.join(cfg.datos, a.rutaIdea, 'hilo', a.archivoDestino);
-    const texto = await fs.readFile(ruta, 'utf8').catch(() => null);
-    const dictamen = texto && parsearDictamen(texto);
+    let texto = await fs.readFile(ruta, 'utf8').catch(() => null);
+    let dictamen = texto && parsearDictamen(texto);
     if (texto && !dictamen) await fs.rm(ruta, { force: true });
+    // Aprender algo nuevo nunca se rechaza rotundamente (decisión del usuario): como mucho, «no recomendada».
+    if (dictamen?.meta.veredicto === 'rechazada' && tipoBancal(await carpetas.obtener(ref.carpetaId).catch(() => null)) === 'aprendizaje') {
+      texto = texto.replace(/^(\uFEFF?---\r?\n[\s\S]*?)^veredicto:\s*rechazada\s*$/m, '$1veredicto: no-recomendada');
+      await fs.writeFile(ruta, texto);
+      dictamen = parsearDictamen(texto);
+    }
     await guard.commitear(propios.map((p) => p.replace(/\/\*\*$/, '')), `dictamen ${clave(ref)}`);
 
     if (r.resultado?.is_error && RE_LIMITE.test(String(r.resultado.result ?? ''))) {
