@@ -316,8 +316,22 @@ ${t.analisis}`);
 
 function listaRespuestas(mapa, respuestas) {
   return (mapa?.diagnostico?.preguntas ?? [])
-    .map((p) => `### ${p.texto}\n\n${String(respuestas?.[p.id] ?? '').trim() || '_(sin respuesta)_'}`)
+    .map((p) => {
+      const r = respuestas?.[p.id];
+      const texto = (Array.isArray(r) ? r.join(', ') : String(r ?? '')).trim() || '_(sin respuesta)_';
+      // Los ejercicios de prueba los corrige la sesión: ubican al usuario por lo que demuestra, no por lo que dice.
+      if (p.tipo === 'prueba') return `### Ejercicio de prueba${p.area ? ` (${p.area})` : ''}: ${p.texto}\n\nRespuesta del usuario (corrígela con rigor para ubicar su nivel real):\n\n${texto}`;
+      return `### ${p.texto}\n\n${texto}`;
+    })
     .join('\n\n');
+}
+
+// Los idiomas que eligió el usuario para un curso: todo el material en ellos y las conferencias en el primero.
+export function lineaIdiomas(respuestas) {
+  const idiomas = Array.isArray(respuestas?.idiomas) ? respuestas.idiomas : [];
+  return idiomas.length
+    ? `Idiomas del curso: ${idiomas.join(', ')}. Todo el material (documentos que escribas y recursos que descargues) debe estar SOLO en estos idiomas, y lo que escribas tú, en ${idiomas[0]}.`
+    : '';
 }
 
 // Mensaje de cada ejecución de germinación según en qué punto está.
@@ -359,6 +373,7 @@ export function mensajeGerminacion({ idea, carpeta, rutaIdea, mapa, progreso, ca
       `El usuario ha respondido al diagnóstico de la germinación de «${idea.titulo}».`,
       '',
       listaRespuestas(mapa, progreso?.respuestas),
+      ...(lineaIdiomas(progreso?.respuestas) ? ['', lineaIdiomas(progreso.respuestas)] : []),
       ...peticion,
       '',
       'Ahora investiga a fondo y escribe el mapa completo ("fase": "mapa"): ruta de estudio, incógnitas, recursos descargados y un documento detallado por nodo.',

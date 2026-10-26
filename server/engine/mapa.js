@@ -5,7 +5,8 @@ const RE_ID = /^[a-z0-9-]{1,40}$/;
 const RE_DOCUMENTO = /^nodos\/[a-z0-9-]+\.md$/;
 const RE_ARCHIVO = /^recursos\/[^/\\]+$/;
 const TIPOS_NODO = new Set(['estudio', 'incognita']);
-const TIPOS_PREGUNTA = new Set(['abierta', 'escala', 'opciones']);
+// `prueba`: un ejercicio corto de verdad que corrige la sesión; `multiple`: varias opciones marcables.
+const TIPOS_PREGUNTA = new Set(['abierta', 'escala', 'opciones', 'prueba', 'multiple']);
 const TIPOS_RECURSO = new Set(['libro', 'articulo', 'curso', 'web', 'otro']);
 
 const esTexto = (v) => typeof v === 'string' && v.trim().length > 0;
@@ -26,7 +27,7 @@ function validarPreguntas(diagnostico) {
     exigir(esTexto(p.texto), `la pregunta ${p.id} no tiene texto`);
     exigir(TIPOS_PREGUNTA.has(p.tipo), `tipo de pregunta inválido en ${p.id}: ${p.tipo}`);
     if (p.tipo === 'escala') exigir(esLista(p.niveles) && p.niveles.length === 5 && p.niveles.every(esTexto), `la escala ${p.id} necesita 5 niveles`);
-    if (p.tipo === 'opciones') exigir(esLista(p.opciones) && p.opciones.length >= 2 && p.opciones.every(esTexto), `la pregunta ${p.id} necesita al menos 2 opciones`);
+    if (p.tipo === 'opciones' || p.tipo === 'multiple') exigir(esLista(p.opciones) && p.opciones.length >= 2 && p.opciones.every(esTexto), `la pregunta ${p.id} necesita al menos 2 opciones`);
   }
 }
 
@@ -83,6 +84,15 @@ export function validarMapa(mapa) {
       exigir(esLista(n.depende) && esLista(n.recursos), `depende y recursos de ${n.id} deben ser listas`);
       for (const d of n.depende) exigir(idsNodos.has(d), `el nodo ${n.id} depende de ${d}, que no existe`);
       for (const r of n.recursos) exigir(idsRecursos.has(r), `el nodo ${n.id} cita el recurso ${r}, que no existe`);
+      // El plan de conferencias de una asignatura (cursos de aprendizaje): lo redacta después una sesión dedicada.
+      if (n.plan !== undefined) {
+        exigir(n.tipo === 'estudio' && esLista(n.plan) && n.plan.length > 0, `el plan de ${n.id} debe ser una lista no vacía (solo en nodos de estudio)`);
+        for (const c of n.plan) {
+          exigir(esTexto(c?.titulo), `una conferencia del plan de ${n.id} no tiene título`);
+          c.objetivos ??= [];
+          exigir(esLista(c.objetivos) && c.objetivos.every(esTexto), `los objetivos de «${c.titulo}» en el plan de ${n.id} deben ser textos`);
+        }
+      }
     }
     sinCiclos(nodos);
     return { ok: true, mapa: { ...mapa, nodos, recursos } };
@@ -90,4 +100,20 @@ export function validarMapa(mapa) {
     if (e instanceof Invalido) return { ok: false, motivo: e.message };
     throw e;
   }
+}
+
+// La última pregunta del diagnóstico de un curso: en qué idiomas quiere el usuario los documentos.
+// La añade Semillero, no la sesión, para que nunca falte. El orden en que marca los idiomas importa:
+// las conferencias se escriben en el primero.
+export const IDIOMAS = ['Español', 'English', 'Français', 'Deutsch', 'Português', 'Italiano', 'Русский', '中文', '日本語'];
+export const PREGUNTA_IDIOMAS = {
+  id: 'idiomas',
+  tipo: 'multiple',
+  texto: '¿En qué idiomas quieres los documentos del curso? Puedes marcar varios: todo el material estará solo en ellos y las conferencias se escribirán en el primero que marques.',
+  opciones: IDIOMAS,
+};
+export function conPreguntaIdiomas(mapa) {
+  if (!mapa?.diagnostico?.preguntas) return mapa;
+  const preguntas = mapa.diagnostico.preguntas.filter((p) => p.id !== 'idiomas');
+  return { ...mapa, diagnostico: { ...mapa.diagnostico, preguntas: [...preguntas, PREGUNTA_IDIOMAS] } };
 }

@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { slugify, escribirJSON, leerJSON } from './fsutil.js';
+import { IDIOMAS } from '../engine/mapa.js';
 
 const RE_ID = /^[a-z0-9-]{1,40}$/;
 const ESTADOS = new Set(['pendiente', 'en-curso', 'hecho', 'abierta', 'atacando', 'resuelta']);
@@ -43,7 +44,10 @@ export function crearAlmacenGerminacion(cfg, { proteger }) {
     const limpias = {};
     for (const [k, v] of Object.entries(respuestas)) {
       if (!RE_ID.test(k)) throw new Error('respuestas-invalidas');
-      limpias[k] = String(v ?? '').slice(0, MAX_NOTAS);
+      // Varias opciones marcadas: una lista, en el orden en que se marcaron. Los idiomas, solo de la lista fija.
+      limpias[k] = Array.isArray(v)
+        ? [...new Set(v.map((x) => String(x ?? '').slice(0, 200)))].filter((x) => x && (k !== 'idiomas' || IDIOMAS.includes(x))).slice(0, 30)
+        : String(v ?? '').slice(0, MAX_NOTAS);
     }
     return modificar(c, i, (p) => (p.respuestas = limpias));
   }

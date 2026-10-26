@@ -87,3 +87,82 @@ test('en otros tipos el rechazo rotundo se mantiene', async () => {
   await terminarConDictamen(x, 0, RECHAZO);
   assert.equal((await x.ideas.obtener(x.ref.carpetaId, x.ref.ideaId)).estado, 'rechazada');
 });
+
+// --- Diagnóstico y plan del curso ---
+import { validarMapa, conPreguntaIdiomas, IDIOMAS } from '../server/engine/mapa.js';
+import { MAPA, DIAGNOSTICO, copia } from './fixtures/mapas.js';
+
+test('el diagnóstico admite ejercicios de prueba y preguntas de varias opciones', () => {
+  const d = copia(DIAGNOSTICO);
+  d.diagnostico.preguntas.push(
+    { id: 'p4', tipo: 'prueba', area: 'Álgebra lineal', texto: 'Calcula los autovalores de $\\begin{pmatrix}2&1\\\\1&2\\end{pmatrix}$.' },
+    { id: 'p5', tipo: 'multiple', texto: '¿Qué has usado?', opciones: ['NumPy', 'MATLAB', 'Julia'] },
+  );
+  assert.equal(validarMapa(d).ok, true);
+  d.diagnostico.preguntas.push({ id: 'p6', tipo: 'multiple', texto: 'x', opciones: ['una'] });
+  assert.match(validarMapa(d).motivo, /al menos 2 opciones/);
+});
+
+test('los nodos de estudio pueden llevar el plan de sus conferencias', () => {
+  const m = copia(MAPA);
+  m.nodos[0].plan = [{ titulo: 'Espacios vectoriales', objetivos: ['Decidir si un conjunto es subespacio'] }, { titulo: 'Autovalores', objetivos: [] }];
+  assert.equal(validarMapa(m).ok, true);
+  m.nodos[0].plan = [{ titulo: '' }];
+  assert.match(validarMapa(m).motivo, /plan/);
+});
+
+test('la pregunta de idiomas se añade al final una sola vez', () => {
+  const d = conPreguntaIdiomas(copia(DIAGNOSTICO));
+  const ultima = d.diagnostico.preguntas.at(-1);
+  assert.equal(ultima.id, 'idiomas');
+  assert.equal(ultima.tipo, 'multiple');
+  assert.deepEqual(ultima.opciones, IDIOMAS);
+  assert.equal(conPreguntaIdiomas(d).diagnostico.preguntas.filter((p) => p.id === 'idiomas').length, 1);
+  assert.equal(validarMapa(d).ok, true);
+});
+
+async function terminarGerminacion(x, n, mapa) {
+  await hasta(() => x.falso.llamadas[n]);
+  const g = path.join(x.dirIdea, 'germinacion');
+  await fs.mkdir(path.join(g, 'nodos'), { recursive: true });
+  await fs.writeFile(path.join(g, 'mapa.json'), JSON.stringify(mapa));
+  for (const nodo of mapa.nodos ?? []) await fs.writeFile(path.join(g, nodo.documento), `# ${nodo.titulo}`);
+  x.falso.llamadas[n].resolve({ codigo: 0, abortado: false, resultado: { subtype: 'success', is_error: false } });
+  await hasta(async () => (await x.ideas.obtener(x.ref.carpetaId, x.ref.ideaId)).estado !== 'en-proceso');
+}
+
+async function aceptadaYGerminando(opciones) {
+  const x = await aprendizaje(opciones);
+  await x.cola.lanzar([x.ref]);
+  await terminarConDictamen(x, 0, '---\nveredicto: aceptada\netapa: 2\nresumen: Vale la pena\n---\n\nCuerpo');
+  await x.cola.germinar(x.ref, {});
+  return x;
+}
+
+test('al aceptar el diagnóstico de un curso se añade la pregunta de idiomas', async () => {
+  const x = await aceptadaYGerminando();
+  await terminarGerminacion(x, 1, DIAGNOSTICO);
+  const mapa = JSON.parse(await fs.readFile(path.join(x.dirIdea, 'germinacion/mapa.json'), 'utf8'));
+  assert.equal(mapa.diagnostico.preguntas.at(-1).id, 'idiomas');
+  const otro = await aceptadaYGerminando({ tipo: 'academico' });
+  await terminarGerminacion(otro, 1, DIAGNOSTICO);
+  const m2 = JSON.parse(await fs.readFile(path.join(otro.dirIdea, 'germinacion/mapa.json'), 'utf8'));
+  assert.ok(!m2.diagnostico.preguntas.some((p) => p.id === 'idiomas'));
+});
+
+test('las respuestas de varias opciones se guardan como lista y llegan a la sesión con los ejercicios marcados', async () => {
+  const x = await aceptadaYGerminando();
+  const d = copia(DIAGNOSTICO);
+  d.diagnostico.preguntas.push({ id: 'p4', tipo: 'prueba', area: 'Álgebra', texto: 'Calcula $2+2$.' });
+  await terminarGerminacion(x, 1, d);
+  await x.germinacion.guardarRespuestas(x.ref.carpetaId, x.ref.ideaId, { p1: 'Algo', p4: '4, creo', idiomas: ['English', 'Español', 'Klingon'] });
+  const p = await x.germinacion.leerProgreso(x.ref.carpetaId, x.ref.ideaId);
+  assert.deepEqual(p.respuestas.idiomas, ['English', 'Español']);
+  await x.cola.germinar(x.ref, {});
+  await hasta(() => x.falso.llamadas[2]);
+  const m = x.falso.llamadas[2].mensaje;
+  assert.match(m, /Ejercicio de prueba \(Álgebra\)/);
+  assert.match(m, /4, creo/);
+  assert.match(m, /English, Español/);
+  assert.match(m, /Idiomas del curso: English, Español/);
+});

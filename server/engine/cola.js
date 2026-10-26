@@ -5,7 +5,7 @@ import path from 'node:path';
 import { ESTADOS_PENDIENTES } from '../store/ideas.js';
 import { ejecutar as ejecutarReal } from './runner.js';
 import { argsClaude, mensajeEjecucion, mensajeGerminacion, promptGerminacion, promptSistema } from './prompt.js';
-import { validarMapa } from './mapa.js';
+import { validarMapa, conPreguntaIdiomas } from './mapa.js';
 import { VEREDICTOS } from './veredicto.js';
 import { tipoDe as tipoBancal, bloqueBancal } from './tipos.js';
 import { parsearDictamen } from './veredicto.js';
@@ -301,6 +301,10 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
       } catch (e) {
         v = { ok: false, motivo: `JSON mal formado (${e.message})` };
       }
+    }
+    // En un curso (Aprender algo nuevo), la última pregunta del diagnóstico es siempre la de los idiomas.
+    if (v?.ok && v.mapa.fase === 'diagnostico' && tipoBancal(await carpetas.obtener(ref.carpetaId).catch(() => null)) === 'aprendizaje') {
+      v = { ...v, mapa: conPreguntaIdiomas(v.mapa) };
     }
     if (v && !v.ok) await guard.restaurar([rutaMapa]);
     // El mapa aceptado se guarda normalizado: la web lo lee tal cual.
