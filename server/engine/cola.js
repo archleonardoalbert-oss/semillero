@@ -89,8 +89,10 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
       if (germinar && idea.trabajo !== 'germinacion') {
         Object.assign(parche, { trabajo: 'germinacion', estadoPrevio: idea.estado, eleccion: null, germinacion: { fase: 'preparando', iniciada: new Date().toISOString() } });
       }
-      cola.push({ ref, tipo: germinar ? (idea.sessionId && idea.interrumpida ? 'reanudar' : 'germinar') : tipoDe(idea, idea.hilo) });
+      // Primero se guarda el estado (y la marca de germinación) y después se encola: si otra ejecución
+      // termina justo ahora y la cola arranca esta entrada, debe leer ya la idea como germinación.
       await cambiar(ref, parche);
+      cola.push({ ref, tipo: germinar ? (idea.sessionId && idea.interrumpida ? 'reanudar' : 'germinar') : tipoDe(idea, idea.hilo) });
     } catch (e) {
       ocupadas.delete(k);
       throw e;
