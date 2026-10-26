@@ -3,13 +3,13 @@
   import { cubicOut } from 'svelte/easing';
   import { renderizar } from '../lib/render.js';
   import { escenas } from '../lib/escenas.js';
-  import Glosable from './Glosable.svelte';
 
   // El lector de una asignatura de curso: una conferencia, clase práctica o demostración para valientes a la
   // vez, con sus escenas animadas montadas en el texto, el índice de la asignatura al lado y los recursos que
   // cita. `cargar(documento)` devuelve el Markdown (la app lo pide a la API; el visor exportado, a su copia).
-  // Sin `glosas` (visor exportado) el texto se lee sin poder pedir explicaciones.
-  let { nodo, indice, inicial, base, glosas = null, cargar, alCerrar } = $props();
+  // `Glosable` llega como componente desde la app (con `glosas`); el visor exportado no lo pasa, para no
+  // arrastrar el estado de la app ni su WebSocket: allí el texto se lee sin pedir explicaciones.
+  let { nodo, indice, inicial, base, glosas = null, Glosable = null, cargar, alCerrar } = $props();
 
   const TIPO_RECURSO = { libro: 'Libro', articulo: 'Artículo', curso: 'Curso', web: 'Web', video: 'Vídeo', otro: 'Recurso' };
   let piezas = $derived([
@@ -39,7 +39,7 @@
   const esPdf = (r) => /\.pdf$/i.test(r.archivo);
   const ir = (k) => k >= 0 && k < piezas.length && (actual = piezas[k].id);
   function tecla(e) {
-    if (e.key !== 'Escape' || document.querySelector('.hoja, .panel')) return;
+    if (e.key !== 'Escape' || document.querySelector('aside.hoja, div.panel')) return;
     if (e.target.closest?.('textarea, input, [contenteditable="true"]')) return;
     e.stopPropagation();
     alCerrar();
@@ -74,7 +74,7 @@
         {#key pieza.id}
           {#if texto !== null}
             <div in:fade={{ duration: 250 }}>
-              {#if glosas}
+              {#if glosas && Glosable}
                 <Glosable html={renderizar(texto, base)} documento="germinacion/{pieza.documento}" autor="claude" {glosas} {base} flotante />
               {:else}
                 <div class="manuscrito">{@html renderizar(texto, base)}</div>

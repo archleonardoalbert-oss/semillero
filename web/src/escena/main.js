@@ -12,6 +12,8 @@ const q = new URLSearchParams(location.search);
 const raiz = document.getElementById('escena');
 const avisarAlto = () => parent.postMessage({ tipo: 'semillero-escena-alto', id: q.get('id'), alto: document.documentElement.scrollHeight }, '*');
 new ResizeObserver(avisarAlto).observe(document.body);
+// Con el foco dentro de la escena, Escape debe seguir cerrando el lector que la contiene.
+document.addEventListener('keydown', (e) => e.key === 'Escape' && parent.postMessage({ tipo: 'semillero-escena-tecla', tecla: 'Escape' }, '*'));
 
 try {
   const ruta = q.get('m') ?? '';

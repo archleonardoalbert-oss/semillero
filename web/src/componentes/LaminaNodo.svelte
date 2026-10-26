@@ -125,7 +125,7 @@
 
   // Escape cierra la lámina salvo que haya una glosa o un panel abiertos encima.
   function tecla(e) {
-    if (e.key !== 'Escape' || document.querySelector('.hoja, .panel, .examen, .verificacion, .lector')) return;
+    if (e.key !== 'Escape' || document.querySelector('aside.hoja, div.panel, .examen, .verificacion, .lector')) return;
     // Escape mientras se escribe no cierra la lámina (se perdería lo escrito en el taller).
     if (e.target.closest?.('textarea, input, [contenteditable="true"]')) return;
     if (comparando) comparando = null;
@@ -273,7 +273,7 @@
 </div>
 
 {#if leyendo && curso?.indice}
-  <Lector {nodo} indice={curso.indice} inicial={leyendo} {base} {glosas}
+  <Lector {nodo} indice={curso.indice} inicial={leyendo} {base} {glosas} {Glosable}
     cargar={(rel) => api.documento(ref.carpetaId, ref.ideaId, rel)} alCerrar={() => (leyendo = null)} />
 {/if}
 {#if examenAbierto}

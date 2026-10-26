@@ -310,3 +310,22 @@ test('el ejecutable sirve el reproductor de escenas con su CSP y los módulos de
     p.kill();
   }
 });
+
+test('el visor exportado no importa nada de la API ni del estado de la app (WebSocket)', async () => {
+  const raiz = path.resolve('web/src');
+  const vistos = new Set();
+  const pendientes = [path.join(raiz, 'visor/main.js'), path.join(raiz, 'escena/main.js')];
+  while (pendientes.length) {
+    const f = pendientes.pop();
+    if (vistos.has(f)) continue;
+    vistos.add(f);
+    const codigo = await fs.readFile(f, 'utf8');
+    for (const m of codigo.matchAll(/import\s+(?:[^'"]*?\s+from\s+)?['"](\.[^'"]+)['"]/g)) {
+      const destino = path.resolve(path.dirname(f), m[1]);
+      if (/\.(js|svelte)$/.test(destino)) pendientes.push(destino);
+    }
+  }
+  const prohibidos = [...vistos].filter((f) => /lib\/(api|estado\.svelte)\.js$/.test(f)).map((f) => path.relative(raiz, f));
+  assert.deepEqual(prohibidos, []);
+  assert.ok([...vistos].some((f) => f.endsWith('Lector.svelte')), 'el grafo incluye el lector');
+});

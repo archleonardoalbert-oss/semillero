@@ -7,6 +7,11 @@ const ALTO_INICIAL = 560;
 export function escenas(nodo) {
   const marcos = new Set();
   const alMensaje = (ev) => {
+    const propio = [...marcos].some((f) => f.contentWindow === ev.source);
+    if (propio && ev.data?.tipo === 'semillero-escena-tecla' && ev.data.tecla === 'Escape') {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      return;
+    }
     if (ev.data?.tipo !== 'semillero-escena-alto') return;
     for (const f of marcos) if (f.contentWindow === ev.source) f.style.height = `${Math.min(2400, Math.max(140, Number(ev.data.alto) || ALTO_INICIAL))}px`;
   };
