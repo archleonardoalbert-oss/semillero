@@ -166,3 +166,41 @@ test('las respuestas de varias opciones se guardan como lista y llegan a la sesi
   assert.match(m, /English, Español/);
   assert.match(m, /Idiomas del curso: English, Español/);
 });
+
+// --- Índice de un nodo redactado ---
+import { validarIndice, escenasDe } from '../server/engine/indice.js';
+
+const INDICE = {
+  version: 1,
+  conferencias: [
+    { id: 'c01-espacios', titulo: 'Espacios vectoriales', resumen: 'Axiomas y ejemplos', objetivos: ['Decidir si un conjunto es subespacio'], documento: 'nodos/e1/c01-espacios.md' },
+    { id: 'c02-autovalores', titulo: 'Autovalores', documento: 'nodos/e1/c02-autovalores.md' },
+  ],
+  practicas: [{ id: 'p01', titulo: 'Clase práctica 1', documento: 'nodos/e1/p01.md', conferencias: ['c01-espacios'] }],
+  valientes: [{ id: 'v01-dimension', titulo: 'Toda base tiene el mismo cardinal', documento: 'nodos/e1/v01-dimension.md' }],
+  recursos: [{ id: 'r-axler', tipo: 'libro', titulo: 'Linear Algebra Done Right', autores: 'Axler', anio: 2024, url: 'https://linear.axler.net', archivo: 'recursos/e1/axler-ladr4e.pdf', idioma: 'English', conferencias: ['c01-espacios'] }],
+};
+
+test('un índice de nodo válido se acepta y sus rutas quedan dentro del nodo', () => {
+  const v = validarIndice(copia(INDICE), 'e1');
+  assert.equal(v.ok, true, v.motivo);
+  const fuera = copia(INDICE);
+  fuera.conferencias[0].documento = 'nodos/e2/c01.md';
+  assert.match(validarIndice(fuera, 'e1').motivo, /nodos\/e1\//);
+  const recurso = copia(INDICE);
+  recurso.recursos[0].archivo = 'recursos/axler.pdf';
+  assert.match(validarIndice(recurso, 'e1').motivo, /recursos\/e1\//);
+  const sinConf = copia(INDICE);
+  sinConf.conferencias = [];
+  assert.match(validarIndice(sinConf, 'e1').motivo, /conferencia/);
+  const practicaMala = copia(INDICE);
+  practicaMala.practicas[0].conferencias = ['c99'];
+  assert.match(validarIndice(practicaMala, 'e1').motivo, /c99/);
+});
+
+test('las escenas citadas en una conferencia se extraen de sus bloques', () => {
+  const md = 'Texto\n\n```escena\n{"archivo": "escenas/e1/base.js", "titulo": "Una base", "pie": "Arrastra los vectores"}\n```\n\nMás\n\n```escena\n{"archivo": "../fuera.js"}\n```\n';
+  const e = escenasDe(md, 'e1');
+  assert.deepEqual(e.validas.map((x) => x.archivo), ['escenas/e1/base.js']);
+  assert.equal(e.invalidas.length, 1);
+});
