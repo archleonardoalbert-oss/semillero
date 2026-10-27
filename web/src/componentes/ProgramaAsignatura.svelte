@@ -4,7 +4,20 @@
   // demostraciones para valientes o, mientras no está redactada, su estado y su mando (comenzar, pausar, continuar).
   // `alAccion(accion)` con 'comenzar' | 'pausar' | 'continuar'; sin ella (visor exportado) no hay mandos.
   // `actividad`: lo que hace ahora la sesión que la redacta (solo mientras está en marcha).
-  let { nodo, estado = null, indice = null, actividad = null, alAbrir, alAccion = null } = $props();
+  // `borradores`: lo ya escrito de una asignatura sin terminar ({ archivo, clase, documento }); `alAbrirBorrador(archivo)`.
+  let { nodo, estado = null, indice = null, actividad = null, borradores = [], alAbrir, alAccion = null, alAbrirBorrador = null } = $props();
+
+  // Cada conferencia del plan con su borrador (c01-…, c02-… en el orden del plan) y en qué punto está.
+  let enCurso = $derived(estado?.estado === 'redactando' ? actividad?.documentoActual : null);
+  let prevista = $derived((nodo.plan ?? []).map((c, k) => {
+    const prefijo = `c${String(k + 1).padStart(2, '0')}`;
+    const b = borradores.find((x) => x.clase === 'conferencia' && x.archivo.startsWith(prefijo));
+    return { ...c, k, borrador: b ?? null, fase: b && b.archivo === enCurso ? 'escribiendo' : b ? 'escrita' : 'pendiente' };
+  }));
+  // Lo escrito que no es una conferencia del plan: prácticas, demostraciones o conferencias añadidas.
+  let otros = $derived(borradores.filter((b) => !prevista.some((c) => c.borrador?.archivo === b.archivo)));
+  const NOMBRE = { conferencia: 'Conferencia', practica: 'Clase práctica', valiente: 'Demostración para valientes' };
+  const legible = (archivo) => archivo.replace(/\.md$/, '').replace(/^[cpv]\d+-?/, '').replace(/-/g, ' ');
   const cifra = (n) => (n >= 1e6 ? `${(n / 1e6).toLocaleString('es', { maximumFractionDigits: 1 })} M` : n >= 1e3 ? `${Math.round(n / 1e3).toLocaleString('es')} k` : String(n ?? 0));
 
   const MANDO = {
@@ -73,10 +86,35 @@
     {:else if estado?.tokens}
       <p class="consumo">Lleva consumidos {cifra(estado.tokens.generados)} tokens generados y {cifra(estado.tokens.leidos)} leídos.</p>
     {/if}
-    {#if nodo.plan?.length}
+    {#if prevista.length}
       <ol class="lista prevista">
-        {#each nodo.plan as c, k (k)}
-          <li><span class="n">{k + 1}</span><span class="t"><strong>{c.titulo}</strong></span></li>
+        {#each prevista as c (c.k)}
+          <li class={c.fase}>
+            {#if c.fase === 'escrita' && alAbrirBorrador}
+              <button onclick={() => alAbrirBorrador(c.borrador.archivo)}>
+                <span class="n">{c.k + 1}</span><span class="t"><strong>{c.titulo}</strong><small>Escrita: ábrela para leerla</small></span>
+              </button>
+            {:else}
+              <div class="hueco">
+                <span class="n">{c.k + 1}</span>
+                <span class="t"><strong>{c.titulo}</strong>{#if c.fase === 'escribiendo'}<small>Escribiéndose ahora</small>{/if}</span>
+              </div>
+            {/if}
+          </li>
+        {/each}
+      </ol>
+    {/if}
+    {#if otros.length}
+      <h2>También escrito</h2>
+      <ol class="lista prevista">
+        {#each otros as b (b.archivo)}
+          <li class={b.archivo === enCurso ? 'escribiendo' : 'escrita'}>
+            {#if b.archivo !== enCurso && alAbrirBorrador}
+              <button onclick={() => alAbrirBorrador(b.archivo)}><span class="t"><strong>{legible(b.archivo)}</strong><small>{NOMBRE[b.clase]}</small></span></button>
+            {:else}
+              <div class="hueco"><span class="t"><strong>{legible(b.archivo)}</strong><small>{NOMBRE[b.clase]}, escribiéndose ahora</small></span></div>
+            {/if}
+          </li>
         {/each}
       </ol>
     {/if}
@@ -106,7 +144,7 @@
     list-style: none;
   }
   .lista button,
-  .prevista li {
+  .prevista .hueco {
     display: flex;
     align-items: flex-start;
     gap: 0.8rem;
@@ -157,7 +195,32 @@
     font-size: var(--t-1);
   }
   .prevista li {
-    opacity: 0.55;
+    list-style: none;
+  }
+  .prevista .pendiente .hueco {
+    opacity: 0.5;
+  }
+  /* La conferencia que se está escribiendo late; las ya escritas se abren como cualquier otra. */
+  .prevista .escribiendo .hueco {
+    border-color: var(--proceso);
+    box-shadow: 0 0 0 1px var(--proceso), 0 0 18px rgb(94 224 224 / 0.25);
+    animation: escribiendo 2s ease-in-out infinite;
+  }
+  .prevista .escribiendo small {
+    color: var(--proceso);
+  }
+  .prevista .escrita small {
+    color: var(--aceptada);
+  }
+  @keyframes escribiendo {
+    50% {
+      box-shadow: 0 0 0 1px var(--proceso), 0 0 4px rgb(94 224 224 / 0.1);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .prevista .escribiendo .hueco {
+      animation: none;
+    }
   }
   .en-vivo {
     margin: 0 0 1.4rem;

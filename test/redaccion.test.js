@@ -461,3 +461,19 @@ test('al arrancar, una asignatura que pusiste en marcha a mano dentro de una ide
   await esperar(200);
   assert.equal(x.llamadas.length, 1);
 });
+
+test('mientras se redacta, los documentos ya escritos se listan como borradores para poder leerlos', async () => {
+  const x = await curso({ paralelo: 1 });
+  await x.motor.comenzarNodo(x.ref, 'e1');
+  await hasta(() => x.llamadas.length === 1);
+  const dir = path.join(x.dir, 'germinacion/nodos/e1');
+  await fs.mkdir(dir, { recursive: true });
+  for (const f of ['c01-grupos-libres.md', 'c02-presentaciones.md', 'p01-practica.md', 'notas-internas.txt']) await fs.writeFile(path.join(dir, f), `# ${f}`);
+  const b = (await x.motor.estado(x.ref)).borradores.e1;
+  assert.deepEqual(b.map((d) => d.archivo), ['c01-grupos-libres.md', 'c02-presentaciones.md', 'p01-practica.md']);
+  assert.deepEqual(b.map((d) => d.clase), ['conferencia', 'conferencia', 'practica']);
+  assert.equal(b[0].documento, 'nodos/e1/c01-grupos-libres.md');
+  await x.terminar(0);
+  assert.ok(await hasta(async () => (await x.estadoNodo('e1')) === 'lista'));
+  assert.equal((await x.motor.estado(x.ref)).borradores.e1, undefined, 'una asignatura lista se lee por su índice');
+});

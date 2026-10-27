@@ -318,7 +318,16 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
       const n = k.split('/').pop();
       if (k.startsWith(`${claveIdea(ref)}/`) && a.actividad && e.nodos[n]?.estado === 'redactando') actividad[n] = a.actividad.resumen();
     }
-    return { nodos: e.nodos, indices, actividad, pausada: Boolean(e.pausada), iniciada: Boolean(e.iniciada) };
+    // Lo ya escrito de las asignaturas que aún no están listas: se puede leer como borrador.
+    const borradores = {};
+    const CLASE = { c: 'conferencia', p: 'practica', v: 'valiente' };
+    for (const [n, x] of Object.entries(e.nodos)) {
+      if (x.estado === 'lista' || !/^[a-z0-9-]{1,40}$/.test(n)) continue;
+      const archivos = await fs.readdir(path.join(cfg.datos, rutaIdea(ref), 'germinacion/nodos', n)).catch(() => []);
+      const docs = archivos.filter((f) => /^[cpv]\d+[a-z0-9-]*\.md$/.test(f)).sort();
+      if (docs.length) borradores[n] = docs.map((f) => ({ archivo: f, clase: CLASE[f[0]], documento: `nodos/${n}/${f}` }));
+    }
+    return { nodos: e.nodos, indices, actividad, borradores, pausada: Boolean(e.pausada), iniciada: Boolean(e.iniciada) };
   }
 
   // «Comenzar»: la redacción del curso no arranca sola al terminar el plan (decisión del usuario). Una vez

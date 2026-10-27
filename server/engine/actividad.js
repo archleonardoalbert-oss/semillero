@@ -65,6 +65,8 @@ export function crearActividad({ previos = {}, ahora = () => Date.now() } = {}) 
   let accion = { texto: 'Preparando la sesión', desde: inicio };
   const recientes = [];
   const vistas = new Set();
+  // El último documento de lectura (conferencia, práctica o demostración) que escribió o corrigió la sesión.
+  let documentoActual = null;
 
   const fijar = (texto) => {
     if (texto === accion.texto) return false;
@@ -99,6 +101,13 @@ export function crearActividad({ previos = {}, ahora = () => Date.now() } = {}) 
       for (const b of ev.message?.content ?? []) {
         if (b.type !== 'tool_use' || vistas.has(b.id)) continue;
         vistas.add(b.id);
+        if (b.name === 'Write' || b.name === 'Edit') {
+          const doc = String(b.input?.file_path ?? '').match(/\/nodos\/[^/]+\/([cpv]\d+[a-z0-9-]*\.md)$/)?.[1];
+          if (doc && doc !== documentoActual) {
+            documentoActual = doc;
+            cambio = true;
+          }
+        }
         cambio = fijar(describir(b.name, b.input)) || cambio;
       }
       return cambio;
@@ -108,6 +117,6 @@ export function crearActividad({ previos = {}, ahora = () => Date.now() } = {}) 
 
   return {
     alEvento,
-    resumen: () => ({ accion, recientes: [...recientes], tokens: { ...tokens }, inicio }),
+    resumen: () => ({ accion, recientes: [...recientes], tokens: { ...tokens }, inicio, documentoActual }),
   };
 }

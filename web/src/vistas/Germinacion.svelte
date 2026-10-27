@@ -60,11 +60,14 @@
     if (datos?.redaccion?.actividad) actividades = { ...datos.redaccion.actividad };
   });
   const cursoDe = (n) => (esCurso
-    ? { estado: redaccion.nodos[n.id] ?? null, indice: redaccion.indices[n.id] ?? null, actividad: redaccion.nodos[n.id]?.estado === 'redactando' ? actividades[n.id] ?? null : null }
+    ? { estado: redaccion.nodos[n.id] ?? null, indice: redaccion.indices[n.id] ?? null, borradores: redaccion.borradores?.[n.id] ?? [], actividad: redaccion.nodos[n.id]?.estado === 'redactando' ? actividades[n.id] ?? null : null }
     : null);
   const quitarRedaccion = suscribir(ref, (msg) => {
     if (msg.tipo === 'redaccion-actividad') {
+      // Si la sesión pasa a otro documento, el anterior ya está escrito: se recarga la lista de borradores.
+      const otroDocumento = msg.actividad.documentoActual && msg.actividad.documentoActual !== actividades[msg.nodo]?.documentoActual;
       actividades = { ...actividades, [msg.nodo]: msg.actividad };
+      if (otroDocumento) cargar();
       return;
     }
     if (msg.tipo !== 'redaccion' || !datos) return;

@@ -10,11 +10,13 @@
   // cita. `cargar(documento)` devuelve el Markdown (la app lo pide a la API; el visor exportado, a su copia).
   // `Glosable` llega como componente desde la app (con `glosas`); el visor exportado no lo pasa, para no
   // arrastrar el estado de la app ni su WebSocket: allí el texto se lee sin pedir explicaciones.
-  let { nodo, indice, inicial, base, glosas = null, Glosable = null, cargar, alCerrar } = $props();
+  // `aviso`: un texto destacado sobre el documento (p. ej. que es un borrador de una asignatura sin terminar).
+  // `total`: en un borrador, cuántas conferencias tendrá la asignatura según su plan (no solo las ya escritas).
+  let { nodo, indice, inicial, base, glosas = null, Glosable = null, cargar, alCerrar, aviso = null, total = null } = $props();
 
   const TIPO_RECURSO = { libro: 'Libro', articulo: 'Artículo', curso: 'Curso', web: 'Web', video: 'Vídeo', otro: 'Recurso' };
   let piezas = $derived([
-    ...indice.conferencias.map((x, k) => ({ ...x, clase: 'conferencia', rotulo: `Conferencia ${k + 1} de ${indice.conferencias.length}`, corto: `${k + 1}` })),
+    ...indice.conferencias.map((x, k) => ({ ...x, clase: 'conferencia', rotulo: `Conferencia ${Number(x.id.match(/^c(\d+)/)?.[1]) || k + 1} de ${total ?? indice.conferencias.length}`, corto: `${k + 1}` })),
     ...indice.practicas.map((x, k) => ({ ...x, clase: 'practica', rotulo: `Clase práctica ${k + 1}`, corto: `P${k + 1}` })),
     ...indice.valientes.map((x) => ({ ...x, clase: 'valiente', rotulo: 'Demostración para valientes', corto: '⚔' })),
   ]);
@@ -62,6 +64,7 @@
   <div class="rejilla">
     <article>
       <header>
+        {#if aviso}<p class="aviso-borrador">{aviso}</p>{/if}
         <p class="clase">{pieza.rotulo}</p>
         <h1>{pieza.titulo}</h1>
         {#if pieza.resumen}<p class="resumen">{pieza.resumen}</p>{/if}
@@ -188,6 +191,14 @@
   }
   header {
     margin: 1.2rem 0 2.4rem;
+  }
+  .aviso-borrador {
+    margin: 0 0 1rem;
+    padding: 0.5rem 0.9rem;
+    border-left: 3px solid var(--proceso);
+    background: var(--humus-hondo);
+    color: var(--liquen-tenue);
+    font-size: var(--t-1);
   }
   .clase {
     margin: 0;

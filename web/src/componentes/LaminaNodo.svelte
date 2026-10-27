@@ -19,6 +19,24 @@
   // `curso`: en los bancales de «Aprender algo nuevo», { estado, indice } de la redacción de esta asignatura.
   let { nodo, mapa, progreso, ref, base, glosas, desde, bloqueado = false, curso = null, alCerrar, alIrA, alCambiar, alAccionCurso = null } = $props();
   let leyendo = $state(null); // id de la conferencia, práctica o demostración abierta en el lector
+  // Una asignatura sin terminar se lee por sus borradores: un índice provisional con lo ya escrito.
+  let borrador = $state(null); // archivo del borrador abierto
+  let indiceBorrador = $derived.by(() => {
+    // La que la sesión está escribiendo ahora no se abre: puede estar a medias.
+    const enCurso = curso?.estado?.estado === 'redactando' ? curso?.actividad?.documentoActual : null;
+    const docs = (curso?.borradores ?? []).filter((b) => b.archivo !== enCurso);
+    const titulo = (b, k) => {
+      const i = Number(b.archivo.match(/^c(\d+)/)?.[1]) - 1;
+      return (b.clase === 'conferencia' && nodo.plan?.[i]?.titulo) || b.archivo.replace(/\.md$/, '').replace(/^[cpv]\d+-?/, '').replace(/-/g, ' ') || `Documento ${k + 1}`;
+    };
+    const pieza = (b, k) => ({ id: b.archivo.replace(/\.md$/, ''), titulo: titulo(b, k), documento: b.documento });
+    return {
+      conferencias: docs.filter((b) => b.clase === 'conferencia').map(pieza),
+      practicas: docs.filter((b) => b.clase === 'practica').map(pieza),
+      valientes: docs.filter((b) => b.clase === 'valiente').map(pieza),
+      recursos: [],
+    };
+  });
 
   const vocabActual = getContext('vocab') ?? (() => undefined);
   let vocab = $derived(vocabActual() ?? { hoja: 'Incógnita', fruto: 'Problema abierto', estadosIncognita: ['Abierta', 'Atacándola', 'Resuelta'], dominio: 'examen' });
@@ -168,7 +186,8 @@
     </header>
 
     {#if curso && nodo.tipo === 'estudio'}
-      <ProgramaAsignatura {nodo} estado={curso.estado} indice={curso.indice} actividad={curso.actividad} alAbrir={(id) => (leyendo = id)} alAccion={alAccionCurso} />
+      <ProgramaAsignatura {nodo} estado={curso.estado} indice={curso.indice} actividad={curso.actividad} borradores={curso.borradores ?? []}
+        alAbrirBorrador={(archivo) => (borrador = archivo)} alAbrir={(id) => (leyendo = id)} alAccion={alAccionCurso} />
     {/if}
 
     <div class="cuerpo" class:dividida={conTaller}>
@@ -272,6 +291,11 @@
   </div>
 </div>
 
+{#if borrador && !curso?.indice && indiceBorrador.conferencias.length + indiceBorrador.practicas.length + indiceBorrador.valientes.length}
+  <Lector {nodo} indice={indiceBorrador} inicial={borrador.replace(/\.md$/, '')} {base} total={nodo.plan?.length ?? null}
+    aviso="Borrador: esta asignatura aún se está redactando. Cuando termine, Semillero la revisará entera (índice, escenas y recursos) y esta versión puede cambiar."
+    cargar={(rel) => api.documento(ref.carpetaId, ref.ideaId, rel)} alCerrar={() => (borrador = null)} />
+{/if}
 {#if leyendo && curso?.indice}
   <Lector {nodo} indice={curso.indice} inicial={leyendo} {base} {glosas} {Glosable}
     cargar={(rel) => api.documento(ref.carpetaId, ref.ideaId, rel)} alCerrar={() => (leyendo = null)} />

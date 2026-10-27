@@ -45,3 +45,15 @@ test('los tokens se suman por respuesta del modelo: generados, leídos y el cont
   assert.equal(t.leidos, 50000 + 108002 + 108503);
   assert.equal(t.contexto, 3 + 500 + 108000 + 700);
 });
+
+test('la actividad sabe qué documento de la asignatura está escribiendo la sesión', () => {
+  const a = crearActividad();
+  a.alEvento(herramienta('a', 'Write', { file_path: '/d/carpetas/c/ideas/i/germinacion/nodos/e1/c02-homotopia.md' }));
+  assert.equal(a.resumen().documentoActual, 'c02-homotopia.md');
+  a.alEvento(herramienta('b', 'WebSearch', { query: 'x' }));
+  assert.equal(a.resumen().documentoActual, 'c02-homotopia.md', 'sigue siendo el último que escribió');
+  a.alEvento(herramienta('c', 'Edit', { file_path: '/d/carpetas/c/ideas/i/germinacion/nodos/e1/p01-practica.md' }));
+  assert.equal(a.resumen().documentoActual, 'p01-practica.md');
+  a.alEvento(herramienta('d', 'Write', { file_path: '/d/carpetas/c/ideas/i/germinacion/nodos/e1/indice.json' }));
+  assert.equal(a.resumen().documentoActual, 'p01-practica.md', 'el índice no es un documento de lectura');
+});
