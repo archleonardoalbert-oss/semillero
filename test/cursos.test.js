@@ -375,3 +375,35 @@ test('la API expone «Comenzar» y los mandos de cada asignatura', async () => {
   assert.deepEqual(hechas, [['comenzar', undefined], ['comenzarNodo', 'e1'], ['pausarNodo', 'e1'], ['continuarNodo', 'e1']]);
   await app.close();
 });
+
+test('P3: si la sesión principal esperaba en cola al pausar, continuar la relanza', async () => {
+  const x = await aprendizaje();
+  const cola = colaFalsa();
+  const llamadas = [];
+  cola.detener = async (refs) => {
+    llamadas.push(['detener', refs]);
+    await x.ideas.actualizar('aprender', x.ref.ideaId, { estado: 'aceptada' }); // en cola: vuelve a su estado previo
+  };
+  cola.germinar = async (ref) => llamadas.push(['germinar', ref]);
+  const app = await construirApp(x.cfg, { cola });
+  const pedir = (url) => app.inject({ method: 'POST', url, headers: { host: '127.0.0.1:4417' } });
+  const base = `/api/carpetas/aprender/ideas/${x.ref.ideaId}/germinacion`;
+  await x.ideas.actualizar('aprender', x.ref.ideaId, { estado: 'en-proceso', trabajo: 'germinacion' });
+  await pedir(`${base}/pausar`);
+  await pedir(`${base}/continuar`);
+  assert.deepEqual(llamadas.map((l) => l[0]), ['detener', 'germinar']);
+  await app.close();
+});
+
+test('P3b: «Reanudar Investigación» no reanuda una germinación que el usuario pausó a mano', async () => {
+  const x = await aceptadaYGerminando();
+  await terminarGerminacion(x, 1, DIAGNOSTICO);
+  await x.cola.germinar(x.ref, {});
+  await hasta(() => x.falso.llamadas[2]);
+  x.falso.llamadas[2].resolve({ codigo: 1, abortado: false, resultado: { is_error: true, result: "You've hit your session limit · resets 2:10am" } });
+  await hasta(async () => (await x.ideas.obtener(x.ref.carpetaId, x.ref.ideaId)).estado === 'pausada');
+  x.cola.registrarPausaManual(() => true);
+  await x.cola.reanudar([x.ref]);
+  await esperar(200);
+  assert.equal(x.falso.llamadas.length, 3);
+});

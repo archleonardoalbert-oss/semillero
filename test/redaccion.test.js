@@ -361,3 +361,40 @@ test('pausar una asignatura que espera turno la saca de la fila sin lanzar nada'
   assert.equal(x.llamadas.length, 1);
   assert.equal(await x.estadoNodo(enEspera), 'pausada');
 });
+
+// --- Revisión de la pausa manual ---
+test('P1: continuar una pausa no arranca el curso si nunca se pulsó «Comenzar»', async () => {
+  const x = await curso();
+  await x.motor.pausar(x.ref);
+  await x.motor.continuar(x.ref);
+  await esperar(300);
+  assert.equal(x.llamadas.length, 0);
+});
+
+test('P2: una pausa que coincide con el fin de cuota gana: el nodo no vuelve a arrancar al volver la cuota', async () => {
+  const x = await curso({ paralelo: 1 });
+  await x.motor.comenzar(x.ref);
+  await hasta(() => x.llamadas.length === 1);
+  const l = x.llamadas[0];
+  l.senal.addEventListener('abort', () => setTimeout(() => l.resolve({ codigo: 130, abortado: true }), 50));
+  l.alEvento(CUOTA(0.95)); // la cuota la corta…
+  await x.motor.pausar(x.ref); // …y a la vez el usuario pausa
+  x.cola.registrarCuota(CUOTA(0.1));
+  await esperar(400);
+  assert.equal(x.llamadas.length, 1, 'nada arranca con la idea en pausa');
+  assert.equal(await x.estadoNodo(l.nodo), 'pausada');
+});
+
+test('P5: continuar mientras la pausa aún termina deja todo en marcha, nada atascado en pausa', async () => {
+  const x = await curso({ paralelo: 1 });
+  await x.motor.comenzar(x.ref);
+  await hasta(() => x.llamadas.length === 1);
+  const l = x.llamadas[0];
+  l.senal.addEventListener('abort', () => setTimeout(() => l.resolve({ codigo: 130, abortado: true }), 150));
+  const pausa = x.motor.pausar(x.ref);
+  await esperar(20);
+  await x.motor.continuar(x.ref);
+  await pausa;
+  assert.ok(await hasta(() => x.llamadas.length === 2), 'la sesión cortada sigue');
+  assert.equal(x.llamadas[1].resume, `sesion-${l.nodo}`);
+});

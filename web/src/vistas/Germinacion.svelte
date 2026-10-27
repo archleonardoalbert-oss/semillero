@@ -82,7 +82,7 @@
   let mandoGlobal = $derived.by(() => {
     if (enPausa) return 'continuar';
     if (enProceso || redactandoCurso) return 'pausar';
-    if (esCurso && mapa?.fase === 'mapa' && !cursoCompleto && idea.estado === 'aceptada') return 'comenzar';
+    if (esCurso && mapa?.fase === 'mapa' && !cursoCompleto && idea.estado === 'aceptada' && !redaccion.iniciada) return 'comenzar';
     return null;
   });
   const ROTULO_MANDO = { comenzar: 'Comenzar el curso', pausar: 'Pausar', continuar: 'Continuar' };

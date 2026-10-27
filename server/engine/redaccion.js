@@ -67,8 +67,11 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
   const cambiarNodo = (ref, n, parche) =>
     modificar(ref, (e) => (e.nodos[n] = { ...(e.nodos[n] ?? {}), ...parche, actualizado: new Date().toISOString() }), `/${n}`);
 
-  // Ideas cuya germinación pausó el usuario: nada de ellas arranca hasta que pulse «Continuar».
+  // Ideas cuya germinación pausó el usuario (y asignaturas pausadas una a una): nada de ellas arranca hasta
+  // que pulse «Continuar». `pausando`: la pausa en curso de cada idea, que «Continuar» espera antes de seguir.
   const pausadas = new Set();
+  const pausadosNodo = new Set();
+  const pausando = new Map();
   const claveIdea = (ref) => `${ref.carpetaId}/${ref.ideaId}`;
 
   async function mapaDe(ref) {
@@ -118,6 +121,7 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
       while (fila.length && activas.size < paralelo && !(await sinCuota())) {
         const { ref, nodo } = fila.shift();
         if (activas.has(clave(ref, nodo))) continue; // nunca dos sesiones sobre el mismo nodo
+        if (pausadas.has(claveIdea(ref)) || pausadosNodo.has(clave(ref, nodo))) continue; // en pausa: no arranca
         const a = { objetivos: objetivosNodo(ref, nodo), control: new AbortController(), motivo: null };
         activas.set(clave(ref, nodo), a);
         a.promesa = correr(ref, nodo).catch((e) => console.error('[redaccion]', e));
@@ -191,14 +195,19 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
         if (a.motivo === 'pausa-usuario') {
           // Pausa manual: lo escrito se guarda y la sesión se retomará al pulsar «Continuar».
           await guard.commitear(objetivos.map(sinComodin), `redacción ${k} (pausada)`);
-          final = { estado: 'pausada', error: null, sesion, reanudar: Boolean(sesion) };
+          // Si mientras se detenía el usuario ya pulsó «Continuar», sigue en la misma sesión.
+          const sigue = !pausadas.has(claveIdea(ref)) && !pausadosNodo.has(k);
+          final = { estado: sigue ? 'pendiente' : 'pausada', error: null, sesion, reanudar: Boolean(sesion) };
+          if (sigue) fila.unshift({ ref, nodo: n });
           break;
         }
         if (a.motivo === 'pausa' || (r.resultado?.is_error && RE_LIMITE.test(String(r.resultado.result ?? '')))) {
           // Sin cuota: lo escrito se guarda y el nodo vuelve a la fila para seguir en la misma sesión.
           await guard.commitear(objetivos.map(sinComodin), `redacción ${k} (pausada por cuota)`);
-          final = { estado: 'pendiente', error: null, sesion, reanudar: Boolean(sesion) };
-          fila.unshift({ ref, nodo: n });
+          // Si el usuario pausó mientras tanto, gana su pausa: no vuelve a la fila.
+          const enPausaManual = a.motivo === 'pausa-usuario' || pausadas.has(claveIdea(ref)) || pausadosNodo.has(k);
+          final = { estado: enPausaManual ? 'pausada' : 'pendiente', error: null, sesion, reanudar: Boolean(sesion) };
+          if (!enPausaManual) fila.unshift({ ref, nodo: n });
           break;
         }
         if (r.errorArranque || r.resultado?.is_error || !r.resultado) {
@@ -320,6 +329,7 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
   }
   async function pausarNodo(ref, n) {
     const k = clave(ref, n);
+    pausadosNodo.add(k);
     const i = fila.findIndex((f) => clave(f.ref, f.nodo) === k);
     if (i >= 0) {
       fila.splice(i, 1);
@@ -327,7 +337,10 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
       return;
     }
     const a = activas.get(k);
-    if (!a) throw new Error('estado-invalido');
+    if (!a) {
+      pausadosNodo.delete(k);
+      throw new Error('estado-invalido');
+    }
     a.motivo = 'pausa-usuario';
     a.control.abort();
     await a.promesa;
@@ -335,6 +348,7 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
   async function continuarNodo(ref, n) {
     const x = await nodoDe(ref, n);
     if (x?.estado !== 'pausada') throw new Error('estado-invalido');
+    pausadosNodo.delete(clave(ref, n));
     await cambiarNodo(ref, n, { estado: 'pendiente' });
     if (!fila.some((f) => clave(f.ref, f.nodo) === clave(ref, n))) fila.push({ ref, nodo: n });
     await bombear();
@@ -342,10 +356,18 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
 
   // Pausa manual de la germinación de una idea: las redacciones en marcha se detienen y guardan lo escrito, las
   // que esperaban no arrancan. Vuelve cuando todo está detenido y guardado.
-  async function pausar(ref) {
+  function pausar(ref, { principal = false } = {}) {
     const ik = claveIdea(ref);
     pausadas.add(ik);
-    await modificar(ref, (e) => (e.pausada = true), ' (pausa)');
+    const p = pausarAhora(ref, ik, principal).finally(() => pausando.delete(ik));
+    pausando.set(ik, p);
+    return p;
+  }
+  async function pausarAhora(ref, ik, principal) {
+    await modificar(ref, (e) => {
+      e.pausada = true;
+      if (principal) e.principalPausada = true;
+    }, ' (pausa)');
     const enFila = fila.filter((f) => claveIdea(f.ref) === ik);
     for (const f of enFila) fila.splice(fila.indexOf(f), 1);
     for (const f of enFila) await cambiarNodo(ref, f.nodo, { estado: 'pausada' });
@@ -358,17 +380,29 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
   }
 
   // Continuar: primero las que estaban en marcha (en su misma sesión), después las que esperaban.
+  // Devuelve si la sesión principal de la germinación estaba pausada (en marcha o en cola): la ruta la relanza.
   async function continuar(ref) {
     const ik = claveIdea(ref);
-    const e = await modificar(ref, (x) => delete x.pausada, ' (continuar)');
     pausadas.delete(ik);
+    await pausando.get(ik);
+    let principal = false;
+    const e = await modificar(ref, (x) => {
+      principal = Boolean(x.principalPausada);
+      delete x.pausada;
+      delete x.principalPausada;
+    }, ' (continuar)');
     const enPausa = Object.entries(e.nodos).filter(([, x]) => x.estado === 'pausada').sort(([, a], [, b]) => Number(Boolean(b.reanudar)) - Number(Boolean(a.reanudar)));
     for (const [n] of enPausa) {
+      pausadosNodo.delete(clave(ref, n));
       await cambiarNodo(ref, n, { estado: 'pendiente' });
       if (!fila.some((f) => clave(f.ref, f.nodo) === clave(ref, n))) fila.push({ ref, nodo: n });
     }
-    await planificar(ref);
+    // Sin «Comenzar», continuar no pone en marcha el curso entero: solo lo que estaba pausado.
+    if (e.iniciada) await planificar(ref);
+    else await bombear();
+    return { principal };
   }
+  const pausadaManual = (ref) => pausadas.has(claveIdea(ref));
 
   const ocupada = (ref) => pausadas.has(claveIdea(ref))
     || Object.values(conocidos.get(claveIdea(ref))?.nodos ?? {}).some((x) => x.estado === 'pausada')
@@ -436,5 +470,5 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
       .catch((e) => console.error('[redaccion]', e));
   });
 
-  return Object.assign(emisor, { planificar, estado, ocupada, reintentar, recuperar, restaurarInterrumpidas, apagar, pausar, continuar, comenzar, comenzarNodo, pausarNodo, continuarNodo, objetivosActivos, detenerLatido: () => clearInterval(latido) });
+  return Object.assign(emisor, { planificar, estado, ocupada, reintentar, recuperar, restaurarInterrumpidas, apagar, pausar, continuar, pausadaManual, comenzar, comenzarNodo, pausarNodo, continuarNodo, objetivosActivos, detenerLatido: () => clearInterval(latido) });
 }

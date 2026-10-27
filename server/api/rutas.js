@@ -82,6 +82,7 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
   app.decorate('verificaciones', motorVerificacion);
   const motorRedaccion = crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, cola, ajustes, ...(ejecutarRedaccion && { ejecutar: ejecutarRedaccion }) });
   app.decorate('redaccion', motorRedaccion);
+  cola.registrarPausaManual?.((ref) => motorRedaccion.pausadaManual(ref));
   app.addHook('onClose', async () => motorRedaccion.detenerLatido());
 
   // Solo esta máquina: Host contra DNS rebinding y Origin contra webs ajenas abiertas en el navegador.
@@ -232,20 +233,24 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     const ref = refDe(req);
     const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
     if (idea.trabajo !== 'germinacion') throw new Error('no-germinable');
+    // La sesión principal cuenta como pausada si estaba en marcha, esperando en cola o pausada por la cuota.
+    const principal = ['en-proceso', 'pausada'].includes(idea.estado);
     if (idea.estado === 'en-proceso') {
       await cola.detener([ref]);
       for (let k = 0; k < 120 && (await ideas.obtener(ref.carpetaId, ref.ideaId)).estado === 'en-proceso'; k++) await new Promise((r) => setTimeout(r, 250));
     }
-    await motorRedaccion.pausar(ref);
+    await motorRedaccion.pausar(ref, { principal });
     return ideas.obtener(ref.carpetaId, ref.ideaId);
   });
   app.post('/api/carpetas/:c/ideas/:i/germinacion/continuar', async (req) => {
     const ref = refDe(req);
     const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
     if (idea.trabajo !== 'germinacion') throw new Error('no-germinable');
-    await motorRedaccion.continuar(ref);
-    // La sesión principal, si se pausó a mitad de trabajo, sigue en su conversación («continúa donde la dejaste»).
-    if (idea.estado === 'detenida') await cola.germinar(ref, {});
+    const { principal } = (await motorRedaccion.continuar(ref)) ?? {};
+    // La sesión principal, si se pausó, sigue en su conversación («continúa donde la dejaste»).
+    const ahora = await ideas.obtener(ref.carpetaId, ref.ideaId);
+    if (ahora.estado === 'pausada') await cola.reanudar([ref]);
+    else if (principal || ahora.estado === 'detenida') await cola.germinar(ref, {});
     return ideas.obtener(ref.carpetaId, ref.ideaId);
   });
   // Mandos de la redacción del curso: «Comenzar» todas y, por asignatura, comenzar, pausar o continuar.

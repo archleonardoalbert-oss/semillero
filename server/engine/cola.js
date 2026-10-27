@@ -143,8 +143,11 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
     await bombear();
   }
 
+  // Lo que el usuario pausó a mano no lo reanuda «Reanudar Investigación»: solo su propio «Continuar».
+  const pausasManuales = new Set();
+  const pausadaAMano = (ref) => [...pausasManuales].some((fn) => fn(ref));
   async function reanudar(refs) {
-    for (const ref of refs) await encolar(ref, { soloPausadas: true });
+    for (const ref of refs) if (!pausadaAMano(ref)) await encolar(ref, { soloPausadas: true });
     // Reanudar es una decisión explícita: no se vuelve a pausar por umbral hasta el reinicio de la ventana.
     if (reinicioVentanaPausa) ignorarUmbralHasta = Math.max(ignorarUmbralHasta, reinicioVentanaPausa);
     else if (cuota) ignorarUmbralHasta = Math.max(ignorarUmbralHasta, cuota.resetsAt5h ?? 0);
@@ -496,6 +499,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
   return Object.assign(emisor, {
     lanzar, detener, reanudar, germinar, estado, recuperar, apagar, registrarCuota, objetivosActivos,
     registrarEscritor: (fn) => escritores.add(fn),
+    registrarPausaManual: (fn) => pausasManuales.add(fn),
     fijarAjenosExternos: (fn) => escritores.add(fn),
     // Lo que escriben ahora la cola y los demás escritores (menos `excepto`): lo que un escritor no debe revertir.
     objetivosAjenos: (excepto) => [...objetivosActivos(), ...ajenosExternos(excepto)],
