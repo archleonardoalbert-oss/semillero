@@ -211,7 +211,10 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
           break;
         }
         if (r.errorArranque || r.resultado?.is_error || !r.resultado) {
-          final = { estado: 'error', error: r.errorArranque ?? String(r.resultado?.result || r.stderr?.trim().split('\n').at(-1) || 'La sesión no respondió') };
+          // Un fallo de la sesión (red, acceso, API): lo escrito se guarda y la conversación se conserva para
+          // retomarla al volver a redactar.
+          await guard.commitear(objetivos.map(sinComodin), `redacción ${k} (interrumpida por un fallo)`);
+          final = { sesion, reanudar: Boolean(sesion), estado: 'error', error: r.errorArranque ?? String(r.resultado?.result || r.stderr?.trim().split('\n').at(-1) || 'La sesión no respondió') };
           break;
         }
         const v = await revisar(ref, n);
@@ -320,7 +323,8 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
     try {
       const x = await nodoDe(ref, n);
       if (x && x.estado !== 'error') throw new Error('estado-invalido');
-      await cambiarNodo(ref, n, { estado: 'pendiente', error: null, intentos: 0, reanudar: false });
+      // Tras un fallo de la sesión se retoma su conversación; tras un nodo rechazado, se empieza de cero.
+      await cambiarNodo(ref, n, { estado: 'pendiente', error: null, intentos: 0, reanudar: Boolean(x?.reanudar && x?.sesion) });
       fila.push({ ref, nodo: n });
     } finally {
       reservados.delete(k);

@@ -398,3 +398,19 @@ test('P5: continuar mientras la pausa aún termina deja todo en marcha, nada ata
   assert.ok(await hasta(() => x.llamadas.length === 2), 'la sesión cortada sigue');
   assert.equal(x.llamadas[1].resume, `sesion-${l.nodo}`);
 });
+
+test('un fallo de red o de acceso guarda lo escrito y la sesión: volver a redactar retoma esa conversación', async () => {
+  const x = await curso({ paralelo: 1 });
+  await x.motor.comenzarNodo(x.ref, 'e1');
+  await hasta(() => x.llamadas.length === 1);
+  const parcial = path.join(x.dir, 'germinacion/nodos/e1/c01.md');
+  await fs.mkdir(path.dirname(parcial), { recursive: true });
+  await fs.writeFile(parcial, 'media conferencia');
+  x.llamadas[0].resolve({ codigo: 1, abortado: false, resultado: { is_error: true, result: "API Error: Can't reach the API server — check your internet or DNS (EAI_AGAIN)" } });
+  assert.ok(await hasta(async () => (await x.estadoNodo('e1')) === 'error'));
+  assert.ok(await x.guard.commiteado(path.relative(x.cfg.datos, parcial)), 'lo escrito queda guardado');
+  await x.motor.comenzarNodo(x.ref, 'e1');
+  assert.ok(await hasta(() => x.llamadas.length === 2));
+  assert.equal(x.llamadas[1].resume, 'sesion-e1');
+  assert.match(x.llamadas[1].mensaje, /Continúa donde lo dejaste/);
+});
