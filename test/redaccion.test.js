@@ -414,3 +414,50 @@ test('un fallo de red o de acceso guarda lo escrito y la sesión: volver a redac
   assert.equal(x.llamadas[1].resume, 'sesion-e1');
   assert.match(x.llamadas[1].mensaje, /Continúa donde lo dejaste/);
 });
+
+test('continuar o comenzar una asignatura a mano la pone a trabajar aunque el resto siga en pausa', async () => {
+  const x = await curso({ paralelo: 2 });
+  await x.motor.comenzar(x.ref);
+  await hasta(() => x.llamadas.length === 2);
+  for (const l of x.llamadas) l.senal.addEventListener('abort', () => l.resolve({ codigo: 130, abortado: true }));
+  await x.motor.pausar(x.ref);
+  assert.equal(await x.estadoNodo('e1'), 'pausada');
+  await x.motor.continuarNodo(x.ref, 'e1');
+  assert.ok(await hasta(() => x.llamadas.length === 3), 'la asignatura elegida arranca');
+  assert.equal(x.llamadas[2].nodo, 'e1');
+  assert.ok(await hasta(async () => (await x.estadoNodo('e1')) === 'redactando'));
+  await esperar(200);
+  assert.equal(x.llamadas.length, 3, 'las demás siguen en pausa');
+  assert.equal(await x.estadoNodo('e2'), 'pausada');
+});
+
+test('la lámina puede mostrar en vivo qué hace la sesión y cuántos tokens lleva, y el total queda guardado', async () => {
+  const x = await curso({ paralelo: 1 });
+  const avisos = [];
+  x.motor.on('redaccion-actividad', (m) => avisos.push(m));
+  await x.motor.comenzarNodo(x.ref, 'e1');
+  await hasta(() => x.llamadas.length === 1);
+  const l = x.llamadas[0];
+  l.alEvento({ type: 'assistant', message: { id: 'm1', content: [{ type: 'tool_use', id: 't1', name: 'WebSearch', input: { query: 'Hatcher' } }] } });
+  l.alEvento({ type: 'stream_event', event: { type: 'message_delta', usage: { input_tokens: 5, cache_read_input_tokens: 1000, output_tokens: 200 } } });
+  const vivo = (await x.motor.estado(x.ref)).actividad.e1;
+  assert.match(vivo.accion.texto, /Buscando en la web: «Hatcher»/);
+  assert.equal(vivo.tokens.generados, 200);
+  assert.ok(await hasta(() => avisos.length > 0));
+  assert.equal(avisos.at(-1).nodo, 'e1');
+  await x.terminar(0);
+  assert.ok(await hasta(async () => (await x.estadoNodo('e1')) === 'lista'));
+  const e = await x.motor.estado(x.ref);
+  assert.deepEqual(e.nodos.e1.tokens, { generados: 200, leidos: 1005 });
+  assert.equal(e.actividad.e1, undefined, 'ya no está en marcha');
+});
+
+test('al arrancar, una asignatura que pusiste en marcha a mano dentro de una idea en pausa sigue (no se queda atascada)', async () => {
+  const x = await curso();
+  await fs.writeFile(path.join(x.dir, 'germinacion/redaccion.json'), JSON.stringify({ iniciada: true, pausada: true, nodos: { e1: { estado: 'pendiente' }, e2: { estado: 'pausada' } } }));
+  await x.motor.recuperar();
+  assert.ok(await hasta(() => x.llamadas.length === 1));
+  assert.equal(x.llamadas[0].nodo, 'e1');
+  await esperar(200);
+  assert.equal(x.llamadas.length, 1);
+});

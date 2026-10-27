@@ -1,8 +1,11 @@
 <script>
+  import SesionEnVivo from './SesionEnVivo.svelte';
   // El programa de una asignatura de curso en la lámina de su nodo: sus conferencias, clases prácticas y
   // demostraciones para valientes o, mientras no está redactada, su estado y su mando (comenzar, pausar, continuar).
   // `alAccion(accion)` con 'comenzar' | 'pausar' | 'continuar'; sin ella (visor exportado) no hay mandos.
-  let { nodo, estado = null, indice = null, alAbrir, alAccion = null } = $props();
+  // `actividad`: lo que hace ahora la sesión que la redacta (solo mientras está en marcha).
+  let { nodo, estado = null, indice = null, actividad = null, alAbrir, alAccion = null } = $props();
+  const cifra = (n) => (n >= 1e6 ? `${(n / 1e6).toLocaleString('es', { maximumFractionDigits: 1 })} M` : n >= 1e3 ? `${Math.round(n / 1e3).toLocaleString('es')} k` : String(n ?? 0));
 
   const MANDO = {
     sin: { texto: 'Todavía sin redactar.', accion: 'comenzar', boton: 'Redactar esta asignatura' },
@@ -25,6 +28,7 @@
 
 <section class="programa">
   {#if indice}
+    {#if estado?.tokens}<p class="consumo">Redactarla consumió {cifra(estado.tokens.generados)} tokens generados y {cifra(estado.tokens.leidos)} leídos.</p>{/if}
     <h2>Conferencias</h2>
     <ol class="lista">
       {#each indice.conferencias as c, k (c.id)}
@@ -64,6 +68,11 @@
         <button class="boton" class:primario={mando.primario} disabled={enviando} onclick={pulsar}>{enviando ? 'Un momento…' : mando.boton}</button>
       {/if}
     </div>
+    {#if actividad}
+      <div class="en-vivo"><SesionEnVivo {actividad} /></div>
+    {:else if estado?.tokens}
+      <p class="consumo">Lleva consumidos {cifra(estado.tokens.generados)} tokens generados y {cifra(estado.tokens.leidos)} leídos.</p>
+    {/if}
     {#if nodo.plan?.length}
       <ol class="lista prevista">
         {#each nodo.plan as c, k (k)}
@@ -149,6 +158,14 @@
   }
   .prevista li {
     opacity: 0.55;
+  }
+  .en-vivo {
+    margin: 0 0 1.4rem;
+  }
+  .consumo {
+    margin: 0 0 1rem;
+    color: var(--liquen-apagado);
+    font-size: var(--t-1);
   }
   .mando {
     display: flex;

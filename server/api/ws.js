@@ -32,7 +32,8 @@ export function registrarWs(app, cola, glosas, talleres, examenes, verificacione
     verificaciones.on('idea', ({ ref, idea }) => enviar({ tipo: 'idea', ref, idea }));
   }
 
-  // Solo el estado de cada asignatura de un curso; lo que hace la sesión por dentro no sale del servidor.
+  // El estado de cada asignatura de un curso y, de las que están en marcha, su actividad resumida (sin el pensamiento).
+  if (redaccion) redaccion.on('redaccion-actividad', ({ ref, nodo, actividad }) => enviar({ tipo: 'redaccion-actividad', ref, nodo, actividad }));
   if (redaccion) redaccion.on('redaccion', ({ ref, nodos, pausada, iniciada }) => enviar({ tipo: 'redaccion', ref, nodos, pausada, iniciada }));
 
   app.get('/ws', { websocket: true }, (socket) => {

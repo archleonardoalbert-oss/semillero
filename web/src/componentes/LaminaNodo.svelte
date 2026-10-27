@@ -168,7 +168,7 @@
     </header>
 
     {#if curso && nodo.tipo === 'estudio'}
-      <ProgramaAsignatura {nodo} estado={curso.estado} indice={curso.indice} alAbrir={(id) => (leyendo = id)} alAccion={alAccionCurso} />
+      <ProgramaAsignatura {nodo} estado={curso.estado} indice={curso.indice} actividad={curso.actividad} alAbrir={(id) => (leyendo = id)} alAccion={alAccionCurso} />
     {/if}
 
     <div class="cuerpo" class:dividida={conTaller}>

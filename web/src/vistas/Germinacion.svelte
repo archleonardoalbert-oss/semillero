@@ -54,8 +54,19 @@
   let redactandoCurso = $derived(esCurso && asignaturas.some((n) => ['pendiente', 'redactando'].includes(redaccion.nodos[n.id]?.estado)));
   // Con asignaturas a medias (redactándose o en pausa) el plan de estudios no se toca.
   let planBloqueado = $derived(redactandoCurso || (esCurso && asignaturas.some((n) => redaccion.nodos[n.id]?.estado === 'pausada')) || Boolean(redaccion.pausada));
-  const cursoDe = (n) => (esCurso ? { estado: redaccion.nodos[n.id] ?? null, indice: redaccion.indices[n.id] ?? null } : null);
+  // Lo que hace en vivo cada sesión de redacción (llega por el WebSocket; al cargar, en `redaccion.actividad`).
+  let actividades = $state({});
+  $effect(() => {
+    if (datos?.redaccion?.actividad) actividades = { ...datos.redaccion.actividad };
+  });
+  const cursoDe = (n) => (esCurso
+    ? { estado: redaccion.nodos[n.id] ?? null, indice: redaccion.indices[n.id] ?? null, actividad: redaccion.nodos[n.id]?.estado === 'redactando' ? actividades[n.id] ?? null : null }
+    : null);
   const quitarRedaccion = suscribir(ref, (msg) => {
+    if (msg.tipo === 'redaccion-actividad') {
+      actividades = { ...actividades, [msg.nodo]: msg.actividad };
+      return;
+    }
     if (msg.tipo !== 'redaccion' || !datos) return;
     const nueva = Object.entries(msg.nodos).some(([n, x]) => x.estado === 'lista' && !datos.redaccion?.indices?.[n]);
     datos = { ...datos, redaccion: { ...(datos.redaccion ?? { indices: {} }), nodos: msg.nodos, pausada: Boolean(msg.pausada), iniciada: Boolean(msg.iniciada) } };
@@ -158,7 +169,8 @@
 
   let estadoTexto = $derived.by(() => {
     if (idea.estado === 'pausada') return 'Pausada por la cuota. Reanúdala con «Reanudar Investigación» en la portada.';
-    if (idea.estado === 'detenida' || redaccion.pausada) return 'En pausa. Todo lo hecho está guardado: «Continuar» retoma cada sesión exactamente donde estaba.';
+    if ((idea.estado === 'detenida' || redaccion.pausada) && redactandoCurso) return 'En pausa, salvo lo que continuaste a mano.';
+    if (idea.estado === 'detenida' || redaccion.pausada) return 'En pausa, con todo guardado.';
     if (idea.estado === 'error') return `La última ejecución falló: ${idea.error ?? 'sin detalle'}`;
     if (enProceso) return fase === 'preparando' ? 'La sesión está preparando tus preguntas…' : fase === 'diagnostico' ? 'La sesión está investigando y trazando tu mapa…' : 'La sesión está reajustando el mapa…';
     if (fase === 'diagnostico') return 'Responde al diagnóstico para que la sesión trace tu camino.';
