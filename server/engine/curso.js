@@ -222,7 +222,7 @@ ${INDICE}
 
 export function mensajeRedaccion({ idea, rutaIdea, nodo, mapa, dependencias, respuestasDiagnostico, idiomas, reintento = null, continuar = false }) {
   if (continuar) {
-    return `Tu redacción del nodo «${nodo.titulo}» (${nodo.id}) se interrumpió porque la cuota de Claude llegó al límite. ${NOTA_INTERRUPCION} Continúa donde lo dejaste, sin repetir trabajo: revisa lo que ya escribiste en las carpetas del nodo, termina lo que falte, comprueba las escenas y escribe el índice al final.`;
+    return `Tu redacción del nodo «${nodo.titulo}» (${nodo.id}) se interrumpió. ${NOTA_INTERRUPCION} Continúa donde lo dejaste, sin repetir trabajo: revisa lo que ya escribiste en las carpetas del nodo, termina lo que falte, comprueba las escenas y escribe el índice al final.`;
   }
   if (reintento) {
     return [

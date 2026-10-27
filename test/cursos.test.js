@@ -334,5 +334,44 @@ test('al reanudar, la sesión sabe que la interrupción fue una pausa de Semille
   await cortarGerminacion(x, 2, { subtype: 'success', is_error: true, result: "You've hit your weekly limit · resets Oct 31" });
   await x.cola.reanudar([x.ref]);
   await hasta(() => x.falso.llamadas[3]);
-  assert.match(x.falso.llamadas[3].mensaje, /no fue el usuario/i);
+  assert.match(x.falso.llamadas[3].mensaje, /no un rechazo de lo que estabas haciendo/);
+});
+
+test('la API pausa la germinación y sus redacciones de una vez, y continuar retoma la sesión principal', async () => {
+  const x = await aprendizaje();
+  const cola = colaFalsa();
+  const llamadas = [];
+  cola.detener = async (refs) => {
+    llamadas.push(['detener', refs]);
+    await x.ideas.actualizar('aprender', x.ref.ideaId, { estado: 'detenida' });
+  };
+  cola.germinar = async (ref, o) => llamadas.push(['germinar', ref, o]);
+  const app = await construirApp(x.cfg, { cola });
+  const pausas = [];
+  app.redaccion.pausar = async (ref) => pausas.push(['pausar', ref]);
+  app.redaccion.continuar = async (ref) => pausas.push(['continuar', ref]);
+  const pedir = (url) => app.inject({ method: 'POST', url, headers: { host: '127.0.0.1:4417' } });
+  const base = `/api/carpetas/aprender/ideas/${x.ref.ideaId}/germinacion`;
+  await x.ideas.actualizar('aprender', x.ref.ideaId, { estado: 'en-proceso', trabajo: 'germinacion' });
+  assert.equal((await pedir(`${base}/pausar`)).statusCode, 200);
+  assert.deepEqual(llamadas[0], ['detener', [x.ref]]);
+  assert.deepEqual(pausas[0], ['pausar', x.ref]);
+  await x.ideas.actualizar('aprender', x.ref.ideaId, { estado: 'detenida', interrumpida: true });
+  assert.equal((await pedir(`${base}/continuar`)).statusCode, 200);
+  assert.deepEqual(pausas[1], ['continuar', x.ref]);
+  assert.equal(llamadas[1][0], 'germinar');
+  await app.close();
+});
+
+test('la API expone «Comenzar» y los mandos de cada asignatura', async () => {
+  const x = await aprendizaje();
+  const app = await construirApp(x.cfg, { cola: colaFalsa() });
+  const hechas = [];
+  for (const fn of ['comenzar', 'comenzarNodo', 'pausarNodo', 'continuarNodo']) app.redaccion[fn] = async (ref, n) => hechas.push([fn, n]);
+  const base = `/api/carpetas/aprender/ideas/${x.ref.ideaId}/germinacion/redaccion`;
+  for (const url of [`${base}/comenzar`, `${base}/e1/comenzar`, `${base}/e1/pausar`, `${base}/e1/continuar`]) {
+    assert.equal((await app.inject({ method: 'POST', url, headers: { host: '127.0.0.1:4417' } })).statusCode, 200, url);
+  }
+  assert.deepEqual(hechas, [['comenzar', undefined], ['comenzarNodo', 'e1'], ['pausarNodo', 'e1'], ['continuarNodo', 'e1']]);
+  await app.close();
 });

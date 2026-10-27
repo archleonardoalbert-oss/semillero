@@ -74,6 +74,10 @@ export const api = {
   analisis: (accion, refs) => pedir('POST', `/api/analisis/${accion}`, { refs }),
   ajustes: () => pedir('GET', '/api/ajustes'),
   tipos: () => pedir('GET', '/api/tipos'),
+  pausarGerminacion: (c, i) => pedir('POST', `${idea(c, i)}/germinacion/pausar`),
+  continuarGerminacion: (c, i) => pedir('POST', `${idea(c, i)}/germinacion/continuar`),
+  comenzarCurso: (c, i) => pedir('POST', `${idea(c, i)}/germinacion/redaccion/comenzar`),
+  redaccionNodo: (c, i, n, accion) => pedir('POST', `${idea(c, i)}/germinacion/redaccion/${encodeURIComponent(n)}/${accion}`),
   reintentarRedaccion: (c, i, n) => pedir('POST', `${idea(c, i)}/germinacion/redaccion/${encodeURIComponent(n)}/reintentar`),
   // El ejecutable autónomo de una germinación: tarda unos segundos en compilarse.
   exportar: async (c, i, so) => {

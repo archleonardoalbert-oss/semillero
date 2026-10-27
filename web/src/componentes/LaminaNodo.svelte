@@ -17,7 +17,7 @@
 
   // La lámina de un nodo: brota desde el nodo pulsado y ocupa la pantalla.
   // `curso`: en los bancales de «Aprender algo nuevo», { estado, indice } de la redacción de esta asignatura.
-  let { nodo, mapa, progreso, ref, base, glosas, desde, bloqueado = false, curso = null, alCerrar, alIrA, alCambiar, alReintentar = null } = $props();
+  let { nodo, mapa, progreso, ref, base, glosas, desde, bloqueado = false, curso = null, alCerrar, alIrA, alCambiar, alAccionCurso = null } = $props();
   let leyendo = $state(null); // id de la conferencia, práctica o demostración abierta en el lector
 
   const vocabActual = getContext('vocab') ?? (() => undefined);
@@ -168,7 +168,7 @@
     </header>
 
     {#if curso && nodo.tipo === 'estudio'}
-      <ProgramaAsignatura {nodo} estado={curso.estado} indice={curso.indice} alAbrir={(id) => (leyendo = id)} {alReintentar} />
+      <ProgramaAsignatura {nodo} estado={curso.estado} indice={curso.indice} alAbrir={(id) => (leyendo = id)} alAccion={alAccionCurso} />
     {/if}
 
     <div class="cuerpo" class:dividida={conTaller}>

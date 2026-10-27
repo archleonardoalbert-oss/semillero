@@ -285,3 +285,79 @@ test('R3: si la idea ya no existe, la redacción no recrea su carpeta', async ()
   await esperar(600);
   await assert.rejects(fs.access(path.join(x.dir, 'germinacion/redaccion.json')));
 });
+
+// --- Pausa manual de la germinación (decisión del usuario, 2026-10-26) ---
+test('pausar detiene y guarda cada redacción, no arranca nada más y continuar retoma cada una donde estaba', async () => {
+  const x = await curso({ paralelo: 1 });
+  await x.motor.planificar(x.ref);
+  await hasta(() => x.llamadas.length === 1);
+  const l = x.llamadas[0];
+  const otro = l.nodo === 'e1' ? 'e2' : 'e1';
+  l.senal.addEventListener('abort', () => l.resolve({ codigo: 130, abortado: true }));
+  const parcial = path.join(x.dir, 'germinacion/nodos', l.nodo, 'c01.md');
+  await fs.mkdir(path.dirname(parcial), { recursive: true });
+  await fs.writeFile(parcial, 'media conferencia');
+
+  await x.motor.pausar(x.ref); // vuelve cuando todo está detenido y guardado
+  assert.equal(await x.estadoNodo(l.nodo), 'pausada');
+  assert.equal(await x.estadoNodo(otro), 'pausada');
+  assert.equal(await fs.readFile(parcial, 'utf8'), 'media conferencia');
+  assert.ok(await x.guard.commiteado(path.relative(x.cfg.datos, parcial)), 'lo escrito queda guardado');
+  assert.equal(x.motor.ocupada(x.ref), true, 'pausada sigue contando como ocupada (no se toca el plan)');
+  await x.motor.planificar(x.ref);
+  await x.motor.recuperar();
+  await esperar(200);
+  assert.equal(x.llamadas.length, 1, 'ni planificar ni un reinicio la reanudan');
+  assert.equal((await x.motor.estado(x.ref)).pausada, true);
+
+  await x.motor.continuar(x.ref);
+  assert.ok(await hasta(() => x.llamadas.length === 2));
+  assert.equal(x.llamadas[1].nodo, l.nodo, 'primero sigue la que estaba en marcha');
+  assert.equal(x.llamadas[1].resume, `sesion-${l.nodo}`);
+  assert.match(x.llamadas[1].mensaje, /Continúa donde lo dejaste/);
+  assert.match(x.llamadas[1].mensaje, /no un rechazo de lo que estabas haciendo/);
+  await x.terminar(1);
+  assert.ok(await hasta(() => x.llamadas.length === 3), 'después, la que esperaba en la fila');
+  assert.equal(x.llamadas[2].resume, null);
+});
+
+// --- Control manual: nada se redacta hasta «Comenzar»; mandos globales y por asignatura ---
+test('terminar el plan no arranca la redacción: hace falta «Comenzar»; después, lo nuevo se redacta solo', async () => {
+  const x = await curso();
+  const idea = await x.ideas.obtener(x.ref.carpetaId, x.ref.ideaId);
+  x.cola.emit('idea', { ref: x.ref, idea });
+  await esperar(250);
+  assert.equal(x.llamadas.length, 0, 'sin «Comenzar» no se gasta cuota');
+  await x.motor.comenzar(x.ref);
+  assert.ok(await hasta(() => x.llamadas.length === 2));
+  assert.equal((await x.motor.estado(x.ref)).iniciada, true);
+});
+
+test('cada asignatura se puede comenzar, pausar y continuar por separado', async () => {
+  const x = await curso();
+  await x.motor.comenzarNodo(x.ref, 'e2');
+  assert.ok(await hasta(() => x.llamadas.length === 1));
+  assert.equal(x.llamadas[0].nodo, 'e2');
+  assert.equal(await x.estadoNodo('e1'), undefined, 'las demás no se tocan');
+  const l = x.llamadas[0];
+  l.senal.addEventListener('abort', () => l.resolve({ codigo: 130, abortado: true }));
+  await x.motor.pausarNodo(x.ref, 'e2');
+  assert.equal(await x.estadoNodo('e2'), 'pausada');
+  assert.equal(x.motor.ocupada(x.ref), true, 'con una asignatura a medias no se toca el plan');
+  await x.motor.continuarNodo(x.ref, 'e2');
+  assert.ok(await hasta(() => x.llamadas.length === 2));
+  assert.equal(x.llamadas[1].resume, 'sesion-e2');
+  await assert.rejects(x.motor.continuarNodo(x.ref, 'e1'), /estado-invalido/);
+});
+
+test('pausar una asignatura que espera turno la saca de la fila sin lanzar nada', async () => {
+  const x = await curso({ paralelo: 1 });
+  await x.motor.comenzar(x.ref);
+  await hasta(() => x.llamadas.length === 1);
+  const enEspera = x.llamadas[0].nodo === 'e1' ? 'e2' : 'e1';
+  await x.motor.pausarNodo(x.ref, enEspera);
+  await x.terminar(0);
+  await esperar(300);
+  assert.equal(x.llamadas.length, 1);
+  assert.equal(await x.estadoNodo(enEspera), 'pausada');
+});

@@ -43,24 +43,33 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
   }
   // Las escrituras del estado van serializadas por idea y commiteadas (el guard no las revierte).
   const cadenas = new Map();
-  function cambiarNodo(ref, n, parche) {
+  function modificar(ref, cambio, etiqueta) {
     const k = `${ref.carpetaId}/${ref.ideaId}`;
     const turno = (cadenas.get(k) ?? Promise.resolve()).then(() =>
       guard.proteger([relEstado(ref)], async () => {
         const e = await leerEstado(ref);
         // Una idea borrada mientras se redactaba: no se recrea su carpeta.
         if (!(await fs.stat(path.join(cfg.datos, rutaIdea(ref), 'idea.json')).catch(() => null))) return e;
-        e.nodos[n] = { ...(e.nodos[n] ?? {}), ...parche, actualizado: new Date().toISOString() };
+        cambio(e);
         await fs.mkdir(path.dirname(path.join(cfg.datos, relEstado(ref))), { recursive: true });
         await fs.writeFile(path.join(cfg.datos, relEstado(ref)), `${JSON.stringify(e, null, 2)}\n`);
         return e;
-      }, `redacción ${k}/${n}`));
+      }, `redacción ${k}${etiqueta}`));
     cadenas.set(k, turno.catch(() => {}));
     return turno.then((e) => {
-      emisor.emit('redaccion', { ref, nodos: e.nodos });
+      conocidos.set(k, e);
+      emisor.emit('redaccion', { ref, nodos: e.nodos, pausada: Boolean(e.pausada), iniciada: Boolean(e.iniciada) });
       return e;
     });
   }
+  // Último estado conocido de cada idea (para `ocupada`, que es síncrona).
+  const conocidos = new Map();
+  const cambiarNodo = (ref, n, parche) =>
+    modificar(ref, (e) => (e.nodos[n] = { ...(e.nodos[n] ?? {}), ...parche, actualizado: new Date().toISOString() }), `/${n}`);
+
+  // Ideas cuya germinación pausó el usuario: nada de ellas arranca hasta que pulse «Continuar».
+  const pausadas = new Set();
+  const claveIdea = (ref) => `${ref.carpetaId}/${ref.ideaId}`;
 
   async function mapaDe(ref) {
     const v = validarMapa(await germinacion.leerMapa(ref.carpetaId, ref.ideaId));
@@ -77,9 +86,13 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
     const mapa = await mapaDe(ref);
     if (!mapa) return;
     const estado = await leerEstado(ref);
+    if (estado.pausada) {
+      pausadas.add(claveIdea(ref));
+      return;
+    }
     for (const n of mapa.nodos.filter((x) => x.tipo === 'estudio')) {
       const e = estado.nodos[n.id]?.estado;
-      if (e === 'lista' || e === 'error' || activas.has(clave(ref, n.id)) || fila.some((f) => clave(f.ref, f.nodo) === clave(ref, n.id))) continue;
+      if (e === 'lista' || e === 'error' || e === 'pausada' || activas.has(clave(ref, n.id)) || fila.some((f) => clave(f.ref, f.nodo) === clave(ref, n.id))) continue;
       if (e !== 'pendiente') await cambiarNodo(ref, n.id, { estado: 'pendiente', error: null, intentos: 0 });
       fila.push({ ref, nodo: n.id });
     }
@@ -175,6 +188,12 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
           final = { estado: 'pendiente', error: null, reanudar: false };
           break;
         }
+        if (a.motivo === 'pausa-usuario') {
+          // Pausa manual: lo escrito se guarda y la sesión se retomará al pulsar «Continuar».
+          await guard.commitear(objetivos.map(sinComodin), `redacción ${k} (pausada)`);
+          final = { estado: 'pausada', error: null, sesion, reanudar: Boolean(sesion) };
+          break;
+        }
         if (a.motivo === 'pausa' || (r.resultado?.is_error && RE_LIMITE.test(String(r.resultado.result ?? '')))) {
           // Sin cuota: lo escrito se guarda y el nodo vuelve a la fila para seguir en la misma sesión.
           await guard.commitear(objetivos.map(sinComodin), `redacción ${k} (pausada por cuota)`);
@@ -210,6 +229,7 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
     } finally {
       activas.delete(k);
     }
+    // Al pausar una sola asignatura, su hueco lo aprovecha la siguiente de la fila.
     if (a.motivo !== 'detener') await bombear();
   }
 
@@ -262,26 +282,104 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
         /* sin índice legible: se mostrará como pendiente de revisión */
       }
     }
-    return { nodos: e.nodos, indices };
+    conocidos.set(claveIdea(ref), e);
+    return { nodos: e.nodos, indices, pausada: Boolean(e.pausada), iniciada: Boolean(e.iniciada) };
   }
 
-  const ocupada = (ref) => [...activas.keys(), ...fila.map((f) => clave(f.ref, f.nodo))].some((k) => k.startsWith(`${ref.carpetaId}/${ref.ideaId}/`));
+  // «Comenzar»: la redacción del curso no arranca sola al terminar el plan (decisión del usuario). Una vez
+  // comenzado, lo que se añada después al plan también se redacta solo.
+  async function comenzar(ref) {
+    if (!(await esCurso(ref)) || !(await mapaDe(ref))) throw new Error('no-disponible');
+    await modificar(ref, (e) => {
+      e.iniciada = true;
+      delete e.pausada;
+    }, ' (comenzar)');
+    pausadas.delete(claveIdea(ref));
+    await planificar(ref);
+  }
 
-  // Un nodo en error se vuelve a redactar desde cero. La reserva es síncrona: dos clics no lanzan dos sesiones.
-  const reservados = new Set();
-  async function reintentar(ref, n) {
+  // Mandos de una sola asignatura.
+  async function nodoDe(ref, n) {
+    const mapa = await mapaDe(ref);
+    if (!mapa?.nodos.some((x) => x.id === n && x.tipo === 'estudio')) throw new Error('nodo-invalido');
+    return (await leerEstado(ref)).nodos[n] ?? null;
+  }
+  async function comenzarNodo(ref, n) {
     const k = clave(ref, n);
     if (reservados.has(k) || activas.has(k) || fila.some((f) => clave(f.ref, f.nodo) === k)) throw new Error('en-proceso');
     reservados.add(k);
     try {
-      const e = await leerEstado(ref);
-      if (e.nodos[n]?.estado !== 'error') throw new Error('estado-invalido');
+      const x = await nodoDe(ref, n);
+      if (x && x.estado !== 'error') throw new Error('estado-invalido');
       await cambiarNodo(ref, n, { estado: 'pendiente', error: null, intentos: 0, reanudar: false });
       fila.push({ ref, nodo: n });
     } finally {
       reservados.delete(k);
     }
     await bombear();
+  }
+  async function pausarNodo(ref, n) {
+    const k = clave(ref, n);
+    const i = fila.findIndex((f) => clave(f.ref, f.nodo) === k);
+    if (i >= 0) {
+      fila.splice(i, 1);
+      await cambiarNodo(ref, n, { estado: 'pausada' });
+      return;
+    }
+    const a = activas.get(k);
+    if (!a) throw new Error('estado-invalido');
+    a.motivo = 'pausa-usuario';
+    a.control.abort();
+    await a.promesa;
+  }
+  async function continuarNodo(ref, n) {
+    const x = await nodoDe(ref, n);
+    if (x?.estado !== 'pausada') throw new Error('estado-invalido');
+    await cambiarNodo(ref, n, { estado: 'pendiente' });
+    if (!fila.some((f) => clave(f.ref, f.nodo) === clave(ref, n))) fila.push({ ref, nodo: n });
+    await bombear();
+  }
+
+  // Pausa manual de la germinación de una idea: las redacciones en marcha se detienen y guardan lo escrito, las
+  // que esperaban no arrancan. Vuelve cuando todo está detenido y guardado.
+  async function pausar(ref) {
+    const ik = claveIdea(ref);
+    pausadas.add(ik);
+    await modificar(ref, (e) => (e.pausada = true), ' (pausa)');
+    const enFila = fila.filter((f) => claveIdea(f.ref) === ik);
+    for (const f of enFila) fila.splice(fila.indexOf(f), 1);
+    for (const f of enFila) await cambiarNodo(ref, f.nodo, { estado: 'pausada' });
+    const enMarcha = [...activas].filter(([k]) => k.startsWith(`${ik}/`)).map(([, a]) => a);
+    for (const a of enMarcha) {
+      a.motivo = 'pausa-usuario';
+      a.control.abort();
+    }
+    await Promise.allSettled(enMarcha.map((a) => a.promesa));
+  }
+
+  // Continuar: primero las que estaban en marcha (en su misma sesión), después las que esperaban.
+  async function continuar(ref) {
+    const ik = claveIdea(ref);
+    const e = await modificar(ref, (x) => delete x.pausada, ' (continuar)');
+    pausadas.delete(ik);
+    const enPausa = Object.entries(e.nodos).filter(([, x]) => x.estado === 'pausada').sort(([, a], [, b]) => Number(Boolean(b.reanudar)) - Number(Boolean(a.reanudar)));
+    for (const [n] of enPausa) {
+      await cambiarNodo(ref, n, { estado: 'pendiente' });
+      if (!fila.some((f) => clave(f.ref, f.nodo) === clave(ref, n))) fila.push({ ref, nodo: n });
+    }
+    await planificar(ref);
+  }
+
+  const ocupada = (ref) => pausadas.has(claveIdea(ref))
+    || Object.values(conocidos.get(claveIdea(ref))?.nodos ?? {}).some((x) => x.estado === 'pausada')
+    || [...activas.keys(), ...fila.map((f) => clave(f.ref, f.nodo))].some((k) => k.startsWith(`${ref.carpetaId}/${ref.ideaId}/`));
+
+  // Un nodo en error se vuelve a redactar desde cero. La reserva es síncrona: dos clics no lanzan dos sesiones.
+  const reservados = new Set();
+  async function reintentar(ref, n) {
+    const x = (await leerEstado(ref)).nodos[n];
+    if (x?.estado !== 'error') throw new Error('estado-invalido');
+    return comenzarNodo(ref, n);
   }
 
   // Al apagar el servidor: se detienen las sesiones (lo escrito a medias se descarta) y se espera a que cierren.
@@ -316,14 +414,27 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
     for (const idea of await ideas.listar()) {
       const ref = { carpetaId: idea.carpetaId, ideaId: idea.id };
       const e = await leerEstado(ref);
-      if (Object.values(e.nodos).some((x) => x.estado === 'pendiente')) await planificar(ref);
+      conocidos.set(claveIdea(ref), e);
+      if (e.pausada) {
+        pausadas.add(claveIdea(ref));
+        continue;
+      }
+      for (const [n, x] of Object.entries(e.nodos)) {
+        if (x.estado === 'pendiente' && !fila.some((f) => clave(f.ref, f.nodo) === clave(ref, n))) fila.push({ ref, nodo: n });
+      }
+      if (e.iniciada) await planificar(ref);
+      else await bombear();
     }
   }
 
   // Cuando la germinación de un curso deja aceptado el plan de estudios, se redacta lo que falte.
+  // Solo si el usuario ya pulsó «Comenzar» (y no lo tiene en pausa).
   cola.on?.('idea', ({ ref, idea }) => {
-    if (idea?.trabajo === 'germinacion' && idea.estado === 'aceptada' && idea.germinacion?.fase === 'mapa') planificar(ref).catch((e) => console.error('[redaccion]', e));
+    if (idea?.trabajo !== 'germinacion' || idea.estado !== 'aceptada' || idea.germinacion?.fase !== 'mapa') return;
+    leerEstado(ref)
+      .then((e) => e.iniciada && !e.pausada && planificar(ref))
+      .catch((e) => console.error('[redaccion]', e));
   });
 
-  return Object.assign(emisor, { planificar, estado, ocupada, reintentar, recuperar, restaurarInterrumpidas, apagar, objetivosActivos, detenerLatido: () => clearInterval(latido) });
+  return Object.assign(emisor, { planificar, estado, ocupada, reintentar, recuperar, restaurarInterrumpidas, apagar, pausar, continuar, comenzar, comenzarNodo, pausarNodo, continuarNodo, objetivosActivos, detenerLatido: () => clearInterval(latido) });
 }

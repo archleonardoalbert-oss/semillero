@@ -123,7 +123,7 @@ export function promptSistema(tipo = TIPO_POR_DEFECTO) {
 }
 
 // Tras una pausa, la sesión ve sus herramientas cortadas como «interrumpidas por el usuario»: hay que aclararlo.
-export const NOTA_INTERRUPCION = 'La interrupción la causó Semillero (cuota de Claude o una parada), no fue el usuario: si alguna herramienta aparece como interrumpida o rechazada por el usuario, no lo es; repítela si la necesitas.';
+export const NOTA_INTERRUPCION = 'La interrupción fue una pausa de la ejecución (por la cuota de Claude, una parada o porque el usuario la pausó para seguir más tarde), no un rechazo de lo que estabas haciendo: si alguna herramienta aparece como interrumpida o rechazada por el usuario, no lo es; repítela si la necesitas.';
 
 export function mensajeEjecucion({ tipo, idea, carpeta, rutaIdea, archivoDestino, replica }) {
   const cierre = `Escribe tu dictamen en ${archivoDestino}`;

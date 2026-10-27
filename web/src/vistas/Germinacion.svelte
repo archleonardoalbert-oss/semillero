@@ -52,19 +52,60 @@
   let asignaturas = $derived((mapa?.nodos ?? []).filter((n) => n.tipo === 'estudio'));
   let redactadas = $derived(asignaturas.filter((n) => redaccion.indices[n.id]).length);
   let redactandoCurso = $derived(esCurso && asignaturas.some((n) => ['pendiente', 'redactando'].includes(redaccion.nodos[n.id]?.estado)));
+  // Con asignaturas a medias (redactándose o en pausa) el plan de estudios no se toca.
+  let planBloqueado = $derived(redactandoCurso || (esCurso && asignaturas.some((n) => redaccion.nodos[n.id]?.estado === 'pausada')) || Boolean(redaccion.pausada));
   const cursoDe = (n) => (esCurso ? { estado: redaccion.nodos[n.id] ?? null, indice: redaccion.indices[n.id] ?? null } : null);
   const quitarRedaccion = suscribir(ref, (msg) => {
     if (msg.tipo !== 'redaccion' || !datos) return;
     const nueva = Object.entries(msg.nodos).some(([n, x]) => x.estado === 'lista' && !datos.redaccion?.indices?.[n]);
-    datos = { ...datos, redaccion: { ...(datos.redaccion ?? { indices: {} }), nodos: msg.nodos } };
+    datos = { ...datos, redaccion: { ...(datos.redaccion ?? { indices: {} }), nodos: msg.nodos, pausada: Boolean(msg.pausada), iniciada: Boolean(msg.iniciada) } };
     if (nueva) cargar();
   });
   onDestroy(quitarRedaccion);
-  async function reintentarRedaccion(n) {
+
+  // Mando de una asignatura: comenzar, pausar o continuar solo esa.
+  const NOMBRE_ACCION = { comenzar: 'comenzar', pausar: 'pausar', continuar: 'continuar' };
+  async function accionNodo(n, accion) {
     try {
-      datos = { ...datos, redaccion: await api.reintentarRedaccion(ref.carpetaId, ref.ideaId, n) };
+      datos = { ...datos, redaccion: await api.redaccionNodo(ref.carpetaId, ref.ideaId, n, accion) };
     } catch (e) {
-      avisar(`No se pudo reintentar: ${e.message}`, 'error');
+      avisar(`No se pudo ${NOMBRE_ACCION[accion]} la asignatura: ${e.message}`, 'error');
+    }
+  }
+  // El estado de redacción de cada asignatura, para resaltarlas en el árbol.
+  let resaltados = $derived(esCurso ? Object.fromEntries(Object.entries(redaccion.nodos).map(([n, x]) => [n, x.estado])) : {});
+
+  // El mando global: mientras el curso no esté completo, Comenzar, Pausar o Continuar todas las sesiones a la vez
+  // (en cualquier germinación, también la de la sesión principal).
+  let cursoCompleto = $derived(esCurso && asignaturas.length > 0 && redactadas === asignaturas.length);
+  let enPausa = $derived(idea.trabajo === 'germinacion' && (idea.estado === 'detenida' || Boolean(redaccion.pausada)));
+  let mandoGlobal = $derived.by(() => {
+    if (enPausa) return 'continuar';
+    if (enProceso || redactandoCurso) return 'pausar';
+    if (esCurso && mapa?.fase === 'mapa' && !cursoCompleto && idea.estado === 'aceptada') return 'comenzar';
+    return null;
+  });
+  const ROTULO_MANDO = { comenzar: 'Comenzar el curso', pausar: 'Pausar', continuar: 'Continuar' };
+  const AYUDA_MANDO = {
+    comenzar: 'Redacta todas las asignaturas que faltan, con tantas sesiones en paralelo como diga Ajustes',
+    pausar: 'Detiene todas las sesiones de esta germinación guardando lo hecho',
+    continuar: 'Retoma cada sesión exactamente donde estaba',
+  };
+  let cambiandoMando = $state(false);
+  async function pulsarMando() {
+    const accion = mandoGlobal;
+    cambiandoMando = true;
+    try {
+      if (accion === 'comenzar') await api.comenzarCurso(ref.carpetaId, ref.ideaId);
+      else if (accion === 'pausar') await api.pausarGerminacion(ref.carpetaId, ref.ideaId);
+      else await api.continuarGerminacion(ref.carpetaId, ref.ideaId);
+      await cargar();
+      refrescar();
+      avisar({ comenzar: 'El curso empieza a redactarse.', pausar: 'En pausa: todo lo hecho está guardado.', continuar: 'Continúa exactamente donde estaba.' }[accion]);
+    } catch (e) {
+      avisar(`No se pudo: ${e.message}`, 'error');
+    } finally {
+      cambiandoMando = false;
     }
   }
   // El nodo de la URL se abre una vez por cada valor distinto (una conexión a otro nodo de la misma idea
@@ -117,7 +158,7 @@
 
   let estadoTexto = $derived.by(() => {
     if (idea.estado === 'pausada') return 'Pausada por la cuota. Reanúdala con «Reanudar Investigación» en la portada.';
-    if (idea.estado === 'detenida') return 'Detenida. Puedes retomarla cuando quieras.';
+    if (idea.estado === 'detenida' || redaccion.pausada) return 'En pausa. Todo lo hecho está guardado: «Continuar» retoma cada sesión exactamente donde estaba.';
     if (idea.estado === 'error') return `La última ejecución falló: ${idea.error ?? 'sin detalle'}`;
     if (enProceso) return fase === 'preparando' ? 'La sesión está preparando tus preguntas…' : fase === 'diagnostico' ? 'La sesión está investigando y trazando tu mapa…' : 'La sesión está reajustando el mapa…';
     if (fase === 'diagnostico') return 'Responde al diagnóstico para que la sesión trace tu camino.';
@@ -200,7 +241,7 @@
   <div class="escenario">
     {#if mapa?.fase === 'mapa'}
       <div class="capa" in:fade={{ duration: 500 }}>
-        <Arbol {mapa} {progreso} titulo={idea.titulo} clave="{ref.carpetaId}/{ref.ideaId}" {raices}
+        <Arbol {mapa} {progreso} titulo={idea.titulo} clave="{ref.carpetaId}/{ref.ideaId}" {raices} redaccion={resaltados}
           alAbrirNodo={abrirLamina} alAbrirRaiz={(archivo) => alVerManuscrito(archivo)} />
       </div>
     {:else}
@@ -236,16 +277,21 @@
         </dl>
       {/if}
       {#if estadoTexto}<p class="estado" class:error={idea.estado === 'error'}>{estadoTexto}</p>{/if}
-      {#if idea.estado === 'error' || idea.estado === 'detenida' || (!enProceso && !mapa && datos && idea.estado !== 'pausada')}
+      {#if idea.estado === 'error' || (!enProceso && !mapa && datos && !['pausada', 'detenida'].includes(idea.estado))}
         <button class="boton" disabled={enviando} onclick={() => germinar()}>Retomar la germinación</button>
       {/if}
     </header>
 
     <nav class="acciones">
+      {#if mandoGlobal}
+        <button class="boton" class:primario={mandoGlobal !== 'pausar'} disabled={cambiandoMando} title={AYUDA_MANDO[mandoGlobal]} onclick={pulsarMando}>
+          {cambiandoMando ? 'Un momento…' : ROTULO_MANDO[mandoGlobal]}
+        </button>
+      {/if}
       <button class="boton discreto" onclick={alVerManuscrito}>Manuscrito</button>
       {#if mapa?.resumen}<button class="boton discreto" onclick={() => (viendoVision = true)}>Visión del camino</button>{/if}
       {#if mapa?.fase === 'mapa'}
-        <button class="boton" disabled={enProceso || redactandoCurso} title={redactandoCurso ? 'Espera a que terminen de redactarse las asignaturas' : ''} onclick={() => (redactando = !redactando)}>
+        <button class="boton" disabled={enProceso || planBloqueado} title={planBloqueado ? 'Termina o detén antes la redacción de las asignaturas' : ''} onclick={() => (redactando = !redactando)}>
           Comunicar avances{#if cambios.length}<span class="cuenta">{cambios.length}</span>{/if}
         </button>
       {/if}
@@ -261,6 +307,7 @@
         <li><span class="l-incognita"></span>Hoja: {vocab.hoja.toLowerCase()}</li>
         <li><span class="l-abierto"></span>Fruto: {vocab.fruto.toLowerCase()}</li>
         <li><span class="l-raiz"></span>Raíces: el manuscrito</li>
+        {#if esCurso && !cursoCompleto}<li><span class="l-redactando"></span>Asignatura redactándose</li>{/if}
         <li class="pista">Arrastra para moverte, usa la rueda para ampliar y haz doble clic para encajar</li>
       </ul>
     {/if}
@@ -313,7 +360,7 @@
 {#if laminaAbierta && lamina}
   {#key lamina.nodo.id}
     <LaminaNodo nodo={mapa?.nodos.find((n) => n.id === lamina.nodo.id) ?? lamina.nodo} desde={lamina.desde} {mapa} {progreso} {ref} {base} {glosas} bloqueado={enProceso}
-      curso={cursoDe(lamina.nodo)} alReintentar={() => reintentarRedaccion(lamina.nodo.id)}
+      curso={cursoDe(lamina.nodo)} alAccionCurso={(accion) => accionNodo(lamina.nodo.id, accion)}
       alCerrar={cerrarLamina} alIrA={irANodo} alCambiar={cargar} />
   {/key}
 {/if}
@@ -498,6 +545,11 @@
     border: 1.5px solid #e88fb4;
     border-radius: 50%;
     background: rgb(232 143 180 / 0.2);
+  }
+  .l-redactando {
+    border: 2px solid var(--proceso);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--proceso);
   }
   .l-raiz {
     border-bottom: 2px solid #8a6a3d;

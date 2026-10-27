@@ -1,21 +1,26 @@
 <script>
   // El programa de una asignatura de curso en la lámina de su nodo: sus conferencias, clases prácticas y
-  // demostraciones para valientes, o, mientras se redacta, el plan previsto y en qué punto va.
-  let { nodo, estado = null, indice = null, alAbrir, alReintentar = null } = $props();
+  // demostraciones para valientes o, mientras no está redactada, su estado y su mando (comenzar, pausar, continuar).
+  // `alAccion(accion)` con 'comenzar' | 'pausar' | 'continuar'; sin ella (visor exportado) no hay mandos.
+  let { nodo, estado = null, indice = null, alAbrir, alAccion = null } = $props();
+
+  const MANDO = {
+    sin: { texto: 'Todavía sin redactar.', accion: 'comenzar', boton: 'Redactar esta asignatura' },
+    pendiente: { texto: 'En espera de turno: se redactará en cuanto haya una sesión libre.', accion: 'pausar', boton: 'Pausar esta asignatura' },
+    redactando: { texto: 'Una sesión dedicada está redactando esta asignatura: conferencias, prácticas, escenas y recursos.', accion: 'pausar', boton: 'Pausar esta asignatura', viva: true },
+    pausada: { texto: 'En pausa. Lo escrito está guardado y la sesión seguirá exactamente donde estaba.', accion: 'continuar', boton: 'Continuar esta asignatura', primario: true },
+    error: { accion: 'comenzar', boton: 'Volver a redactarla' },
+  };
+  let mando = $derived(MANDO[estado?.estado] ?? MANDO.sin);
   let enviando = $state(false);
-  async function reintentar() {
+  async function pulsar() {
     enviando = true;
     try {
-      await alReintentar();
+      await alAccion(mando.accion);
     } finally {
       enviando = false;
     }
   }
-
-  const ESTADO = {
-    pendiente: 'En espera: se redactará en cuanto haya una sesión libre.',
-    redactando: 'Una sesión dedicada está redactando esta asignatura: conferencias, prácticas, escenas y recursos.',
-  };
 </script>
 
 <section class="programa">
@@ -49,12 +54,16 @@
     {/if}
   {:else}
     <h2>Programa previsto</h2>
-    {#if estado?.estado === 'error'}
-      <p class="aviso error">La redacción falló: {estado.error}</p>
-      {#if alReintentar}<button class="boton" disabled={enviando} onclick={reintentar}>Volver a redactarla</button>{/if}
-    {:else}
-      <p class="aviso"><span class="luz" class:viva={estado?.estado === 'redactando'}></span>{ESTADO[estado?.estado] ?? ESTADO.pendiente}</p>
-    {/if}
+    <div class="mando">
+      {#if estado?.estado === 'error'}
+        <p class="aviso error">La redacción falló: {estado.error}</p>
+      {:else}
+        <p class="aviso"><span class="luz" class:viva={mando.viva}></span>{mando.texto}</p>
+      {/if}
+      {#if alAccion}
+        <button class="boton" class:primario={mando.primario} disabled={enviando} onclick={pulsar}>{enviando ? 'Un momento…' : mando.boton}</button>
+      {/if}
+    </div>
     {#if nodo.plan?.length}
       <ol class="lista prevista">
         {#each nodo.plan as c, k (k)}
@@ -140,6 +149,16 @@
   }
   .prevista li {
     opacity: 0.55;
+  }
+  .mando {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1.2rem;
+    margin: 0 0 1rem;
+  }
+  .mando .aviso {
+    margin: 0;
   }
   .aviso {
     display: flex;

@@ -226,6 +226,40 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     });
     return ideas.obtener(req.params.c, req.params.i);
   });
+  // Pausa manual de una germinación: la sesión principal y todas las redacciones de la idea se detienen guardando
+  // lo escrito y su conversación. Responde cuando todo está detenido. «Continuar» retoma cada una donde estaba.
+  app.post('/api/carpetas/:c/ideas/:i/germinacion/pausar', async (req) => {
+    const ref = refDe(req);
+    const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
+    if (idea.trabajo !== 'germinacion') throw new Error('no-germinable');
+    if (idea.estado === 'en-proceso') {
+      await cola.detener([ref]);
+      for (let k = 0; k < 120 && (await ideas.obtener(ref.carpetaId, ref.ideaId)).estado === 'en-proceso'; k++) await new Promise((r) => setTimeout(r, 250));
+    }
+    await motorRedaccion.pausar(ref);
+    return ideas.obtener(ref.carpetaId, ref.ideaId);
+  });
+  app.post('/api/carpetas/:c/ideas/:i/germinacion/continuar', async (req) => {
+    const ref = refDe(req);
+    const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
+    if (idea.trabajo !== 'germinacion') throw new Error('no-germinable');
+    await motorRedaccion.continuar(ref);
+    // La sesión principal, si se pausó a mitad de trabajo, sigue en su conversación («continúa donde la dejaste»).
+    if (idea.estado === 'detenida') await cola.germinar(ref, {});
+    return ideas.obtener(ref.carpetaId, ref.ideaId);
+  });
+  // Mandos de la redacción del curso: «Comenzar» todas y, por asignatura, comenzar, pausar o continuar.
+  const RD = '/api/carpetas/:c/ideas/:i/germinacion/redaccion';
+  app.post(`${RD}/comenzar`, async (req) => {
+    await motorRedaccion.comenzar(refDe(req));
+    return motorRedaccion.estado(refDe(req));
+  });
+  for (const [accion, fn] of [['comenzar', 'comenzarNodo'], ['pausar', 'pausarNodo'], ['continuar', 'continuarNodo']]) {
+    app.post(`${RD}/:n/${accion}`, async (req) => {
+      await motorRedaccion[fn](refDe(req), req.params.n);
+      return motorRedaccion.estado(refDe(req));
+    });
+  }
   app.post('/api/carpetas/:c/ideas/:i/germinacion/redaccion/:n/reintentar', async (req) => {
     await motorRedaccion.reintentar(refDe(req), req.params.n);
     return motorRedaccion.estado(refDe(req));

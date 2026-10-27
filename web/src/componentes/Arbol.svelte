@@ -6,7 +6,8 @@
   // El árbol vivo de la germinación como lámina botánica: raíces (el manuscrito), tronco (lo que hay
   // que estudiar) y copa (hojas: incógnitas; frutos: problemas abiertos). Se arrastra para moverlo,
   // la rueda amplía y el doble clic lo encaja.
-  let { mapa, progreso, titulo, clave, raices = [], alAbrirNodo, alAbrirRaiz } = $props();
+  // `redaccion`: en los cursos, el estado de redacción de cada asignatura (id → 'redactando' | 'pendiente' | …).
+  let { mapa, progreso, titulo, clave, raices = [], redaccion = {}, alAbrirNodo, alAbrirRaiz } = $props();
 
   let lienzo = $state();
   let ancho = $state(1200);
@@ -192,6 +193,12 @@
           onclick={(ev) => abrir(n, ev)} onkeydown={(ev) => ev.key === 'Enter' && abrir(n, ev)}
           onpointerenter={() => (encima = n.id)} onpointerleave={() => (encima = null)}>
           <g class="forma">
+            {#if n.forma === 'tronco' && redaccion[n.id] === 'redactando'}
+              <circle r="21" class="redactando" />
+              <circle r="21" class="redactando eco" />
+            {:else if n.forma === 'tronco' && redaccion[n.id] === 'pendiente'}
+              <circle r="19" class="en-espera" />
+            {/if}
             {#if n.forma === 'tronco'}
               <circle r="13" class="nudo" filter={e !== 'pendiente' ? 'url(#brillo)' : null} />
               <circle r="5.5" class="corazon" />
@@ -360,6 +367,44 @@
   }
   .corazon {
     fill: #3f6b57;
+  }
+  /* Cursos: la asignatura que se está redactando late; la que espera turno tiene un anillo discontinuo. */
+  .redactando {
+    fill: none;
+    stroke: var(--proceso);
+    stroke-width: 2;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: latido-redaccion 1.8s ease-out infinite;
+  }
+  .redactando.eco {
+    animation-delay: 0.9s;
+  }
+  .en-espera {
+    fill: none;
+    stroke: var(--proceso);
+    stroke-width: 1.4;
+    stroke-dasharray: 3 4;
+    opacity: 0.55;
+  }
+  @keyframes latido-redaccion {
+    from {
+      transform: scale(0.65);
+      opacity: 0.95;
+    }
+    to {
+      transform: scale(1.45);
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .redactando {
+      animation: none;
+      opacity: 0.8;
+    }
+    .redactando.eco {
+      display: none;
+    }
   }
   .tronco.en-curso .nudo {
     stroke: var(--proceso);
