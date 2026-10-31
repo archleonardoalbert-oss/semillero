@@ -9,6 +9,13 @@ const sinExtension = (f) => f.replace(/\.[a-z0-9]+$/i, '');
 function queEs(ruta) {
   const f = nombre(ruta);
   if (/\/escenas\/[^/]+\/[^/]+\.js$/.test(ruta)) return `la escena «${sinExtension(f)}»`;
+  if (/\/cursos\/[^/]+\/index\.html$/.test(ruta)) return 'la portada de la asignatura';
+  if (/\/cursos\/[^/]+\/c\d+[^/]*\.html$/.test(ruta)) return `la conferencia «${sinExtension(f)}»`;
+  if (/\/cursos\/[^/]+\/p\d+[^/]*\.html$/.test(ruta)) return `la clase práctica «${sinExtension(f)}»`;
+  if (/\/cursos\/[^/]+\/v\d+[^/]*\.html$/.test(ruta)) return `la demostración «${sinExtension(f)}»`;
+  if (/\/cursos\/[^/]+\/motores\//.test(ruta)) return `el motor «${sinExtension(f)}»`;
+  if (/\/cursos\/[^/]+\/.*\.css$/.test(ruta)) return 'el diseño visual de la web';
+  if (/\/cursos\/[^/]+\/DISENO\.md$/.test(ruta)) return 'la identidad visual de la web';
   if (/\/nodos\/[^/]+\/indice\.json$/.test(ruta)) return 'el índice de la asignatura';
   if (/\/nodos\/[^/]+\/c\d+[^/]*\.md$/.test(ruta)) return `la conferencia «${sinExtension(f)}»`;
   if (/\/nodos\/[^/]+\/p\d+[^/]*\.md$/.test(ruta)) return `la clase práctica «${sinExtension(f)}»`;
@@ -35,7 +42,8 @@ export function describir(herramienta, entrada = {}) {
     case 'Write': {
       const q = queEs(entrada.file_path);
       if (q === 'el índice de la asignatura') return 'Escribiendo el índice de la asignatura';
-      if (q.startsWith('la escena')) return `Programando ${q}`;
+      if (q.startsWith('la escena') || q.startsWith('el motor')) return `Programando ${q}`;
+      if (q.startsWith('el diseño') || q.startsWith('la identidad')) return `Diseñando ${q}`;
       return `Escribiendo ${q}`;
     }
     case 'Edit':
@@ -102,7 +110,7 @@ export function crearActividad({ previos = {}, ahora = () => Date.now() } = {}) 
         if (b.type !== 'tool_use' || vistas.has(b.id)) continue;
         vistas.add(b.id);
         if (b.name === 'Write' || b.name === 'Edit') {
-          const doc = String(b.input?.file_path ?? '').match(/\/nodos\/[^/]+\/([cpv]\d+[a-z0-9-]*\.md)$/)?.[1];
+          const doc = String(b.input?.file_path ?? '').match(/\/(?:nodos|cursos)\/[^/]+\/([cpv]\d+[a-z0-9-]*\.(?:md|html))$/)?.[1];
           if (doc && doc !== documentoActual) {
             documentoActual = doc;
             cambio = true;

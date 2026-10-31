@@ -207,7 +207,8 @@ test('las escenas citadas en una conferencia se extraen de sus bloques', () => {
 
 // --- Instrucciones de las sesiones de un curso ---
 import { promptSistema, promptGerminacion } from '../server/engine/prompt.js';
-import { promptRedactor, mensajeRedaccion, argsRedaccion, PROBAR_ESCENA } from '../server/engine/curso.js';
+import { promptRedactor, mensajeRedaccion, argsRedaccion } from '../server/engine/curso.js';
+import { PROBAR_SITIO } from '../server/cursos/probar-sitio.js';
 
 test('las sesiones de un curso reciben sus reglas: nunca rechazar, diagnóstico con prueba y plan universitario', () => {
   assert.match(promptSistema('aprendizaje'), /NUNCA «rechazada»/);
@@ -215,7 +216,8 @@ test('las sesiones de un curso reciben sus reglas: nunca rechazar, diagnóstico 
   const g = promptGerminacion('aprendizaje');
   for (const t of ['"tipo": "prueba"', 'plan de estudios universitario', 'Diseña hacia atrás', 'NO redactes las conferencias', 'Semillero la añade']) assert.ok(g.includes(t), t);
   const r = promptRedactor();
-  for (const t of ['inversión de la pericia', 'Freeman', 'S.definirEscena', 'g.tex(clave', ':::pista', 'indice.json', 'NUNCA descargues de sitios piratas', PROBAR_ESCENA]) assert.ok(r.includes(t), t);
+  for (const t of ['Manual del redactor de cursos', 'Inversión de la pericia', 'Freeman', 'Tversky', 'Ainsworth', 'web propia', '/semillero-puente.js', '"version": 2', 'NUNCA descargues de sitios piratas', PROBAR_SITIO]) assert.ok(r.includes(t), t);
+  assert.ok(!r.includes('S.definirEscena'), 'el motor de EDO ya no se ofrece');
   assert.ok(argsRedaccion({ ajustes: { esfuerzo: 'high' }, mensaje: 'x' }).some((a) => a.includes('Bash(node:*)')));
   const m = mensajeRedaccion({
     idea: { titulo: 'Topología' }, rutaIdea: 'carpetas/a/ideas/t', nodo: { id: 'e1', titulo: 'Grupos', documento: 'nodos/e1.md', plan: [{ titulo: 'Grupos libres', objetivos: ['Presentar un grupo'] }] },

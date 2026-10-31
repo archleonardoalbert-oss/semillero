@@ -10,6 +10,7 @@ import { crearAlmacenGerminacion } from '../server/store/germinacion.js';
 import { crearGuard } from '../server/engine/guard.js';
 import { crearCola } from '../server/engine/cola.js';
 import { crearMotorRedaccion } from '../server/engine/redaccion.js';
+import { probarSitio as probarSitioReal } from '../server/cursos/probar-sitio.js';
 import { cfgTemporal } from './helpers.js';
 
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -39,16 +40,23 @@ const ESCENA_ROTA = 'export default (S) => S.definirEscena({ alto: 300, pasos: 2
 
 function indiceDe(n) {
   return {
-    version: 1,
-    conferencias: [{ id: 'c01', titulo: `Conferencia de ${n}`, documento: `nodos/${n}/c01.md`, objetivos: ['Algo verificable'] }],
-    practicas: [{ id: 'p01', titulo: 'Práctica', documento: `nodos/${n}/p01.md`, conferencias: ['c01'] }],
+    version: 2,
+    conferencias: [{ id: 'c01', titulo: `Conferencia de ${n}`, pagina: 'c01.html', objetivos: ['Algo verificable'] }],
+    practicas: [{ id: 'p01', titulo: 'Práctica', pagina: 'p01.html', conferencias: ['c01'] }],
     valientes: [],
     recursos: [{ id: 'r1', tipo: 'libro', titulo: 'Hatcher', url: 'https://pi.math.cornell.edu/~hatcher/AT/ATpage.html', archivo: `recursos/${n}/hatcher.pdf`, idioma: 'English', conferencias: ['c01'] }],
   };
 }
 
 // Un curso con su mapa aceptado, y un ejecutar falso con el que el test decide qué escribe cada sesión.
-async function curso({ tipo = 'aprendizaje', paralelo = 5 } = {}) {
+// El comprobador de webs falso: una web «rota» es la que lleva la marca WEB-ROTA (el real se prueba aparte).
+const probarFalso = async (dir, paginas) => {
+  const errores = [];
+  for (const p of paginas) if ((await fs.readFile(path.join(dir, p), 'utf8').catch(() => '')).includes('WEB-ROTA')) errores.push(`${p}: error de JavaScript: se rompe`);
+  return { ok: !errores.length, errores };
+};
+
+async function curso({ tipo = 'aprendizaje', paralelo = 5, probarSitio = probarFalso } = {}) {
   const cfg = await cfgTemporal();
   const guard = crearGuard(cfg);
   await guard.iniciar();
@@ -78,18 +86,19 @@ async function curso({ tipo = 'aprendizaje', paralelo = 5 } = {}) {
   });
   const colaEjecutar = () => new Promise(() => {});
   const cola = crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion, ejecutar: colaEjecutar, notificar: async () => {} });
-  const motor = crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, cola, ajustes, ejecutar });
+  const motor = crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, cola, ajustes, ejecutar, probarSitio });
   const ref = { carpetaId: 'aprender', ideaId: idea.id };
   const dir = path.join(cfg.datos, rutaIdea);
 
-  // Lo que escribe la sesión de un nodo: el índice, sus documentos, una escena y el PDF.
-  async function escribir(n, { indice = indiceDe(n), escena = ESCENA_BUENA, extra = async () => {} } = {}) {
+  // Lo que escribe la sesión de un nodo: su web (portada, conferencia y práctica), el PDF y al final el índice.
+  async function escribir(n, { indice = indiceDe(n), rota = false, extra = async () => {} } = {}) {
+    const web = path.join(dir, 'germinacion/cursos', n);
+    await fs.mkdir(web, { recursive: true });
     await fs.mkdir(path.join(dir, 'germinacion/nodos', n), { recursive: true });
-    await fs.mkdir(path.join(dir, 'germinacion/escenas', n), { recursive: true });
     await fs.mkdir(path.join(dir, 'germinacion/recursos', n), { recursive: true });
-    await fs.writeFile(path.join(dir, 'germinacion/nodos', n, 'c01.md'), `# Conferencia\n\n\`\`\`escena\n{"archivo": "escenas/${n}/giro.js", "titulo": "Giro"}\n\`\`\`\n`);
-    await fs.writeFile(path.join(dir, 'germinacion/nodos', n, 'p01.md'), '# Práctica');
-    await fs.writeFile(path.join(dir, 'germinacion/escenas', n, 'giro.js'), escena);
+    await fs.writeFile(path.join(web, 'index.html'), '<main>Portada</main>');
+    await fs.writeFile(path.join(web, 'c01.html'), rota ? '<main>WEB-ROTA</main>' : '<main>Conferencia</main>');
+    await fs.writeFile(path.join(web, 'p01.html'), '<main>Práctica</main>');
     await fs.writeFile(path.join(dir, 'germinacion/recursos', n, 'hatcher.pdf'), '%PDF-1.4');
     await extra();
     await fs.writeFile(path.join(dir, 'germinacion/nodos', n, 'indice.json'), JSON.stringify(indice));
@@ -145,7 +154,7 @@ test('un índice inválido se corrige en la misma sesión con el motivo; si vuel
   await x.motor.planificar(x.ref);
   await hasta(() => x.llamadas.length === 2);
   const k = x.llamadas.findIndex((l) => l.nodo === 'e1');
-  const malo = { ...indiceDe('e1'), conferencias: [] };
+  const malo = { ...indiceDe('e1'), conferencias: [], practicas: [] };
   await x.terminar(k, { indice: malo });
   assert.ok(await hasta(() => x.llamadas.length === 3));
   const reintento = x.llamadas[2];
@@ -157,13 +166,13 @@ test('un índice inválido se corrige en la misma sesión con el motivo; si vuel
   assert.match((await x.motor.estado(x.ref)).nodos.e1.error, /conferencia/);
 });
 
-test('una escena que no pasa la comprobación invalida el nodo con el motivo', async () => {
+test('una web que no pasa la comprobación invalida el nodo con el motivo', async () => {
   const x = await curso();
   await x.motor.planificar(x.ref);
   await hasta(() => x.llamadas.length === 2);
-  await x.terminar(x.llamadas.findIndex((l) => l.nodo === 'e1'), { escena: ESCENA_ROTA });
+  await x.terminar(x.llamadas.findIndex((l) => l.nodo === 'e1'), { rota: true });
   assert.ok(await hasta(() => x.llamadas.length === 3));
-  assert.match(x.llamadas[2].mensaje, /escenas\/e1\/giro\.js.*se rompe/s);
+  assert.match(x.llamadas[2].mensaje, /c01\.html.*se rompe/s);
 });
 
 test('lo que una sesión escribe fuera de sus carpetas se revierte', async () => {
@@ -407,7 +416,7 @@ test('un fallo de red o de acceso guarda lo escrito y la sesión: volver a redac
   await fs.mkdir(path.dirname(parcial), { recursive: true });
   await fs.writeFile(parcial, 'media conferencia');
   x.llamadas[0].resolve({ codigo: 1, abortado: false, resultado: { is_error: true, result: "API Error: Can't reach the API server — check your internet or DNS (EAI_AGAIN)" } });
-  assert.ok(await hasta(async () => (await x.estadoNodo('e1')) === 'error'));
+  assert.ok(await hasta(async () => (await x.estadoNodo('e1')) === 'error' && !x.motor.ocupada(x.ref)));
   assert.ok(await x.guard.commiteado(path.relative(x.cfg.datos, parcial)), 'lo escrito queda guardado');
   await x.motor.comenzarNodo(x.ref, 'e1');
   assert.ok(await hasta(() => x.llamadas.length === 2));
@@ -476,4 +485,48 @@ test('mientras se redacta, los documentos ya escritos se listan como borradores 
   await x.terminar(0);
   assert.ok(await hasta(async () => (await x.estadoNodo('e1')) === 'lista'));
   assert.equal((await x.motor.estado(x.ref)).borradores.e1, undefined, 'una asignatura lista se lee por su índice');
+});
+
+// --- Formato web (asignaturas como webs propias) ---
+const PAG = (t) => `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${t}</title><script type="module" src="/semillero-puente.js"></script></head><body><main><h1>${t}</h1><p>${'Contenido real de la conferencia, con su explicación. '.repeat(15)}</p></main></body></html>`;
+async function escribirWeb(x, n, { indice } = {}) {
+  const dir = path.join(x.dir, 'germinacion/cursos', n);
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, 'index.html'), PAG('Portada'));
+  await fs.writeFile(path.join(dir, 'c01-intro.html'), PAG('Conferencia 1'));
+  await fs.mkdir(path.join(x.dir, 'germinacion/nodos', n), { recursive: true });
+  await fs.writeFile(path.join(x.dir, 'germinacion/nodos', n, 'indice.json'), JSON.stringify(indice ?? { version: 2, conferencias: [{ id: 'c01-intro', titulo: 'Intro', pagina: 'c01-intro.html' }] }));
+}
+
+test('una asignatura en formato web se acepta si su web pasa el comprobador (Chromium real)', { timeout: 120000 }, async () => {
+  const x = await curso({ paralelo: 1, probarSitio: probarSitioReal });
+  await x.motor.comenzarNodo(x.ref, 'e1');
+  await hasta(() => x.llamadas.length === 1);
+  assert.match(x.llamadas[0].sistema, /Manual del redactor de cursos/);
+  assert.match(x.llamadas[0].sistema, /semillero-puente\.js/);
+  await escribirWeb(x, 'e1');
+  x.llamadas[0].resolve({ codigo: 0, abortado: false, resultado: { is_error: false, result: 'ok' } });
+  assert.ok(await hasta(async () => (await x.estadoNodo('e1')) === 'lista', 60000));
+  assert.equal((await x.motor.estado(x.ref)).indices.e1.version, 2);
+});
+
+test('el formato antiguo (Markdown) ya no se acepta en una redacción nueva', { timeout: 60000 }, async () => {
+  const x = await curso({ paralelo: 1 });
+  await x.motor.comenzarNodo(x.ref, 'e1');
+  await hasta(() => x.llamadas.length === 1);
+  await x.escribir('e1', { indice: { version: 1, conferencias: [{ id: 'c01', titulo: 'x', documento: 'nodos/e1/c01.md' }] } });
+  x.llamadas[0].resolve({ codigo: 0, abortado: false, resultado: { is_error: false, result: 'ok' } });
+  assert.ok(await hasta(() => x.llamadas.length === 2));
+  assert.match(x.llamadas[1].mensaje, /versión 2|formato web/);
+});
+
+test('una asignatura empezada en el formato antiguo se retoma en su sesión con la explicación del formato nuevo', async () => {
+  const x = await curso({ paralelo: 1 });
+  await fs.writeFile(path.join(x.dir, 'germinacion/redaccion.json'), JSON.stringify({ nodos: { e1: { estado: 'pausada', sesion: 'vieja', reanudar: true } } }));
+  await x.motor.recuperar();
+  await x.motor.continuarNodo(x.ref, 'e1');
+  assert.ok(await hasta(() => x.llamadas.length === 1));
+  assert.equal(x.llamadas[0].resume, 'vieja');
+  assert.match(x.llamadas[0].mensaje, /formato nuevo/);
+  assert.match(x.llamadas[0].mensaje, /material de partida/);
 });

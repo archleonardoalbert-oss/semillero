@@ -222,6 +222,9 @@ export function mensajeGlosa({ tipo, rutaDocumento, fragmento, prompt, carpetaFi
     ...imagenes,
     ...peticion,
     ...(tipo === 'corregir' ? ['', `Si hay que enmendar, el documento es ${rutaDocumento}.`] : []),
+    ...(tipo === 'corregir' && rutaDocumento.endsWith('.html')
+      ? ['Es una página de la web de una asignatura: enmienda el HTML con el mínimo cambio, sin romper su estructura, sus estilos ni sus scripts; marca lo enmendado con <del>…</del><ins>…</ins> y, si hace falta, añade una nota «Enmienda» con el mismo estilo visual de la página.']
+      : []),
     ...(carpetaFiguras ? ['', `Si haces figuras, guárdalas en la carpeta ${carpetaFiguras}/ de la idea.`] : []),
   ].join('\n');
 }

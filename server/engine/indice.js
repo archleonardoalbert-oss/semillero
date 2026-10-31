@@ -35,8 +35,11 @@ export function validarIndice(indice, nodo) {
   try {
     exigir(RE_ID.test(nodo ?? ''), `nodo inválido: ${nodo}`);
     exigir(indice && typeof indice === 'object' && !Array.isArray(indice), 'el índice no es un objeto JSON');
-    exigir(indice.version === 1, 'version debe ser 1');
-    const reDoc = new RegExp(`^nodos/${nodo}/[a-z0-9-]{1,60}\\.md$`);
+    // Versión 1: documentos Markdown (asignaturas antiguas). Versión 2: páginas de la web propia de la asignatura.
+    exigir(indice.version === 1 || indice.version === 2, 'version debe ser 2');
+    const v2 = indice.version === 2;
+    const reDoc = v2 ? /^[a-z0-9-]{1,60}\.html$/ : new RegExp(`^nodos/${nodo}/[a-z0-9-]{1,60}\\.md$`);
+    const campo = v2 ? 'pagina' : 'documento';
     const reArchivo = new RegExp(`^recursos/${nodo}/[^/\\\\]+$`);
     const conferencias = indice.conferencias ?? [];
     const practicas = indice.practicas ?? [];
@@ -52,9 +55,10 @@ export function validarIndice(indice, nodo) {
       exigir(!ids.has(x.id), `id duplicado: ${x.id}`);
       ids.add(x.id);
       exigir(esTexto(x.titulo), `${clase} ${x.id} no tiene título`);
-      exigir(reDoc.test(x.documento ?? ''), `documento inválido en ${x.id}: debe ser nodos/${nodo}/<nombre>.md`);
-      exigir(!documentos.has(x.documento), `documento repetido: ${x.documento}`);
-      documentos.add(x.documento);
+      exigir(reDoc.test(x[campo] ?? ''), v2 ? `pagina inválida en ${x.id}: debe ser <nombre>.html dentro de cursos/${nodo}/ (sin carpetas)` : `documento inválido en ${x.id}: debe ser nodos/${nodo}/<nombre>.md`);
+      exigir(!v2 || x.pagina !== 'index.html', `${x.id} no puede usar index.html: es la portada de la asignatura`);
+      exigir(!documentos.has(x[campo]), `${campo} repetido: ${x[campo]}`);
+      documentos.add(x[campo]);
     };
     for (const c of conferencias) {
       pieza(c, 'la conferencia');
@@ -83,7 +87,7 @@ export function validarIndice(indice, nodo) {
       r.conferencias ??= [];
       exigir(esLista(r.conferencias) && r.conferencias.every((c) => idsConf.has(c)), `el recurso ${r.id} cita conferencias que no existen`);
     }
-    return { ok: true, indice: { version: 1, conferencias, practicas, valientes, recursos } };
+    return { ok: true, indice: { version: indice.version, conferencias, practicas, valientes, recursos } };
   } catch (e) {
     if (e instanceof Invalido) return { ok: false, motivo: e.message };
     throw e;
@@ -92,3 +96,7 @@ export function validarIndice(indice, nodo) {
 
 // Todos los documentos de un índice, en orden de lectura.
 export const documentosDe = (indice) => [...indice.conferencias, ...indice.practicas, ...indice.valientes].map((x) => x.documento);
+
+// Las páginas de la web de una asignatura (versión 2), relativas a germinacion/: la portada y cada pieza.
+export const paginasDe = (indice, nodo) =>
+  indice.version === 2 ? ['index.html', ...[...indice.conferencias, ...indice.practicas, ...indice.valientes].map((x) => x.pagina)].map((p) => `cursos/${nodo}/${p}`) : [];

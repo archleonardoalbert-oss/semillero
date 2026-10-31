@@ -37,8 +37,37 @@ const MIME = {
 };
 
 // Lo que puede cargar una escena aislada (ver el gancho onRequest).
-const RE_PARA_ESCENAS = /^\/(escena\.html|assets\/[^/]+|archivos\/carpetas\/[a-z0-9-]+\/ideas\/[a-z0-9-]+\/germinacion\/escenas\/[a-z0-9-]+\/[a-z0-9-]+\.js)$/;
+const RE_PARA_ESCENAS = /^\/(escena\.html|semillero-puente\.js|assets\/[^/]+|archivos\/carpetas\/[a-z0-9-]+\/ideas\/[a-z0-9-]+\/germinacion\/cursos\/[a-z0-9-]+\/[^?#]+|archivos\/carpetas\/[a-z0-9-]+\/ideas\/[a-z0-9-]+\/germinacion\/escenas\/[a-z0-9-]+\/[a-z0-9-]+\.js)$/;
 const RE_MODULO_ESCENA = /\/germinacion\/escenas\/[a-z0-9-]+\/[a-z0-9-]+\.js$/;
+// La web propia de una asignatura (germinacion/cursos/<nodo>/…): su código lo escribió una sesión, así que se sirve
+// siempre aislada y sin acceso a nada de Semillero salvo su propia carpeta.
+const RE_CURSO = /^(carpetas\/[a-z0-9-]+\/ideas\/[a-z0-9-]+\/germinacion\/cursos\/[a-z0-9-]+)\//;
+const MIME_CURSO = {
+  html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8',
+  woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf', wasm: 'application/wasm', glb: 'model/gltf-binary', gltf: 'model/gltf+json',
+  mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav', csv: 'text/csv; charset=utf-8', bin: 'application/octet-stream',
+};
+export function cabecerasCurso(host, carpetaCurso) {
+  const h = `http://${host}`;
+  return {
+    'content-security-policy': [
+      'sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox',
+      "default-src 'none'",
+      `script-src ${h} 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:`,
+      `style-src ${h} 'unsafe-inline'`,
+      `img-src ${h} data: blob:`,
+      `font-src ${h} data:`,
+      `media-src ${h} blob:`,
+      `worker-src ${h} blob:`,
+      `connect-src ${h}/archivos/${carpetaCurso}/`,
+      `frame-ancestors ${h}`,
+      "base-uri 'none'",
+      "form-action 'none'",
+    ].join('; '),
+    'access-control-allow-origin': '*',
+    'x-content-type-options': 'nosniff',
+  };
+}
 
 const ESTADO_HTTP = {
   'ruta-invalida': 400, 'extension-invalida': 400, 'nombre-vacio': 400, 'titulo-vacio': 400, 'refs-invalidos': 400,
@@ -415,6 +444,11 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     const ext = path.extname(ruta).slice(1).toLowerCase();
     reply.header('cache-control', 'no-cache');
     if (ext === 'svg') reply.header('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'");
+    const curso = rel.match(RE_CURSO);
+    if (curso) {
+      reply.headers(cabecerasCurso(req.headers.host, curso[1]));
+      return reply.type(MIME_CURSO[ext] ?? MIME[ext] ?? 'application/octet-stream').send(fs.createReadStream(ruta));
+    }
     // Solo los módulos de escenas se sirven como código (y solo los carga el reproductor aislado).
     if (ext === 'js' && RE_MODULO_ESCENA.test(rel)) return reply.type('text/javascript; charset=utf-8').send(fs.createReadStream(ruta));
     return reply.type(MIME[ext] ?? 'application/octet-stream').send(fs.createReadStream(ruta));

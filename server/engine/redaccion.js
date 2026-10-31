@@ -8,18 +8,18 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ejecutar as ejecutarReal } from './runner.js';
 import { validarMapa } from './mapa.js';
-import { validarIndice, escenasDe, documentosDe } from './indice.js';
+import { validarIndice, paginasDe } from './indice.js';
+import { probarSitio as probarSitioReal } from '../cursos/probar-sitio.js';
 import { tipoDe, bloqueBancal } from './tipos.js';
 import { argsRedaccion, mensajeRedaccion } from './curso.js';
 import { listaRespuestas } from './prompt.js';
-import { probarEscena } from '../escenas/probar.js';
 import { RE_LIMITE } from './cola.js';
 import { crearActividad } from './actividad.js';
 
 const INTENTOS = 2; // la redacción y una corrección en la misma sesión
 const sinComodin = (p) => p.replace(/\/\*\*$/, '');
 
-export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, cola, ajustes, ejecutar = ejecutarReal, probar = probarEscena }) {
+export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, cola, ajustes, ejecutar = ejecutarReal, probarSitio = probarSitioReal }) {
   const emisor = new EventEmitter();
   const activas = new Map(); // 'c/i/n' → { objetivos, control, motivo }
   const fila = []; // [{ ref, nodo }] pendientes de arrancar, en orden
@@ -31,7 +31,7 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
   const relEstado = (ref) => `${rutaIdea(ref)}/germinacion/redaccion.json`;
   const objetivosNodo = (ref, n) => {
     const r = rutaIdea(ref);
-    return [`${r}/germinacion/nodos/${n}/**`, `${r}/germinacion/escenas/${n}/**`, `${r}/germinacion/recursos/${n}/**`, `${r}/figuras/${n}/**`];
+    return [`${r}/germinacion/nodos/${n}/**`, `${r}/germinacion/cursos/${n}/**`, `${r}/germinacion/escenas/${n}/**`, `${r}/germinacion/recursos/${n}/**`, `${r}/figuras/${n}/**`];
   };
 
   async function leerEstado(ref) {
@@ -158,7 +158,9 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
       const mapa = await mapaDe(ref);
       const nodo = mapa?.nodos.find((x) => x.id === n && x.tipo === 'estudio');
       if (!carpeta || !nodo) throw new Error('El nodo ya no existe en el plan de estudios');
-      await cambiarNodo(ref, n, { estado: 'redactando', error: null });
+      // Lo que había antes de empezar (sesión, formato, tokens): se lee antes de marcarla como en marcha.
+      const previo = (await leerEstado(ref)).nodos[n] ?? {};
+      await cambiarNodo(ref, n, { estado: 'redactando', error: null, formato: 2 });
       const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
       const progreso = await germinacion.leerProgreso(ref.carpetaId, ref.ideaId);
       const estado = await leerEstado(ref);
@@ -166,8 +168,7 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
         .map((d) => mapa.nodos.find((x) => x.id === d))
         .map((d) => ({ ...d, indice: estado.nodos[d.id]?.estado === 'lista' }));
       const { contexto } = await ajustes.leer();
-      // Tras una pausa por cuota se retoma la misma sesión, que sigue donde lo dejó.
-      const previo = estado.nodos[n] ?? {};
+      // Tras una pausa se retoma la misma sesión, que sigue donde lo dejó.
       // Lo que hace la sesión y sus tokens (sumados a los de ejecuciones anteriores de esta asignatura).
       a.actividad = crearActividad({ previos: previo.tokens });
       let ultimoAviso = 0;
@@ -177,7 +178,9 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
         emisor.emit('redaccion-actividad', { ref, nodo: n, actividad: a.actividad.resumen() });
       };
       let sesion = previo.reanudar && previo.sesion ? previo.sesion : null;
-      let mensaje = sesion ? mensajeRedaccion({ nodo, continuar: true }) : `${bloqueBancal(carpeta, contexto)}\n\n${mensajeRedaccion({
+      // Una sesión que empezó en el formato antiguo (Markdown) recibe el formato nuevo (web propia).
+      const migrar = Boolean(sesion) && previo.formato !== 2;
+      let mensaje = sesion ? mensajeRedaccion({ nodo, continuar: !migrar, migrar }) : `${bloqueBancal(carpeta, contexto)}\n\n${mensajeRedaccion({
         idea, rutaIdea: rutaIdea(ref), nodo, mapa, dependencias,
         respuestasDiagnostico: listaRespuestas(mapa, progreso.respuestas),
         idiomas: Array.isArray(progreso.respuestas?.idiomas) ? progreso.respuestas.idiomas : [],
@@ -262,7 +265,8 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
     if (a.motivo !== 'detener') await bombear();
   }
 
-  // Lo que la sesión dejó: índice válido, documentos presentes y escenas que funcionan.
+  // Lo que la sesión dejó: índice versión 2 válido, todas las páginas de la web presentes y la web entera
+  // pasando el comprobador (sin errores, sin pedir nada de internet, con el puente y con contenido).
   async function revisar(ref, n) {
     const base = path.join(cfg.datos, rutaIdea(ref), 'germinacion');
     let indice;
@@ -271,29 +275,20 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
     } catch (e) {
       return { ok: false, motivo: `falta germinacion/nodos/${n}/indice.json o no es JSON válido (${e.message})` };
     }
+    if (indice?.version !== 2) return { ok: false, motivo: 'el índice debe ser la versión 2 (formato web: cada pieza con su "pagina" .html en germinacion/cursos/<nodo>/)' };
     const v = validarIndice(indice, n);
     if (!v.ok) return { ok: false, motivo: `el índice no es válido: ${v.motivo}` };
     const fallos = [];
-    for (const doc of documentosDe(v.indice)) {
-      const md = await fs.readFile(path.join(base, doc), 'utf8').catch(() => null);
-      if (!md?.trim()) {
-        fallos.push(`falta el documento ${doc} o está vacío`);
-        continue;
-      }
-      const { validas, invalidas } = escenasDe(md, n);
-      for (const x of invalidas) fallos.push(`bloque escena mal formado en ${doc}: ${x} (debe ser JSON con "archivo": "escenas/${n}/<nombre>.js")`);
-      for (const e of validas) {
-        const ruta = path.join(base, e.archivo);
-        if (!(await fs.stat(ruta).catch(() => null))) {
-          fallos.push(`${doc} cita la escena ${e.archivo}, que no existe`);
-          continue;
-        }
-        const p = await probar(ruta);
-        if (!p.ok) fallos.push(`la escena ${e.archivo} no pasa la comprobación: ${p.errores.join('; ')}`);
-      }
+    const paginas = paginasDe(v.indice, n);
+    for (const p of paginas) {
+      if (!(await fs.stat(path.join(base, p)).catch(() => null))?.size) fallos.push(`falta la página ${p} o está vacía`);
     }
     for (const r of v.indice.recursos) {
       if (r.archivo && !(await fs.stat(path.join(base, r.archivo)).catch(() => null))) fallos.push(`el recurso ${r.id} cita ${r.archivo}, que no existe (quita "archivo" si no se pudo descargar)`);
+    }
+    if (!fallos.length) {
+      const p = await probarSitio(path.join(base, 'cursos', n), paginas.map((x) => x.split('/').pop()));
+      if (!p.ok) fallos.push(...p.errores.map((e) => `la web no pasa la comprobación: ${e}`));
     }
     return fallos.length ? { ok: false, motivo: fallos.slice(0, 12).join(' | ') } : { ok: true, indice: v.indice };
   }
@@ -323,6 +318,11 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
     const CLASE = { c: 'conferencia', p: 'practica', v: 'valiente' };
     for (const [n, x] of Object.entries(e.nodos)) {
       if (x.estado === 'lista' || !/^[a-z0-9-]{1,40}$/.test(n)) continue;
+      const web = (await fs.readdir(path.join(cfg.datos, rutaIdea(ref), 'germinacion/cursos', n)).catch(() => [])).filter((f) => /^[cpv]\d+[a-z0-9-]*\.html$/.test(f)).sort();
+      if (web.length) {
+        borradores[n] = web.map((f) => ({ archivo: f, clase: CLASE[f[0]], documento: `cursos/${n}/${f}`, web: true }));
+        continue;
+      }
       const archivos = await fs.readdir(path.join(cfg.datos, rutaIdea(ref), 'germinacion/nodos', n)).catch(() => []);
       const docs = archivos.filter((f) => /^[cpv]\d+[a-z0-9-]*\.md$/.test(f)).sort();
       if (docs.length) borradores[n] = docs.map((f) => ({ archivo: f, clase: CLASE[f[0]], documento: `nodos/${n}/${f}` }));

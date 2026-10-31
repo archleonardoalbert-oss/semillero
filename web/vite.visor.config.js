@@ -10,6 +10,10 @@ export default defineConfig({
   plugins: [svelte()],
   build: {
     outDir: 'dist-visor', emptyOutDir: true, chunkSizeWarningLimit: 4000,
-    rollupOptions: { input: { visor: `${raiz}visor.html`, escena: `${raiz}escena.html` } },
+    rollupOptions: {
+      input: { visor: `${raiz}visor.html`, escena: `${raiz}escena.html`, puente: `${raiz}src/puente/main.js` },
+      // El puente de las webs de curso necesita una ruta fija: /semillero-puente.js.
+      output: { entryFileNames: (c) => (c.name === 'puente' ? 'semillero-puente.js' : 'assets/[name]-[hash].js') },
+    },
   },
 });

@@ -10,7 +10,8 @@ const TIPOS = new Set(['explicar', 'corregir']);
 // Corregir siempre con el modelo y esfuerzo de Ajustes.
 const PROFUNDIDAD = { superficial: { modelo: 'sonnet', esfuerzo: 'low' }, profunda: { modelo: 'opus', esfuerzo: 'medium' } };
 // Los documentos de los nodos y, en los cursos, sus conferencias, prácticas y demostraciones (nodos/<nodo>/<doc>.md).
-const RE_DOCUMENTO = /^(hilo\/\d{3}-(claude|usuario)\.md|germinacion\/nodos\/[a-z0-9-]+(\/[a-z0-9-]+)?\.md)$/;
+// También las páginas de la web propia de una asignatura (germinacion/cursos/<nodo>/<página>.html).
+const RE_DOCUMENTO = /^(hilo\/\d{3}-(claude|usuario)\.md|germinacion\/nodos\/[a-z0-9-]+(\/[a-z0-9-]+)?\.md|germinacion\/cursos\/[a-z0-9-]+\/[a-z0-9-]+\.html)$/;
 export const documentoGlosable = (d) => RE_DOCUMENTO.test(String(d ?? ''));
 const RE_DICTAMEN = /^hilo\/\d{3}-claude\.md$/;
 const MAX_FRAGMENTO = 20000;
