@@ -370,6 +370,11 @@ test('una asignatura en formato web se exporta entera y el ejecutable la sirve a
     let r;
     for (let k = 0; k < 50 && !r; k++) r = await fetch(`${url}/archivos/idea/germinacion/cursos/e1/c01-intro.html`).catch(() => new Promise((ok) => setTimeout(ok, 100)));
     assert.match(r.headers.get('content-security-policy') ?? '', /sandbox allow-scripts/);
+    assert.doesNotMatch(r.headers.get('content-security-policy') ?? '', /escape-sandbox/);
+    // Las copias internas del ejecutable no se sirven por su ruta directa (solo por la del manifiesto).
+    const m2 = JSON.parse(await fs.readFile(path.join(s, 'archivos.json'), 'utf8'));
+    assert.equal((await fetch(`${url}/archivos/${m2['germinacion/cursos/e1/c01-intro.html']}`)).status, 404);
+    assert.equal((await fetch(`${url}/datos.json`)).status, 200);
     assert.match(r.headers.get('content-type') ?? '', /text\/html/);
     const js = await fetch(`${url}/archivos/idea/germinacion/cursos/e1/motores/campo.js`);
     assert.equal(js.headers.get('access-control-allow-origin'), '*');

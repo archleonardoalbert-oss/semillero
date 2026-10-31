@@ -51,7 +51,8 @@ export function cabecerasCurso(host, carpetaCurso) {
   const h = `http://${host}`;
   return {
     'content-security-policy': [
-      'sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox',
+      // Las ventanas que abra (enlaces externos) heredan el aislamiento: nunca corren como Semillero.
+      'sandbox allow-scripts allow-popups',
       "default-src 'none'",
       `script-src ${h} 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:`,
       `style-src ${h} 'unsafe-inline'`,
@@ -462,7 +463,7 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
         if (path.basename(ruta) !== 'escena.html') return;
         // Según la versión, @fastify/static pasa la respuesta cruda o la de Fastify.
         const host = `http://${(res.req ?? res.request)?.headers?.host ?? '127.0.0.1'}`;
-        (res.setHeader ? res.setHeader.bind(res) : res.header.bind(res))('content-security-policy', `default-src 'none'; script-src ${host}; style-src ${host} 'unsafe-inline'; font-src ${host} data:; img-src ${host} data:; connect-src 'none'; base-uri 'none'; form-action 'none'`);
+        (res.setHeader ? res.setHeader.bind(res) : res.header.bind(res))('content-security-policy', `sandbox allow-scripts; default-src 'none'; script-src ${host}; style-src ${host} 'unsafe-inline'; font-src ${host} data:; img-src ${host} data:; connect-src 'none'; base-uri 'none'; form-action 'none'`);
       },
     });
     app.setNotFoundHandler((req, reply) => {

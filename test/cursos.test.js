@@ -409,3 +409,11 @@ test('P3b: «Reanudar Investigación» no reanuda una germinación que el usuari
   await esperar(200);
   assert.equal(x.falso.llamadas.length, 3);
 });
+
+test('escena.html se sirve con su propio sandbox (aunque alguien la abra fuera del iframe)', async () => {
+  const x = await aprendizaje();
+  const app = await construirApp(x.cfg, { cola: colaFalsa() });
+  const r = await app.inject({ method: 'GET', url: '/escena.html', headers: { host: '127.0.0.1:4417' } });
+  if (r.statusCode === 200) assert.match(r.headers['content-security-policy'], /sandbox allow-scripts/);
+  await app.close();
+});

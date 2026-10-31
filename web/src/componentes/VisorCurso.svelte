@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import { fade } from 'svelte/transition';
   import PanelGlosa from './PanelGlosa.svelte';
+  import { documentoDeCurso } from '../lib/curso.js';
 
   // La web propia de una asignatura, a pantalla completa y aislada (sandbox sin mismo origen: no puede tocar
   // Semillero). Habla con Semillero solo por postMessage a través de su puente: la selección para glosar, las
@@ -13,23 +14,23 @@
   let titulo = $state('');
   // La página la decide el puente al cargar; hasta entonces, la pedida.
   let documentoCargado = $state(null);
-  let documento = $derived(documentoCargado ?? `germinacion/cursos/${nodo.id}/${pagina}`);
+  // null: aún no ha cargado (vale la pedida); false: la web está en una página que no se puede glosar.
+  let documento = $derived(documentoCargado === false ? null : (documentoCargado ?? `germinacion/cursos/${nodo.id}/${pagina}`));
   let panel = $state(null); // { x, y, vistaPrevia, fragmento, ancla }
   let abierta = $state(null);
   // Solo la página inicial: después navega la propia web (y el puente avisa de dónde está).
   const src = untrack(() => `${carpeta}${pagina}`);
-
-  const aDocumento = (ruta) => decodeURIComponent(String(ruta ?? '')).replace(/^.*?\/germinacion\//, 'germinacion/');
 
   function alMensaje(ev) {
     if (!marco || ev.source !== marco.contentWindow) return;
     const m = ev.data ?? {};
     if (m.tipo === 'semillero-pagina') {
       titulo = String(m.titulo ?? '');
-      documentoCargado = aDocumento(m.pagina);
+      // La página la dice la web (no es de fiar): solo se glosa si es una página de este curso.
+      documentoCargado = documentoDeCurso(m.pagina, nodo.id) ?? false;
       panel = null;
       enviarGlosas();
-    } else if (m.tipo === 'semillero-seleccion' && glosas) {
+    } else if (m.tipo === 'semillero-seleccion' && glosas && documento) {
       const r = marco.getBoundingClientRect();
       const md = String(m.fragmento?.markdown ?? '');
       panel = {
@@ -48,7 +49,7 @@
   function enviarGlosas() {
     if (!glosas || !marco?.contentWindow) return;
     const lista = glosas.estado.lista
-      .filter((g) => g.documento === documento)
+      .filter((g) => documento && g.documento === documento)
       .map((g) => ({ id: g.id, ancla: $state.snapshot(g.ancla), tipo: g.tipo, estado: g.estado }));
     marco.contentWindow.postMessage({ tipo: 'semillero-glosas', glosas: lista }, '*');
   }
@@ -90,7 +91,7 @@
     {#if titulo}<span class="pagina">{titulo}</span>{/if}
     {#if aviso}<span class="aviso" title={aviso}>Borrador</span>{/if}
   </header>
-  <iframe bind:this={marco} {src} title="Curso: {nodo.titulo}" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"></iframe>
+  <iframe bind:this={marco} {src} title="Curso: {nodo.titulo}" sandbox="allow-scripts allow-popups"></iframe>
 </div>
 
 <!-- Las glosas van en una capa por encima del curso (que ocupa toda la pantalla). -->

@@ -99,6 +99,7 @@ test('la web de una asignatura se sirve aislada (sandbox), sin poder hablar con 
   const csp = html.headers['content-security-policy'];
   assert.match(csp, /sandbox allow-scripts/);
   assert.doesNotMatch(csp, /allow-same-origin/);
+  assert.doesNotMatch(csp, /escape-sandbox/, 'una ventana abierta por el curso sigue aislada');
   assert.match(csp, new RegExp(`connect-src http://127\\.0\\.0\\.1:4417${base}/`));
   const js = await pedir(`${base}/motores/m.js`, 'null');
   assert.equal(js.statusCode, 200);
@@ -114,4 +115,12 @@ test('las páginas de la web de una asignatura admiten glosas', () => {
   assert.equal(documentoGlosable('germinacion/cursos/e1/c01-espacios.html'), true);
   assert.equal(documentoGlosable('germinacion/cursos/e1/motores/x.html'), false);
   assert.equal(documentoGlosable('germinacion/cursos/e1/c01.js'), false);
+});
+
+import { documentoDeCurso } from '../web/src/lib/curso.js';
+test('el visor solo acepta glosas sobre páginas del curso que se está viendo', () => {
+  assert.equal(documentoDeCurso('/archivos/carpetas/a/ideas/i/germinacion/cursos/e1/c01-x.html', 'e1'), 'germinacion/cursos/e1/c01-x.html');
+  for (const malo of ['/x/germinacion/nodos/otro.md', '/x/germinacion/cursos/e2/c01.html', '/x/germinacion/cursos/e1/temas/a.html', '/x/germinacion/cursos/e1/%E0%A4%A.html', '/x/germinacion/cursos/e1/../e2/c.html']) {
+    assert.equal(documentoDeCurso(malo, 'e1'), null, malo);
+  }
 });

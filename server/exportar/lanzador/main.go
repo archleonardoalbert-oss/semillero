@@ -81,11 +81,16 @@ func servir(raiz fs.FS) http.Handler {
 		// La web propia de una asignatura: siempre aislada, como en Semillero.
 		if partes := strings.SplitN(ruta, "/", 4); len(partes) == 4 && partes[0] == "germinacion" && partes[1] == "cursos" {
 			h := "http://" + r.Host
-			w.Header().Set("Content-Security-Policy", "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; default-src 'none'; script-src "+h+" 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:; style-src "+h+" 'unsafe-inline'; img-src "+h+" data: blob:; font-src "+h+" data:; media-src "+h+" blob:; worker-src "+h+" blob:; connect-src "+h+"/archivos/idea/germinacion/cursos/"+partes[2]+"/; frame-ancestors "+h+"; base-uri 'none'; form-action 'none'")
+			w.Header().Set("Content-Security-Policy", "sandbox allow-scripts allow-popups; default-src 'none'; script-src "+h+" 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:; style-src "+h+" 'unsafe-inline'; img-src "+h+" data: blob:; font-src "+h+" data:; media-src "+h+" blob:; worker-src "+h+" blob:; connect-src "+h+"/archivos/idea/germinacion/cursos/"+partes[2]+"/; frame-ancestors "+h+"; base-uri 'none'; form-action 'none'")
 		}
 		if r.URL.Path == "/escena.html" {
 			host := "http://" + r.Host
-			w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src "+host+"; style-src "+host+" 'unsafe-inline'; font-src "+host+" data:; img-src "+host+" data:; connect-src 'none'; base-uri 'none'; form-action 'none'")
+			w.Header().Set("Content-Security-Policy", "sandbox allow-scripts; default-src 'none'; script-src "+host+"; style-src "+host+" 'unsafe-inline'; font-src "+host+" data:; img-src "+host+" data:; connect-src 'none'; base-uri 'none'; form-action 'none'")
+		}
+		// Las copias internas (archivos/<nombre seguro>) solo se sirven por su ruta original, con sus cabeceras.
+		if strings.HasPrefix(r.URL.Path, "/archivos/") && !strings.HasPrefix(r.URL.Path, "/archivos/idea/") {
+			http.NotFound(w, r)
+			return
 		}
 		if destino, ok := manifiesto[ruta]; ok {
 			http.ServeFileFS(w, r, raiz, "archivos/"+destino)
