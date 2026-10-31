@@ -9,6 +9,8 @@
   import Verificacion from './Verificacion.svelte';
   import { crearAutoguardado } from '../lib/autoguardado.js';
   import Glosable from './Glosable.svelte';
+  import HojaGlosa from './HojaGlosa.svelte';
+  import VisorCurso from './VisorCurso.svelte';
   import Editor from './Editor.svelte';
   import Taller from './Taller.svelte';
   import { diferencias } from '../lib/diff.js';
@@ -19,6 +21,12 @@
   // `curso`: en los bancales de «Aprender algo nuevo», { estado, indice } de la redacción de esta asignatura.
   let { nodo, mapa, progreso, ref, base, glosas, desde, bloqueado = false, curso = null, alCerrar, alIrA, alCambiar, alAccionCurso = null } = $props();
   let leyendo = $state(null); // id de la conferencia, práctica o demostración abierta en el lector
+  // La web propia de la asignatura (índice versión 2): qué página está abierta y si es un borrador.
+  let enCurso = $state(null); // { pagina, borrador }
+  let carpetaCurso = $derived(`/archivos/${base}/germinacion/cursos/${nodo.id}/`);
+  const esWeb = (indice) => indice?.version === 2;
+  const paginaDe = (indice, id) => [...indice.conferencias, ...indice.practicas, ...indice.valientes].find((x) => x.id === id)?.pagina ?? 'index.html';
+  let glosasCurso = $derived(glosas && Object.assign(Object.create(glosas), { alFallar: (e) => avisar(e.message === 'cuota' ? 'La investigación está pausada por cuota: las glosas también esperan.' : `No se pudo glosar: ${e.message}`, 'error') }));
   // Una asignatura sin terminar se lee por sus borradores: un índice provisional con lo ya escrito.
   let borrador = $state(null); // archivo del borrador abierto
   let indiceBorrador = $derived.by(() => {
@@ -143,7 +151,7 @@
 
   // Escape cierra la lámina salvo que haya una glosa o un panel abiertos encima.
   function tecla(e) {
-    if (e.key !== 'Escape' || document.querySelector('aside.hoja, div.panel, .examen, .verificacion, .lector')) return;
+    if (e.key !== 'Escape' || document.querySelector('aside.hoja, div.panel, .examen, .verificacion, .lector, .visor-curso')) return;
     // Escape mientras se escribe no cierra la lámina (se perdería lo escrito en el taller).
     if (e.target.closest?.('textarea, input, [contenteditable="true"]')) return;
     if (comparando) comparando = null;
@@ -187,7 +195,8 @@
 
     {#if curso && nodo.tipo === 'estudio'}
       <ProgramaAsignatura {nodo} estado={curso.estado} indice={curso.indice} actividad={curso.actividad} borradores={curso.borradores ?? []}
-        alAbrirBorrador={(archivo) => (borrador = archivo)} alAbrir={(id) => (leyendo = id)} alAccion={alAccionCurso} />
+        alAbrirBorrador={(archivo) => (curso.borradores?.find((b) => b.archivo === archivo)?.web ? (enCurso = { pagina: archivo, borrador: true }) : (borrador = archivo))}
+        alEntrar={() => (enCurso = { pagina: 'index.html', borrador: false })} alAbrir={(id) => (esWeb(curso.indice) ? (enCurso = { pagina: paginaDe(curso.indice, id), borrador: false }) : (leyendo = id))} alAccion={alAccionCurso} />
     {/if}
 
     <div class="cuerpo" class:dividida={conTaller}>
@@ -296,7 +305,12 @@
     aviso="Borrador: esta asignatura aún se está redactando. Cuando termine, Semillero la revisará entera (índice, escenas y recursos) y esta versión puede cambiar."
     cargar={(rel) => api.documento(ref.carpetaId, ref.ideaId, rel)} alCerrar={() => (borrador = null)} />
 {/if}
-{#if leyendo && curso?.indice}
+{#if enCurso}
+  <VisorCurso {nodo} carpeta={carpetaCurso} pagina={enCurso.pagina} glosas={enCurso.borrador ? null : glosasCurso} {HojaGlosa} {base}
+    aviso={enCurso.borrador ? 'Borrador: esta asignatura aún se está creando. Cuando termine, Semillero revisará la web entera y esta versión puede cambiar.' : null}
+    alCerrar={() => (enCurso = null)} />
+{/if}
+{#if leyendo && curso?.indice && !esWeb(curso.indice)}
   <Lector {nodo} indice={curso.indice} inicial={leyendo} {base} {glosas} {Glosable}
     cargar={(rel) => api.documento(ref.carpetaId, ref.ideaId, rel)} alCerrar={() => (leyendo = null)} />
 {/if}

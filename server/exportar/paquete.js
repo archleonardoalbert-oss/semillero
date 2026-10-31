@@ -18,6 +18,7 @@ const sinBloques = (md) => String(md ?? '').replace(/```semillero-[a-z-]+[^\n]*\
 const RE_IMAGEN_PERMITIDA = /^(figuras|adjuntos|germinacion\/recursos)\/.+\.(png|jpe?g|gif|webp|svg|avif)$/i;
 const RE_RECURSO = /^germinacion\/recursos\/([a-z0-9-]+\/)?[^/\\]+$/;
 const RE_ESCENA = /^germinacion\/escenas\/[a-z0-9-]+\/[a-z0-9-]+\.js$/;
+const RE_WEB_CURSO = /^germinacion\/cursos\/[a-z0-9-]+\/[^\\]+$/;
 
 // Las imágenes que citan los textos, tal como las lee el renderizador (texto alternativo con corchetes,
 // rutas entre <> con espacios…). Las URL externas y absolutas no son archivos de la idea.
@@ -57,6 +58,7 @@ export async function prepararSitio({ cfg, ideas, carpetas, ref, destino, visor 
   // De redaccion.json (sesiones, intentos) no sale nada.
   const indices = {};
   const escenas = new Set();
+  const cursos = new Set();
   // Solo las asignaturas que la redacción dio por buenas: nada a medio escribir ni rechazado.
   const redaccion = JSON.parse(await fs.readFile(path.join(dirIdea, 'germinacion/redaccion.json'), 'utf8').catch(() => '{}'));
   for (const n of mapa.nodos.filter((x) => x.tipo === 'estudio' && redaccion.nodos?.[x.id]?.estado === 'lista')) {
@@ -68,6 +70,15 @@ export async function prepararSitio({ cfg, ideas, carpetas, ref, destino, visor 
     }
     if (!v.ok) continue;
     indices[n.id] = v.indice;
+    // Formato web: la web entera de la asignatura viaja tal cual.
+    if (v.indice.version === 2) {
+      const dirWeb = path.join(dirIdea, 'germinacion/cursos', n.id);
+      for (const f of await fs.readdir(dirWeb, { recursive: true }).catch(() => [])) {
+        const rel = `germinacion/cursos/${n.id}/${f.split(path.sep).join('/')}`;
+        if ((await fs.stat(path.join(dirIdea, rel)).catch(() => null))?.isFile()) cursos.add(rel);
+      }
+      continue;
+    }
     for (const doc of documentosDe(v.indice)) {
       documentos[doc] = sinBloques(await fs.readFile(path.join(dirIdea, 'germinacion', doc), 'utf8').catch(() => ''));
       for (const e of escenasDe(documentos[doc], n.id).validas) escenas.add(`germinacion/${e.archivo}`);
@@ -126,6 +137,7 @@ export async function prepararSitio({ cfg, ideas, carpetas, ref, destino, visor 
     if (rel && RE_RECURSO.test(rel)) rutas.add(rel);
   }
   for (const e of escenas) if (RE_ESCENA.test(e)) rutas.add(e);
+  for (const c of cursos) if (RE_WEB_CURSO.test(c) && !c.split('/').includes('..')) rutas.add(c);
 
   // Cada archivo se embebe con un nombre seguro (go:embed rechaza muchos nombres: «aux», apóstrofos, rayas…);
   // archivos.json dice qué ruta original corresponde a cada uno y el lanzador la traduce al servirla.

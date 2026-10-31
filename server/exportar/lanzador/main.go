@@ -75,8 +75,13 @@ func servir(raiz fs.FS) http.Handler {
 		ruta := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/"), "archivos/idea/")
 		// Las escenas de los cursos corren en un iframe aislado (origen opaco): necesitan CORS para cargar el
 		// código del visor y sus módulos, y nada más. Su reproductor no puede conectarse a ningún sitio.
-		if strings.HasPrefix(r.URL.Path, "/assets/") || strings.HasPrefix(ruta, "germinacion/escenas/") {
+		if strings.HasPrefix(r.URL.Path, "/assets/") || r.URL.Path == "/semillero-puente.js" || strings.HasPrefix(ruta, "germinacion/escenas/") || strings.HasPrefix(ruta, "germinacion/cursos/") {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+		// La web propia de una asignatura: siempre aislada, como en Semillero.
+		if partes := strings.SplitN(ruta, "/", 4); len(partes) == 4 && partes[0] == "germinacion" && partes[1] == "cursos" {
+			h := "http://" + r.Host
+			w.Header().Set("Content-Security-Policy", "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; default-src 'none'; script-src "+h+" 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:; style-src "+h+" 'unsafe-inline'; img-src "+h+" data: blob:; font-src "+h+" data:; media-src "+h+" blob:; worker-src "+h+" blob:; connect-src "+h+"/archivos/idea/germinacion/cursos/"+partes[2]+"/; frame-ancestors "+h+"; base-uri 'none'; form-action 'none'")
 		}
 		if r.URL.Path == "/escena.html" {
 			host := "http://" + r.Host

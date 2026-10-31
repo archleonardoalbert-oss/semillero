@@ -4,12 +4,17 @@
   import { renderizar } from '../lib/render.js';
   import ProgramaAsignatura from '../componentes/ProgramaAsignatura.svelte';
   import Lector from '../componentes/Lector.svelte';
+  import VisorCurso from '../componentes/VisorCurso.svelte';
 
   // La lámina de un nodo en una germinación exportada: solo lectura. El documento, lo que requiere y abre,
   // y los recursos con su archivo embebido. Sin estados, notas, taller ni registros.
   // `indice` y `documentos`: en un curso, la asignatura redactada (conferencias, prácticas, demostraciones).
   let { nodo, mapa, documento, base, desde, indice = null, documentos = {}, alCerrar, alIrA } = $props();
   let leyendo = $state(null);
+  // Formato web: la asignatura es una web propia, que se abre a pantalla completa (aquí sin glosas).
+  let enCurso = $state(null);
+  const esWeb = $derived(indice?.version === 2);
+  const paginaDe = (id) => [...indice.conferencias, ...indice.practicas, ...indice.valientes].find((x) => x.id === id)?.pagina ?? 'index.html';
 
   const vocabActual = getContext('vocab') ?? (() => undefined);
   let vocab = $derived(vocabActual() ?? { hoja: 'Incógnita', fruto: 'Problema abierto' });
@@ -31,7 +36,7 @@
   function cerrarse(_n, { x, y }) {
     return { duration: 380, easing: cubicIn, css: (t) => `clip-path: circle(${t * 150}% at ${x}px ${y}px)` };
   }
-  const tecla = (e) => e.key === 'Escape' && !document.querySelector('.lectura, .lector') && alCerrar();
+  const tecla = (e) => e.key === 'Escape' && !document.querySelector('.lectura, .lector, .visor-curso') && alCerrar();
 </script>
 
 <svelte:window onkeydown={tecla} />
@@ -56,7 +61,7 @@
     </header>
 
     {#if indice}
-      <ProgramaAsignatura {nodo} {indice} alAbrir={(id) => (leyendo = id)} />
+      <ProgramaAsignatura {nodo} {indice} alAbrir={(id) => (esWeb ? (enCurso = paginaDe(id)) : (leyendo = id))} alEntrar={() => (enCurso = 'index.html')} />
     {/if}
 
     <div class="cuerpo">
@@ -110,7 +115,10 @@
   </div>
 </div>
 
-{#if leyendo && indice}
+{#if enCurso}
+  <VisorCurso {nodo} carpeta="/archivos/{base}/germinacion/cursos/{nodo.id}/" pagina={enCurso} alCerrar={() => (enCurso = null)} />
+{/if}
+{#if leyendo && indice && !esWeb}
   <Lector {nodo} {indice} inicial={leyendo} {base}
     cargar={async (rel) => documentos[rel.replace(/^germinacion\//, '')] ?? Promise.reject(new Error('sin documento'))} alCerrar={() => (leyendo = null)} />
 {/if}

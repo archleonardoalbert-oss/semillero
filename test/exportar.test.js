@@ -344,3 +344,36 @@ test('R4: solo se exportan las asignaturas que la redacción dio por listas', as
   assert.deepEqual(Object.keys(d.indices), ['e1']);
   assert.equal(d.documentos['nodos/e2/c01.md'], undefined);
 });
+
+test('una asignatura en formato web se exporta entera y el ejecutable la sirve aislada', { timeout: 240000 }, async () => {
+  const x = await germinada();
+  const g = path.join(x.dir, 'germinacion');
+  await fs.mkdir(path.join(g, 'cursos/e1/motores'), { recursive: true });
+  await fs.mkdir(path.join(g, 'nodos/e1'), { recursive: true });
+  await fs.writeFile(path.join(g, 'cursos/e1/index.html'), '<!doctype html><title>Portada</title><main>Portada</main>');
+  await fs.writeFile(path.join(g, 'cursos/e1/c01-intro.html'), '<!doctype html><title>C1</title><main>C1</main>');
+  await fs.writeFile(path.join(g, 'cursos/e1/motores/campo.js'), 'export {}');
+  await fs.writeFile(path.join(g, 'nodos/e1/indice.json'), JSON.stringify({ version: 2, conferencias: [{ id: 'c01-intro', titulo: 'Intro', pagina: 'c01-intro.html' }] }));
+  await fs.writeFile(path.join(g, 'redaccion.json'), JSON.stringify({ nodos: { e1: { estado: 'lista' } } }));
+  const s = await sitioDe(x);
+  const d = JSON.parse(await fs.readFile(path.join(s, 'datos.json'), 'utf8'));
+  assert.equal(d.indices.e1.version, 2);
+  const m = JSON.parse(await fs.readFile(path.join(s, 'archivos.json'), 'utf8'));
+  for (const k of ['germinacion/cursos/e1/index.html', 'germinacion/cursos/e1/c01-intro.html', 'germinacion/cursos/e1/motores/campo.js']) assert.ok(m[k], k);
+  await fs.writeFile(path.join(s, 'index.html'), 'visor');
+  const salida = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'semillero-bin-')), 'visor');
+  await compilar({ sitio: s, so: 'linux', salida });
+  const puerto = 20000 + Math.floor(Math.random() * 20000);
+  const p = spawn(salida, ['-sin-navegador', '-puerto', String(puerto)]);
+  try {
+    const url = `http://127.0.0.1:${puerto}`;
+    let r;
+    for (let k = 0; k < 50 && !r; k++) r = await fetch(`${url}/archivos/idea/germinacion/cursos/e1/c01-intro.html`).catch(() => new Promise((ok) => setTimeout(ok, 100)));
+    assert.match(r.headers.get('content-security-policy') ?? '', /sandbox allow-scripts/);
+    assert.match(r.headers.get('content-type') ?? '', /text\/html/);
+    const js = await fetch(`${url}/archivos/idea/germinacion/cursos/e1/motores/campo.js`);
+    assert.equal(js.headers.get('access-control-allow-origin'), '*');
+  } finally {
+    p.kill();
+  }
+});

@@ -5,7 +5,8 @@
   // `alAccion(accion)` con 'comenzar' | 'pausar' | 'continuar'; sin ella (visor exportado) no hay mandos.
   // `actividad`: lo que hace ahora la sesión que la redacta (solo mientras está en marcha).
   // `borradores`: lo ya escrito de una asignatura sin terminar ({ archivo, clase, documento }); `alAbrirBorrador(archivo)`.
-  let { nodo, estado = null, indice = null, actividad = null, borradores = [], alAbrir, alAccion = null, alAbrirBorrador = null } = $props();
+  // `alEntrar`: abre la web propia de la asignatura (índice versión 2) por su portada.
+  let { nodo, estado = null, indice = null, actividad = null, borradores = [], alAbrir, alAccion = null, alAbrirBorrador = null, alEntrar = null } = $props();
 
   // Cada conferencia del plan con su borrador (c01-…, c02-… en el orden del plan) y en qué punto está.
   let enCurso = $derived(estado?.estado === 'redactando' ? actividad?.documentoActual : null);
@@ -16,6 +17,7 @@
   }));
   // Lo escrito que no es una conferencia del plan: prácticas, demostraciones o conferencias añadidas.
   let otros = $derived(borradores.filter((b) => !prevista.some((c) => c.borrador?.archivo === b.archivo)));
+  const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
   const NOMBRE = { conferencia: 'Conferencia', practica: 'Clase práctica', valiente: 'Demostración para valientes' };
   const legible = (archivo) => archivo.replace(/\.md$/, '').replace(/^[cpv]\d+-?/, '').replace(/-/g, ' ');
   const cifra = (n) => (n >= 1e6 ? `${(n / 1e6).toLocaleString('es', { maximumFractionDigits: 1 })} M` : n >= 1e3 ? `${Math.round(n / 1e3).toLocaleString('es')} k` : String(n ?? 0));
@@ -41,6 +43,12 @@
 
 <section class="programa">
   {#if indice}
+    {#if indice.version === 2 && alEntrar}
+      <button class="entrar" onclick={alEntrar}>
+        <span class="t-entrar">Entrar en el curso</span>
+        <span class="s-entrar">Una web hecha solo para «{nodo.titulo}»: {plural(indice.conferencias.length, 'conferencia', 'conferencias')}{indice.practicas.length ? `, ${plural(indice.practicas.length, 'clase práctica', 'clases prácticas')}` : ''}{indice.valientes.length ? ` y ${plural(indice.valientes.length, 'demostración para valientes', 'demostraciones para valientes')}` : ''}</span>
+      </button>
+    {/if}
     {#if estado?.tokens}<p class="consumo">Redactarla consumió {cifra(estado.tokens.generados)} tokens generados y {cifra(estado.tokens.leidos)} leídos.</p>{/if}
     <h2>Conferencias</h2>
     <ol class="lista">
@@ -221,6 +229,33 @@
     .prevista .escribiendo .hueco {
       animation: none;
     }
+  }
+  .entrar {
+    display: grid;
+    gap: 0.25rem;
+    width: 100%;
+    max-width: 44rem;
+    margin: 0 0 1.6rem;
+    padding: 1.1rem 1.4rem;
+    border: 1px solid var(--aceptada);
+    border-radius: var(--radio-s);
+    background: linear-gradient(120deg, rgb(111 227 165 / 0.12), transparent 70%), var(--humus-hondo);
+    color: var(--liquen);
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .entrar:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgb(111 227 165 / 0.15);
+  }
+  .t-entrar {
+    font-family: var(--serif);
+    font-size: var(--t3);
+  }
+  .s-entrar {
+    color: var(--liquen-tenue);
+    font-size: var(--t-1);
   }
   .en-vivo {
     margin: 0 0 1.4rem;

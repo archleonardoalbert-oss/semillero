@@ -1,4 +1,5 @@
 <script>
+  import { untrack } from 'svelte';
   import { fade } from 'svelte/transition';
   import PanelGlosa from './PanelGlosa.svelte';
 
@@ -10,10 +11,13 @@
 
   let marco = $state();
   let titulo = $state('');
-  let documento = $state(`germinacion/cursos/${nodo.id}/${pagina}`);
+  // La página la decide el puente al cargar; hasta entonces, la pedida.
+  let documentoCargado = $state(null);
+  let documento = $derived(documentoCargado ?? `germinacion/cursos/${nodo.id}/${pagina}`);
   let panel = $state(null); // { x, y, vistaPrevia, fragmento, ancla }
   let abierta = $state(null);
-  const src = `${carpeta}${pagina}`;
+  // Solo la página inicial: después navega la propia web (y el puente avisa de dónde está).
+  const src = untrack(() => `${carpeta}${pagina}`);
 
   const aDocumento = (ruta) => decodeURIComponent(String(ruta ?? '')).replace(/^.*?\/germinacion\//, 'germinacion/');
 
@@ -22,14 +26,14 @@
     const m = ev.data ?? {};
     if (m.tipo === 'semillero-pagina') {
       titulo = String(m.titulo ?? '');
-      documento = aDocumento(m.pagina);
+      documentoCargado = aDocumento(m.pagina);
       panel = null;
       enviarGlosas();
     } else if (m.tipo === 'semillero-seleccion' && glosas) {
       const r = marco.getBoundingClientRect();
       const md = String(m.fragmento?.markdown ?? '');
       panel = {
-        x: Math.min(innerWidth - 340, Math.max(12, r.left + Number(m.rect?.x ?? 0) - 160)),
+        x: Math.min(innerWidth - 180, Math.max(180, r.left + Number(m.rect?.x ?? 0))),
         y: Math.min(innerHeight - 220, r.top + Number(m.rect?.y ?? 0) + 10),
         vistaPrevia: md.length > 220 ? `${md.slice(0, 220)}…` : md,
         fragmento: m.fragmento,
@@ -89,12 +93,15 @@
   <iframe bind:this={marco} {src} title="Curso: {nodo.titulo}" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"></iframe>
 </div>
 
-{#if panel}
-  <PanelGlosa x={panel.x} y={panel.y} vistaPrevia={panel.vistaPrevia} puedeCorregir={true} alEnviar={enviar} alCerrar={() => (panel = null)} />
-{/if}
-{#if glosaAbierta && HojaGlosa}
-  <HojaGlosa glosa={glosaAbierta} {glosas} {base} alCerrar={() => (abierta = null)} />
-{/if}
+<!-- Las glosas van en una capa por encima del curso (que ocupa toda la pantalla). -->
+<div class="capa-glosas">
+  {#if panel}
+    <PanelGlosa x={panel.x} y={panel.y} vistaPrevia={panel.vistaPrevia} puedeCorregir={true} alEnviar={enviar} alCerrar={() => (panel = null)} />
+  {/if}
+  {#if glosaAbierta && HojaGlosa}
+    <HojaGlosa glosa={glosaAbierta} {glosas} {base} alCerrar={() => (abierta = null)} />
+  {/if}
+</div>
 
 <style>
   .visor-curso {
@@ -154,6 +161,15 @@
     color: var(--proceso);
     font-size: 0.72rem;
     cursor: help;
+  }
+  .capa-glosas {
+    position: fixed;
+    inset: 0;
+    z-index: 47;
+    pointer-events: none;
+  }
+  .capa-glosas > :global(*) {
+    pointer-events: auto;
   }
   iframe {
     flex: 1;
