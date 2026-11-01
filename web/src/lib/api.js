@@ -32,9 +32,12 @@ export const api = {
   idea: (c, i) => pedir('GET', idea(c, i)),
   editarIdea: (c, i, datos) => pedir('PATCH', idea(c, i), datos),
   borrarIdea: (c, i) => pedir('DELETE', idea(c, i)),
-  responder: (c, i, cuerpo) => pedir('POST', `${idea(c, i)}/replica`, { cuerpo }),
-  subirAdjunto: (c, i, archivo) =>
-    pedir('POST', `${idea(c, i)}/adjuntos?nombre=${encodeURIComponent(archivo.name || 'imagen.png')}`, archivo),
+  responder: (c, i, cuerpo, adjuntos = []) => pedir('POST', `${idea(c, i)}/replica`, { cuerpo, adjuntos }),
+  // Cualquier archivo (se manda como octet-stream). `mensaje: 1`: va con la idea original.
+  subirAdjunto: (c, i, archivo, { mensaje = null } = {}) =>
+    pedir('POST', `${idea(c, i)}/adjuntos?nombre=${encodeURIComponent(archivo.name || 'imagen.png')}${mensaje ? `&mensaje=${mensaje}` : ''}`, archivo,
+      { tipo: archivo.type?.startsWith('image/') ? archivo.type : 'application/octet-stream' }),
+  quitarAdjunto: (c, i, ruta) => pedir('DELETE', `${idea(c, i)}/adjuntos?ruta=${encodeURIComponent(ruta)}`),
   registros: (c, i) => pedir('GET', `${idea(c, i)}/registros`),
   registro: (c, i, a) => pedir('GET', `${idea(c, i)}/registros/${encodeURIComponent(a)}`),
   glosas: (c, i) => pedir('GET', `${idea(c, i)}/glosas`),

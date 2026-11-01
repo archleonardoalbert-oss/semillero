@@ -40,12 +40,31 @@
   const tieneNotas = $derived(notas.replace(/^# .*\n/, '').trim().length > 0);
   const fecha = (iso) => new Date(iso).toLocaleDateString('es', { day: 'numeric', month: 'short' });
 
+  // Archivos para la idea nueva: se suben con ella al crearla (van unidos a la idea original).
+  let archivos = $state([]);
+  let encima = $state(false);
+  let subidos = $state(0);
+  function anadir(lista) {
+    const nuevos = [...lista].filter((f) => !archivos.some((a) => a.name === f.name && a.size === f.size));
+    if (!nuevos.length) return;
+    archivos = [...archivos, ...nuevos];
+    if (!titulo.trim()) titulo = nuevos[0].name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 140);
+  }
+  const peso = (b) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`);
+
   async function nueva(ev) {
     ev.preventDefault();
     if (!titulo.trim()) return;
     creando = true;
     try {
       const i = await api.crearIdea(carpetaId, { titulo, cuerpo: '' });
+      subidos = 0;
+      for (const a of archivos) {
+        await api.subirAdjunto(carpetaId, i.id, a, { mensaje: 1 }).catch((e) =>
+          avisar(e.codigo === 413 ? `«${a.name}» es demasiado grande (máximo 200 MB).` : `No se pudo adjuntar «${a.name}»: ${e.message}`, 'error'));
+        subidos++;
+      }
+      archivos = [];
       refrescar();
       ir(enlace.idea(carpetaId, i.id));
     } catch (e) {
@@ -112,9 +131,29 @@
       </div>
     {/if}
 
-    <form class="sembrar" onsubmit={nueva}>
-      <input class="campo" bind:value={titulo} placeholder="Título de una idea nueva" maxlength="140" />
-      <button class="boton primario" disabled={!titulo.trim() || creando}>Escribir idea</button>
+    <form class="sembrar" class:encima onsubmit={nueva} ondragover={(e) => (e.preventDefault(), (encima = true))}
+      ondragleave={() => (encima = false)} ondrop={(e) => (e.preventDefault(), (encima = false), anadir(e.dataTransfer?.files ?? []))}>
+      <div class="fila">
+        <input class="campo" bind:value={titulo} placeholder="Título de una idea nueva" maxlength="140" />
+        <label class="clip" title="Adjuntar documentos, imágenes, vídeos… (o suéltalos aquí)">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M13.5 6.5 7.8 12.2a1.6 1.6 0 0 0 2.3 2.3l6-6a3.2 3.2 0 0 0-4.5-4.5l-6 6a4.8 4.8 0 0 0 6.8 6.8l5-5" /></svg>
+          <span class="solo-lector">Adjuntar archivos</span>
+          <input type="file" multiple onchange={(e) => (anadir(e.currentTarget.files), (e.currentTarget.value = ''))} />
+        </label>
+        <button class="boton primario" disabled={!titulo.trim() || creando}>
+          {creando && archivos.length ? `Subiendo ${subidos + 1} de ${archivos.length}…` : 'Escribir idea'}
+        </button>
+      </div>
+      {#if archivos.length}
+        <ul class="pendientes">
+          {#each archivos as a, k (a.name + a.size)}
+            <li class:grande={a.size > 200 * 1024 * 1024}>
+              <span class="p-nombre">{a.name}</span><span class="p-peso">{peso(a.size)}</span>
+              {#if !creando}<button type="button" aria-label="Quitar {a.name}" onclick={() => (archivos = archivos.filter((_, j) => j !== k))}>×</button>{/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
     </form>
 
     {#if ideas?.length}
@@ -220,9 +259,95 @@
     font-size: var(--t-1);
   }
   .sembrar {
+    margin: 2.2rem 0 1.4rem;
+    padding: 0.4rem;
+    border: 1px dashed transparent;
+    border-radius: 12px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .sembrar.encima {
+    border-color: var(--tu);
+    background: var(--tu-velo);
+  }
+  .fila {
     display: flex;
     gap: 0.8rem;
-    margin: 2.2rem 0 1.4rem;
+  }
+  .fila .campo {
+    flex: 1;
+  }
+  .clip {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    border: 1px solid var(--linea);
+    border-radius: 999px;
+    color: var(--liquen-tenue);
+    cursor: pointer;
+  }
+  .clip:hover,
+  .clip:focus-within {
+    border-color: var(--linea-viva);
+    color: var(--liquen);
+  }
+  .clip svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+  }
+  .clip input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .solo-lector {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .pendientes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.6rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .pendientes li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.3rem 0.2rem 0.6rem;
+    border: 1px solid var(--linea-viva);
+    border-radius: 8px;
+    font-size: 0.78rem;
+  }
+  .pendientes li.grande {
+    border-color: var(--rechazada, #e66);
+  }
+  .p-nombre {
+    max-width: 16rem;
+    overflow: hidden;
+    color: var(--tu);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .p-peso {
+    color: var(--liquen-apagado);
+    white-space: nowrap;
+  }
+  .pendientes button {
+    border: 0;
+    background: none;
+    color: var(--liquen-tenue);
+    cursor: pointer;
   }
   .ideas {
     margin: 0;

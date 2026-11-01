@@ -13,6 +13,7 @@
   import { crearAutoguardado } from '../lib/autoguardado.js';
   import { crearGlosas } from '../lib/glosas.svelte.js';
   import Glosable from '../componentes/Glosable.svelte';
+  import Adjuntos from '../componentes/Adjuntos.svelte';
   import Brote from '../componentes/Brote.svelte';
   import AntesDeGerminar from '../componentes/AntesDeGerminar.svelte';
   import Germinacion from './Germinacion.svelte';
@@ -29,6 +30,7 @@
   let titulo = $state('');
   let replica = $state('');
   let versionReplica = $state(0);
+  let adjuntosReplica = $state([]); // fichas subidas que irán con la réplica al guardarla
   let enviando = $state(false);
   let registros = $state([]);
   let repaso = $state(null);
@@ -165,12 +167,25 @@
     return ruta;
   }
 
+  // Adjuntos de la idea original: se suben unidos a ella; quitar uno lo borra.
+  async function cambiarAdjuntosOriginal(lista) {
+    const antes = idea.hilo[0].adjuntos ?? [];
+    const quitado = antes.find((a) => !lista.some((x) => x.ruta === a.ruta));
+    try {
+      idea = quitado ? await api.quitarAdjunto(carpetaId, ideaId, quitado.ruta) : await api.idea(carpetaId, ideaId);
+      refrescar();
+    } catch (e) {
+      avisar(`No se pudo quitar el adjunto: ${e.message}`, 'error');
+    }
+  }
+
   async function enviarReplica() {
-    if (!replica.trim()) return;
+    if (!replica.trim() && !adjuntosReplica.length) return;
     enviando = true;
     try {
-      idea = await api.responder(carpetaId, ideaId, replica);
+      idea = await api.responder(carpetaId, ideaId, replica, adjuntosReplica.map((a) => a.ruta));
       replica = '';
+      adjuntosReplica = [];
       versionReplica++;
       refrescar();
       avisar('Réplica guardada. Se enviará a la misma sesión en el próximo análisis.');
@@ -236,8 +251,11 @@
           {#if m.n === 1}
             <Editor valor={m.contenido} {base} soloLectura={enProceso} alCambiar={alEditarOriginal} alSubirImagen={subir}
               autofoco={!m.contenido} marcador="Describe tu idea con todo el detalle que puedas: qué es, por qué se te ocurrió, cómo crees que funcionaría…" />
+            <Adjuntos rutas={m.adjuntos ?? []} {base} deshabilitado={enProceso} acepta="" etiqueta="Adjuntar archivos"
+              alSubir={(a) => api.subirAdjunto(carpetaId, ideaId, a, { mensaje: 1 })} alCambiar={cambiarAdjuntosOriginal} />
           {:else}
             <Glosable html={renderizar(m.contenido, base)} documento="hilo/{m.archivo}" autor="usuario" {glosas} {base} bloqueado={enProceso} />
+            {#if m.adjuntos?.length}<Adjuntos rutas={m.adjuntos} {base} deshabilitado={true} alSubir={() => {}} alCambiar={() => {}} />{/if}
             {#if m === replicaPendiente && !enProceso && !germina}
               <p class="espera">Pendiente de análisis: se enviará a la sesión al pulsar «Comenzar Análisis».</p>
             {/if}
@@ -263,8 +281,10 @@
           <Editor valor="" {base} alCambiar={(md) => (replica = md)} alSubirImagen={subir}
             marcador="Cuestiona el veredicto, aporta datos nuevos o pide que profundice en algo…" />
         {/key}
+        <Adjuntos rutas={adjuntosReplica} {base} acepta="" etiqueta="Adjuntar archivos"
+          alSubir={(a) => api.subirAdjunto(carpetaId, ideaId, a)} alCambiar={(l) => (adjuntosReplica = l)} />
         <div class="acciones">
-          <button class="boton" disabled={!replica.trim() || enviando} onclick={enviarReplica}>Guardar réplica</button>
+          <button class="boton" disabled={(!replica.trim() && !adjuntosReplica.length) || enviando} onclick={enviarReplica}>Guardar réplica</button>
         </div>
       </section>
     {/if}

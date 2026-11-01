@@ -2,8 +2,12 @@
   import { avisar } from '../lib/estado.svelte.js';
 
   // Lista de adjuntos (imágenes o documentos) con botón para añadir, también arrastrando o pegando.
-  // `alSubir(archivo)` devuelve la ruta guardada; `alCambiar(rutas)` recibe la lista nueva.
-  let { rutas = [], base, alSubir, alCambiar, deshabilitado = false, acepta = 'image/*,.pdf,.txt,.md,.py,.ipynb,.tex' } = $props();
+  // `alSubir(archivo)` devuelve la ruta guardada (o su ficha: { ruta, nombre, aviso }); `alCambiar(lista)` recibe
+  // la lista nueva. `acepta` vacío: cualquier archivo.
+  let {
+    rutas = [], base, alSubir, alCambiar, deshabilitado = false, acepta = 'image/*,.pdf,.txt,.md,.py,.ipynb,.tex',
+    etiqueta = 'Adjuntar imagen o documento', admitidos = 'imágenes o documentos (PDF, txt, md, py, ipynb, tex)',
+  } = $props();
 
   let subiendo = $state(0);
   let encima = $state(false);
@@ -16,7 +20,7 @@
         lista = [...lista, await alSubir(a)];
         alCambiar(lista);
       } catch (e) {
-        avisar(e.message === 'extension-invalida' ? `No se admite «${a.name}»: imágenes o documentos (PDF, txt, md, py, ipynb, tex).` : `No se pudo adjuntar: ${e.message}`, 'error');
+        avisar(e.codigo === 413 ? `«${a.name}» es demasiado grande.` : e.message === 'extension-invalida' ? `No se admite «${a.name}»: ${admitidos}.` : `No se pudo adjuntar «${a.name}»: ${e.message}`, 'error');
       } finally {
         subiendo--;
       }
@@ -28,24 +32,27 @@
     encima = false;
     if (!deshabilitado) subir([...(e.dataTransfer?.files ?? [])]);
   }
-  const nombre = (r) => r.split('/').at(-1);
-  const imagen = (r) => /\.(png|jpe?g|gif|webp)$/i.test(r);
+  const ruta = (x) => (typeof x === 'string' ? x : x.ruta);
+  const nombre = (x) => (typeof x === 'string' ? x : x.nombre ?? x.ruta).split('/').at(-1);
+  const imagen = (x) => /\.(png|jpe?g|gif|webp)$/i.test(ruta(x));
+  const aviso = (x) => (typeof x === 'string' ? null : x.aviso);
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="adjuntos" class:encima ondragover={(e) => (e.preventDefault(), (encima = true))} ondragleave={() => (encima = false)} ondrop={soltar}>
-  {#each rutas as r, k (r)}
-    <span class="adjunto">
-      {#if imagen(r)}<img src="/archivos/{base}/{r}" alt="" />{/if}
-      <a href="/archivos/{base}/{r}" target="_blank" rel="noopener">{nombre(r)}</a>
+  {#each rutas as r, k (ruta(r))}
+    <span class="adjunto" class:con-aviso={aviso(r)} title={aviso(r)}>
+      {#if imagen(r)}<img src="/archivos/{base}/{ruta(r)}" alt="" />{/if}
+      <a href="/archivos/{base}/{ruta(r)}" target="_blank" rel="noopener">{nombre(r)}</a>
+      {#if aviso(r)}<span class="marca" aria-label={aviso(r)}>!</span>{/if}
       {#if !deshabilitado}<button aria-label="Quitar {nombre(r)}" onclick={() => alCambiar(rutas.filter((_, j) => j !== k))}>×</button>{/if}
     </span>
   {/each}
   {#if subiendo}<span class="subiendo">Subiendo…</span>{/if}
   {#if !deshabilitado}
     <label class="anadir">
-      Adjuntar imagen o documento
-      <input type="file" multiple accept={acepta} onchange={(e) => (subir([...e.currentTarget.files]), (e.currentTarget.value = ''))} />
+      {etiqueta}
+      <input type="file" multiple accept={acepta || undefined} onchange={(e) => (subir([...e.currentTarget.files]), (e.currentTarget.value = ''))} />
     </label>
   {/if}
 </div>
@@ -79,6 +86,21 @@
     height: 2rem;
     object-fit: cover;
     border-radius: 4px;
+  }
+  .adjunto.con-aviso {
+    border-color: var(--proceso);
+  }
+  .marca {
+    display: inline-grid;
+    place-items: center;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: var(--proceso);
+    color: var(--humus-hondo);
+    font-size: 0.66rem;
+    font-weight: 700;
+    cursor: help;
   }
   .adjunto a {
     color: var(--tu);
