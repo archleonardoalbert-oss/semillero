@@ -71,7 +71,7 @@ export function cabecerasCurso(host, carpetaCurso) {
 }
 
 const ESTADO_HTTP = {
-  'ruta-invalida': 400, 'extension-invalida': 400, 'nombre-vacio': 400, 'titulo-vacio': 400, 'refs-invalidos': 400,
+  'ruta-invalida': 400, 'replica-vacia': 400, 'extension-invalida': 400, 'nombre-vacio': 400, 'titulo-vacio': 400, 'refs-invalidos': 400,
   'tipo-invalido': 400, 'documento-invalido': 400, 'prompt-vacio': 400, 'fragmento-vacio': 400,
   'carpeta-no-existe': 404, 'idea-no-existe': 404, 'registro-no-existe': 404, 'glosa-no-existe': 404, cuota: 409,
   'carpeta-no-vacia': 409, 'sin-dictamen': 409, 'en-proceso': 409, 'no-aceptada': 409, 'no-germinable': 409, 'no-disponible': 409,
@@ -202,7 +202,7 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     return reply.code(204).send();
   });
   app.post('/api/carpetas/:c/ideas/:i/replica', async (req) => {
-    await ideas.responder(req.params.c, req.params.i, String(req.body?.cuerpo ?? ''));
+    await ideas.responder(req.params.c, req.params.i, String(req.body?.cuerpo ?? ''), req.body?.adjuntos ?? []);
     return ideas.obtener(req.params.c, req.params.i);
   });
   app.post('/api/carpetas/:c/ideas/:i/camino', async (req) => {
@@ -210,10 +210,15 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     await ideas.elegirCamino(req.params.c, req.params.i, { dictamen: String(dictamen ?? ''), camino: String(camino ?? ''), comentario });
     return ideas.obtener(req.params.c, req.params.i);
   });
-  app.post('/api/carpetas/:c/ideas/:i/adjuntos', async (req, reply) => {
+  // Cualquier archivo, hasta el límite (200 MB salvo otra configuración). `mensaje=1`: va con la idea original.
+  app.post('/api/carpetas/:c/ideas/:i/adjuntos', { bodyLimit: cfg.limiteAdjunto ?? 200 * 1024 * 1024 }, async (req, reply) => {
     if (!Buffer.isBuffer(req.body)) throw new Error('extension-invalida');
-    const ruta = await ideas.guardarAdjunto(req.params.c, req.params.i, String(req.query.nombre ?? ''), req.body);
-    return reply.code(201).send({ ruta });
+    const ficha = await ideas.adjuntar(req.params.c, req.params.i, String(req.query.nombre ?? ''), req.body, { mensaje: req.query.mensaje === '1' ? 1 : null });
+    return reply.code(201).send(ficha);
+  });
+  app.delete('/api/carpetas/:c/ideas/:i/adjuntos', async (req) => {
+    await ideas.quitarAdjunto(req.params.c, req.params.i, String(req.query.ruta ?? ''));
+    return ideas.obtener(req.params.c, req.params.i);
   });
 
   app.get('/api/carpetas/:c/ideas/:i/registros', async (req) => {
@@ -444,6 +449,8 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     if (!st?.isFile()) return reply.code(404).send({ error: 'no-existe' });
     const ext = path.extname(ruta).slice(1).toLowerCase();
     reply.header('cache-control', 'no-cache');
+    // Un adjunto cualquiera (p. ej. un .html bajado de internet) nunca se interpreta como página.
+    reply.header('x-content-type-options', 'nosniff');
     if (ext === 'svg') reply.header('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'");
     const curso = rel.match(RE_CURSO);
     if (curso) {

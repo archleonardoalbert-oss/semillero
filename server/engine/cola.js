@@ -207,6 +207,7 @@ export function crearCola({ cfg, ideas, carpetas, ajustes, guard, germinacion = 
         tipo, idea, carpeta, rutaIdea,
         archivoDestino: `${rutaIdea}/hilo/${a.archivoDestino}`,
         replica: ultimo?.autor === 'usuario' && ultimo.n > 1 ? ultimo.contenido : '',
+        adjuntosReplica: ultimo?.autor === 'usuario' && ultimo.n > 1 ? ultimo.adjuntos : [],
       }),
     };
   }

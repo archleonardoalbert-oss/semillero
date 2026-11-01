@@ -125,12 +125,27 @@ export function promptSistema(tipo = TIPO_POR_DEFECTO) {
 // Tras una pausa, la sesión ve sus herramientas cortadas como «interrumpidas por el usuario»: hay que aclararlo.
 export const NOTA_INTERRUPCION = 'La interrupción fue una pausa de la ejecución (por la cuota de Claude, una parada o porque el usuario la pausó para seguir más tarde), no un rechazo de lo que estabas haciendo: si alguna herramienta aparece como interrumpida o rechazada por el usuario, no lo es; repítela si la necesitas.';
 
-export function mensajeEjecucion({ tipo, idea, carpeta, rutaIdea, archivoDestino, replica }) {
+// La lista de adjuntos de un mensaje del usuario, con la versión legible de cada uno y sus avisos.
+function bloqueAdjuntos(adjuntos, rutaIdea, titulo) {
+  if (!adjuntos?.length) return [];
+  return [
+    '', `${titulo} (léelos todos con Read antes de opinar; son parte de lo que dice el usuario):`,
+    ...adjuntos.map((a) => {
+      const lectura = a.lectura?.length ? `: léelo en ${a.lectura.map((l) => `${rutaIdea}/${l}`).join(', ')}` : '';
+      return `- «${a.nombre}» → ${rutaIdea}/${a.ruta}${lectura}${a.aviso ? ` (${a.aviso})` : ''}`;
+    }),
+    '',
+  ];
+}
+
+export function mensajeEjecucion({ tipo, idea, carpeta, rutaIdea, archivoDestino, replica, adjuntosReplica = [] }) {
+  const original = idea.hilo?.find((m) => m.n === 1)?.adjuntos ?? [];
   const cierre = `Escribe tu dictamen en ${archivoDestino}`;
   if (tipo === 'inicial') {
     return [
       `Analiza la idea «${idea.titulo}» de la carpeta «${carpeta.nombre}».`,
-      `Está en ${rutaIdea}: lee ${rutaIdea}/hilo/001-usuario.md y, si hay, las imágenes de ${rutaIdea}/adjuntos/.`,
+      `Está en ${rutaIdea}: lee ${rutaIdea}/hilo/001-usuario.md y las imágenes que enlace.`,
+      ...bloqueAdjuntos(original, rutaIdea, 'El usuario adjuntó a su idea estos archivos'),
       'Sigue el protocolo: filtro, investigación profunda si pasa, y dictamen con el frontmatter exacto.',
       cierre,
     ].join('\n');
@@ -141,10 +156,12 @@ export function mensajeEjecucion({ tipo, idea, carpeta, rutaIdea, archivoDestino
       idea.editadaTrasDictamen
         ? `Además, el usuario modificó la idea original: vuelve a leer ${rutaIdea}/hilo/001-usuario.md.`
         : '',
+      ...(idea.editadaTrasDictamen ? bloqueAdjuntos(original, rutaIdea, 'Los adjuntos de la idea original ahora son') : []),
       ...(idea.enmendados ?? []).map((a) => `Ojo: ${a} fue enmendado tras una corrección; reléelo (${rutaIdea}/${a}) antes de responder.`),
       'Su respuesta:',
       '',
       replica ?? '',
+      ...bloqueAdjuntos(adjuntosReplica, rutaIdea, 'Con su respuesta adjuntó'),
       '',
       'Continúa el análisis con todo el contexto: responde a lo que pide o cuestiona, investiga lo que haga falta y emite un dictamen nuevo y completo (puedes cambiar el veredicto si hay motivos).',
       cierre,
@@ -154,7 +171,7 @@ export function mensajeEjecucion({ tipo, idea, carpeta, rutaIdea, archivoDestino
     `Tu ejecución sobre «${idea.titulo}» se interrumpió (pausa por cuota, parada o un fallo). Sigue en ${rutaIdea}.`,
     NOTA_INTERRUPCION,
     'Revisa lo que ya hiciste y continúa donde la dejaste, sin repetir búsquedas innecesarias.',
-    ...(replica ? ['', 'Ten en cuenta la respuesta del usuario a la que estabas contestando:', '', replica, ''] : []),
+    ...(replica || adjuntosReplica.length ? ['', 'Ten en cuenta la respuesta del usuario a la que estabas contestando:', '', replica ?? '', ...bloqueAdjuntos(adjuntosReplica, rutaIdea, 'Con su respuesta adjuntó'), ''] : []),
     cierre,
   ].join('\n');
 }

@@ -102,10 +102,13 @@ test('editar el original en borrador no cambia el estado', async () => {
   assert.equal(i.hilo[0].contenido, 'z');
 });
 
-test('guardarAdjunto rechaza extensiones fuera de la lista', async () => {
+test('se admite cualquier archivo; lo que la sesión no puede leer queda con aviso', async () => {
   const { ideas } = await preparar();
   await ideas.crear('ia', { titulo: 'X', cuerpo: 'y' });
-  await assert.rejects(ideas.guardarAdjunto('ia', 'x', 'a.exe', Buffer.from('x')), /extension-invalida/);
+  const f = await ideas.adjuntar('ia', 'x', 'a.exe', Buffer.from([0x4d, 0x5a, 0, 0, 0xff]));
+  assert.equal(f.ruta, 'adjuntos/a.exe');
+  assert.equal(f.tipo, 'ilegible');
+  assert.ok(f.aviso);
 });
 
 test('guardarAdjunto sanea el nombre y queda dentro de adjuntos', async () => {

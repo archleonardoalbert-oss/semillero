@@ -3,9 +3,9 @@ import path from 'node:path';
 import { slugify, slugUnico, escribirAtomico, escribirJSON, leerJSON } from './fsutil.js';
 import { crearAlmacenCarpetas } from './carpetas.js';
 import { parsearDictamen } from '../engine/veredicto.js';
+import { prepararLectura } from '../adjuntos/lectura.js';
 
 export const ESTADOS_PENDIENTES = new Set(['borrador', 'replica-pendiente', 'detenida', 'error']);
-const EXTENSIONES = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']);
 const RE_MENSAJE = /^(\d{3})-(usuario|claude)\.md$/;
 
 export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: protegerOpcion } = {}) {
@@ -27,6 +27,7 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
   }
 
   async function mensajes(c, i) {
+    const idea = await leerJSON(path.join(dirIdea(c, i), 'idea.json'), null);
     const dir = path.join(dirIdea(c, i), 'hilo');
     const archivos = (await fs.readdir(dir).catch(() => [])).filter((a) => RE_MENSAJE.test(a)).sort();
     return Promise.all(
@@ -34,6 +35,7 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
         const [, n, autor] = archivo.match(RE_MENSAJE);
         const contenido = await fs.readFile(path.join(dir, archivo), 'utf8');
         const m = { n: Number(n), autor, archivo, contenido };
+        if (autor === 'usuario') m.adjuntos = (idea?.adjuntos ?? []).filter((a) => a.mensaje === Number(n));
         if (autor === 'claude') {
           const p = parsearDictamen(contenido);
           m.meta = p?.meta ?? null;
@@ -121,8 +123,13 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
     return `${String(await numeroSiguiente(c, i)).padStart(3, '0')}-claude.md`;
   }
 
-  async function responder(c, i, cuerpo) {
+  async function responder(c, i, cuerpo, adjuntos = []) {
     const ms = await mensajes(c, i);
+    // Solo adjuntos ya subidos a esta idea y aún sin mensaje.
+    const fichas = (await leerIdea(c, i)).adjuntos ?? [];
+    const rutas = [...new Set((Array.isArray(adjuntos) ? adjuntos : []).map(String))];
+    if (rutas.some((r) => !fichas.some((f) => f.ruta === r && f.mensaje === null))) throw new Error('ruta-invalida');
+    if (!String(cuerpo).trim() && !rutas.length) throw new Error('replica-vacia');
     if (!ms.some((m) => m.autor === 'claude')) throw new Error('sin-dictamen');
     const idea = await leerIdea(c, i);
     if (idea.estado === 'en-proceso') throw new Error('en-proceso');
@@ -131,9 +138,10 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
     const archivo = ultimo.autor === 'usuario' && ultimo.n > 1
       ? ultimo.archivo
       : `${String(ultimo.n + 1).padStart(3, '0')}-usuario.md`;
-    const texto = ultimo.autor === 'usuario' && ultimo.n > 1 ? `${ultimo.contenido}\n\n${cuerpo}` : cuerpo;
+    const texto = ultimo.autor === 'usuario' && ultimo.n > 1 ? [ultimo.contenido, cuerpo].filter((t) => t.trim()).join('\n\n') : cuerpo;
     await proteger([rel(c, i, 'hilo', archivo)], () => escribirAtomico(path.join(dirIdea(c, i), 'hilo', archivo), texto));
-    return actualizar(c, i, { estado: 'replica-pendiente' });
+    const n = Number(archivo.slice(0, 3));
+    return actualizar(c, i, { estado: 'replica-pendiente', adjuntos: fichas.map((f) => (rutas.includes(f.ruta) ? { ...f, mensaje: n } : f)) });
   }
 
   async function pendientes() {
@@ -150,24 +158,54 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
     return grupos;
   }
 
-  async function guardarAdjunto(c, i, nombre, buffer) {
-    await leerIdea(c, i);
-    const base = path.basename(String(nombre ?? ''));
-    const ext = path.extname(base).slice(1).toLowerCase();
-    if (!EXTENSIONES.has(ext)) throw new Error('extension-invalida');
+  // Cualquier archivo: se guarda tal cual en adjuntos/ y, si una sesión no puede leerlo, se prepara su versión
+  // legible en adjuntos/lectura/. Con `mensaje` queda unido a ese mensaje del hilo (1 = la idea original);
+  // sin él espera a que una réplica lo lleve. Devuelve su ficha.
+  async function adjuntar(c, i, nombre, buffer, { mensaje = null } = {}) {
+    const idea = await leerIdea(c, i);
+    if (mensaje !== null && mensaje !== 1) throw new Error('ruta-invalida');
+    if (mensaje === 1 && idea.estado === 'en-proceso') throw new Error('en-proceso');
+    const base = path.basename(String(nombre ?? '')).trim();
+    if (!base) throw new Error('nombre-vacio');
+    const m = base.match(/^(.*?)(?:\.([A-Za-z0-9]{1,10}))?$/);
+    const ext = (m[2] ?? '').toLowerCase();
+    let raiz = slugify(m[1] || 'archivo') || 'archivo';
+    if (raiz === 'lectura') raiz = 'lectura-archivo';
     const dir = path.join(dirIdea(c, i), 'adjuntos');
     await fs.mkdir(dir, { recursive: true });
-    const raiz = slugify(path.basename(base, path.extname(base)));
-    const archivo = await proteger(
-      (a) => [rel(c, i, 'adjuntos', a)],
+    const ficha = await proteger(
+      (f) => [rel(c, i, f.ruta), ...f.lectura.map((l) => rel(c, i, l))],
       async () => {
-        let a = `${raiz}.${ext}`;
-        for (let n = 2; await fs.access(path.join(dir, a)).then(() => true, () => false); n++) a = `${raiz}-${n}.${ext}`;
+        let a = ext ? `${raiz}.${ext}` : raiz;
+        for (let n = 2; await fs.access(path.join(dir, a)).then(() => true, () => false); n++) a = ext ? `${raiz}-${n}.${ext}` : `${raiz}-${n}`;
         await escribirAtomico(path.join(dir, a), buffer);
-        return a;
+        const l = await prepararLectura(path.join(dir, a), path.join(dir, 'lectura'));
+        return { ruta: `adjuntos/${a}`, nombre: base, tamano: buffer.length, tipo: l.tipo, lectura: l.lectura.map((x) => `adjuntos/${x}`), aviso: l.aviso, mensaje };
       },
     );
-    return `adjuntos/${archivo}`;
+    const parche = { adjuntos: [...((await leerIdea(c, i)).adjuntos ?? []), ficha] };
+    // Adjuntar a la idea original tras un dictamen es como editarla: la sesión debe volver a leerla.
+    if (mensaje === 1 && (await tieneDictamen(c, i))) Object.assign(parche, { estado: 'replica-pendiente', editadaTrasDictamen: true });
+    await actualizar(c, i, parche);
+    return ficha;
+  }
+
+  // Compatibilidad: las imágenes pegadas en el editor solo necesitan su ruta.
+  async function guardarAdjunto(c, i, nombre, buffer) {
+    return (await adjuntar(c, i, nombre, buffer)).ruta;
+  }
+
+  // Quita un adjunto de la idea original (o uno aún sin enviar) y borra el archivo y su versión legible.
+  async function quitarAdjunto(c, i, ruta) {
+    const idea = await leerIdea(c, i);
+    if (idea.estado === 'en-proceso') throw new Error('en-proceso');
+    const ficha = (idea.adjuntos ?? []).find((a) => a.ruta === ruta);
+    if (!ficha || (ficha.mensaje !== null && ficha.mensaje !== 1)) throw new Error('ruta-invalida');
+    const archivos = [ficha.ruta, ...ficha.lectura];
+    await proteger(archivos.map((a) => rel(c, i, a)), async () => {
+      for (const a of archivos) await fs.rm(path.join(dirIdea(c, i), a), { force: true });
+    });
+    return actualizar(c, i, { adjuntos: idea.adjuntos.filter((a) => a !== ficha && a.ruta !== ruta) });
   }
 
   // Bloque que marca, dentro de una réplica, qué camino eligió el usuario (se puede quitar sin tocar su texto).
@@ -246,7 +284,7 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
 
   return {
     crear, obtener, listar, actualizar, editarOriginal, responder, siguienteArchivo,
-    numeroSiguiente, pendientes, guardarAdjunto, borrar, mensajes, elegirCamino,
+    numeroSiguiente, pendientes, guardarAdjunto, adjuntar, quitarAdjunto, borrar, mensajes, elegirCamino,
     dirIdea, relIdea: (c, i) => rel(c, i),
   };
 }
