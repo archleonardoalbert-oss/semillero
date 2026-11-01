@@ -34,7 +34,7 @@ async function esTexto(ruta) {
 
 // Prepara la versión que una sesión de Claude puede leer de un adjunto. Devuelve
 // { tipo: 'directo' | 'convertido' | 'ilegible', lectura: [rutas relativas a la carpeta de adjuntos], aviso }.
-export async function prepararLectura(ruta, dirLectura, { tiempo = 120000 } = {}) {
+export async function prepararLectura(ruta, dirLectura, { tiempo = 120000, tiempoFotograma = 30000 } = {}) {
   const nombre = path.basename(ruta);
   const ext = nombre.includes('.') ? nombre.split('.').pop().toLowerCase() : '';
   const rel = (f) => `${path.basename(dirLectura)}/${f}`;
@@ -47,13 +47,13 @@ export async function prepararLectura(ruta, dirLectura, { tiempo = 120000 } = {}
     }
     if (VIDEO.has(ext)) {
       await fs.mkdir(dirLectura, { recursive: true });
-      const { stdout } = await ejecutarArchivo('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', ruta], { timeout: tiempo });
+      const { stdout } = await ejecutarArchivo('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', ruta], { timeout: tiempoFotograma });
       const duracion = Number.parseFloat(stdout) || 0;
       const lectura = [];
       for (let k = 0; k < FOTOGRAMAS; k++) {
         const f = `${nombre}-${String(k + 1).padStart(2, '0')}.jpg`;
         const t = duracion ? (duracion * (k + 0.5)) / FOTOGRAMAS : k;
-        await ejecutarArchivo('ffmpeg', ['-v', 'error', '-y', '-ss', t.toFixed(2), '-i', ruta, '-frames:v', '1', '-vf', 'scale=min(1280\\,iw):-2', path.join(dirLectura, f)], { timeout: tiempo }).catch(() => {});
+        await ejecutarArchivo('ffmpeg', ['-v', 'error', '-y', '-ss', t.toFixed(2), '-i', ruta, '-frames:v', '1', '-vf', 'scale=min(1280\\,iw):-2', path.join(dirLectura, f)], { timeout: tiempoFotograma }).catch(() => {});
         if (await fs.stat(path.join(dirLectura, f)).then((s) => s.size > 0, () => false)) lectura.push(rel(f));
       }
       if (!lectura.length) throw new Error('sin fotogramas');

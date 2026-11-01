@@ -3,22 +3,22 @@
 
   // Lista de adjuntos (imágenes o documentos) con botón para añadir, también arrastrando o pegando.
   // `alSubir(archivo)` devuelve la ruta guardada (o su ficha: { ruta, nombre, aviso }); `alCambiar(lista)` recibe
-  // la lista nueva. `acepta` vacío: cualquier archivo.
+  // la lista nueva, siempre construida sobre la actual (aunque haya varias subidas en marcha). Con `alQuitar(item)`
+  // la × lo quita por su cuenta en vez de con alCambiar. `subiendo` (bindable): cuántas subidas hay en marcha.
+  // `acepta` vacío: cualquier archivo.
   let {
-    rutas = [], base, alSubir, alCambiar, deshabilitado = false, acepta = 'image/*,.pdf,.txt,.md,.py,.ipynb,.tex',
-    etiqueta = 'Adjuntar imagen o documento', admitidos = 'imágenes o documentos (PDF, txt, md, py, ipynb, tex)',
+    rutas = [], base, alSubir, alCambiar, alQuitar = null, deshabilitado = false, acepta = 'image/*,.pdf,.txt,.md,.py,.ipynb,.tex',
+    etiqueta = 'Adjuntar imagen o documento', admitidos = 'imágenes o documentos (PDF, txt, md, py, ipynb, tex)', subiendo = $bindable(0),
   } = $props();
 
-  let subiendo = $state(0);
   let encima = $state(false);
 
   async function subir(archivos) {
-    let lista = [...rutas];
     for (const a of archivos) {
       subiendo++;
       try {
-        lista = [...lista, await alSubir(a)];
-        alCambiar(lista);
+        const nuevo = await alSubir(a);
+        alCambiar([...rutas, nuevo]);
       } catch (e) {
         avisar(e.codigo === 413 ? `«${a.name}» es demasiado grande.` : e.message === 'extension-invalida' ? `No se admite «${a.name}»: ${admitidos}.` : `No se pudo adjuntar «${a.name}»: ${e.message}`, 'error');
       } finally {
@@ -45,7 +45,7 @@
       {#if imagen(r)}<img src="/archivos/{base}/{ruta(r)}" alt="" />{/if}
       <a href="/archivos/{base}/{ruta(r)}" target="_blank" rel="noopener">{nombre(r)}</a>
       {#if aviso(r)}<span class="marca" aria-label={aviso(r)}>!</span>{/if}
-      {#if !deshabilitado}<button aria-label="Quitar {nombre(r)}" onclick={() => alCambiar(rutas.filter((_, j) => j !== k))}>×</button>{/if}
+      {#if !deshabilitado}<button aria-label="Quitar {nombre(r)}" onclick={() => (alQuitar ? alQuitar(r) : alCambiar(rutas.filter((_, j) => j !== k)))}>×</button>{/if}
     </span>
   {/each}
   {#if subiendo}<span class="subiendo">Subiendo…</span>{/if}

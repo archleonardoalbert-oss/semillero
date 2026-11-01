@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { slugify, slugUnico, escribirAtomico, escribirJSON, leerJSON } from './fsutil.js';
 import { crearAlmacenCarpetas } from './carpetas.js';
@@ -8,7 +9,7 @@ import { prepararLectura } from '../adjuntos/lectura.js';
 export const ESTADOS_PENDIENTES = new Set(['borrador', 'replica-pendiente', 'detenida', 'error']);
 const RE_MENSAJE = /^(\d{3})-(usuario|claude)\.md$/;
 
-export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: protegerOpcion } = {}) {
+export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: protegerOpcion, lectura: prepararLecturaDe = prepararLectura } = {}) {
   const carpetas = crearAlmacenCarpetas(cfg);
   // Cada escritura del usuario va con su commit en una sola operación (ver guard.proteger).
   const proteger = protegerOpcion ?? (async (rutas, fn) => {
@@ -51,9 +52,11 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
     await escribirJSON(path.join(dirIdea(idea.carpetaId, idea.id), 'idea.json'), idea);
   }
 
+  // `parche` puede ser una función de la idea actual: así se lee y se escribe dentro del mismo turno del guard.
   function actualizar(c, i, parche) {
     return proteger([rel(c, i, 'idea.json')], async () => {
-      const idea = { ...(await leerIdea(c, i)), ...parche, id: i, carpetaId: c, actualizada: new Date().toISOString() };
+      const actual = await leerIdea(c, i);
+      const idea = { ...actual, ...(typeof parche === 'function' ? parche(actual) : parche), id: i, carpetaId: c, actualizada: new Date().toISOString() };
       await guardarIdea(idea);
       return idea;
     });
@@ -141,7 +144,7 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
     const texto = ultimo.autor === 'usuario' && ultimo.n > 1 ? [ultimo.contenido, cuerpo].filter((t) => t.trim()).join('\n\n') : cuerpo;
     await proteger([rel(c, i, 'hilo', archivo)], () => escribirAtomico(path.join(dirIdea(c, i), 'hilo', archivo), texto));
     const n = Number(archivo.slice(0, 3));
-    return actualizar(c, i, { estado: 'replica-pendiente', adjuntos: fichas.map((f) => (rutas.includes(f.ruta) ? { ...f, mensaje: n } : f)) });
+    return actualizar(c, i, (actual) => ({ estado: 'replica-pendiente', adjuntos: (actual.adjuntos ?? []).map((f) => (rutas.includes(f.ruta) ? { ...f, mensaje: n } : f)) }));
   }
 
   async function pendientes() {
@@ -161,6 +164,9 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
   // Cualquier archivo: se guarda tal cual en adjuntos/ y, si una sesión no puede leerlo, se prepara su versión
   // legible en adjuntos/lectura/. Con `mensaje` queda unido a ese mensaje del hilo (1 = la idea original);
   // sin él espera a que una réplica lo lleve. Devuelve su ficha.
+  // La conversión (que puede tardar minutos con un vídeo) se hace fuera de los datos y sin el candado del guard;
+  // solo copiar el resultado y apuntarlo en idea.json van dentro, en un único turno.
+  const reservados = new Set(); // nombres elegidos por subidas que aún se están convirtiendo
   async function adjuntar(c, i, nombre, buffer, { mensaje = null } = {}) {
     const idea = await leerIdea(c, i);
     if (mensaje !== null && mensaje !== 1) throw new Error('ruta-invalida');
@@ -168,26 +174,39 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
     const base = path.basename(String(nombre ?? '')).trim();
     if (!base) throw new Error('nombre-vacio');
     const m = base.match(/^(.*?)(?:\.([A-Za-z0-9]{1,10}))?$/);
-    const ext = (m[2] ?? '').toLowerCase();
+    let ext = (m[2] ?? '').toLowerCase();
     let raiz = slugify(m[1] || 'archivo') || 'archivo';
-    if (raiz === 'lectura') raiz = 'lectura-archivo';
+    // .tmp lo ignora el git de los datos; «lectura» y «registro» son nombres de carpeta reservados.
+    if (ext === 'tmp') [raiz, ext] = [`${raiz}-tmp`, ''];
+    if (!ext && ['lectura', 'registro'].includes(raiz)) raiz = `${raiz}-archivo`;
     const dir = path.join(dirIdea(c, i), 'adjuntos');
-    await fs.mkdir(dir, { recursive: true });
-    const ficha = await proteger(
-      (f) => [rel(c, i, f.ruta), ...f.lectura.map((l) => rel(c, i, l))],
-      async () => {
-        let a = ext ? `${raiz}.${ext}` : raiz;
-        for (let n = 2; await fs.access(path.join(dir, a)).then(() => true, () => false); n++) a = ext ? `${raiz}-${n}.${ext}` : `${raiz}-${n}`;
-        await escribirAtomico(path.join(dir, a), buffer);
-        const l = await prepararLectura(path.join(dir, a), path.join(dir, 'lectura'));
-        return { ruta: `adjuntos/${a}`, nombre: base, tamano: buffer.length, tipo: l.tipo, lectura: l.lectura.map((x) => `adjuntos/${x}`), aviso: l.aviso, mensaje };
-      },
-    );
-    const parche = { adjuntos: [...((await leerIdea(c, i)).adjuntos ?? []), ficha] };
-    // Adjuntar a la idea original tras un dictamen es como editarla: la sesión debe volver a leerla.
-    if (mensaje === 1 && (await tieneDictamen(c, i))) Object.assign(parche, { estado: 'replica-pendiente', editadaTrasDictamen: true });
-    await actualizar(c, i, parche);
-    return ficha;
+    const libre = async (a) => !reservados.has(path.join(dir, a)) && !(await fs.access(path.join(dir, a)).then(() => true, () => false));
+    let a = ext ? `${raiz}.${ext}` : raiz;
+    for (let n = 2; !(await libre(a)); n++) a = ext ? `${raiz}-${n}.${ext}` : `${raiz}-${n}`;
+    reservados.add(path.join(dir, a));
+    const temporal = await fs.mkdtemp(path.join(os.tmpdir(), 'semillero-adjunto-'));
+    try {
+      await fs.writeFile(path.join(temporal, a), buffer);
+      const l = await prepararLecturaDe(path.join(temporal, a), path.join(temporal, 'lectura'));
+      const ficha = { ruta: `adjuntos/${a}`, nombre: base, tamano: buffer.length, tipo: l.tipo, lectura: l.lectura.map((x) => `adjuntos/${x}`), aviso: l.aviso, mensaje };
+      const archivos = [ficha.ruta, ...ficha.lectura];
+      await proteger([...archivos.map((x) => rel(c, i, x)), rel(c, i, 'idea.json')], async () => {
+        for (const x of archivos) {
+          const destino = path.join(dirIdea(c, i), x);
+          await fs.mkdir(path.dirname(destino), { recursive: true });
+          await fs.copyFile(path.join(temporal, x.replace(/^adjuntos\//, '')), destino);
+        }
+        const actual = await leerIdea(c, i);
+        const parche = { adjuntos: [...(actual.adjuntos ?? []), ficha] };
+        // Adjuntar a la idea original tras un dictamen es como editarla: la sesión debe volver a leerla.
+        if (mensaje === 1 && (await tieneDictamen(c, i))) Object.assign(parche, { estado: 'replica-pendiente', editadaTrasDictamen: true });
+        await guardarIdea({ ...actual, ...parche, actualizada: new Date().toISOString() });
+      });
+      return ficha;
+    } finally {
+      reservados.delete(path.join(dir, a));
+      await fs.rm(temporal, { recursive: true, force: true });
+    }
   }
 
   // Compatibilidad: las imágenes pegadas en el editor solo necesitan su ruta.
@@ -196,17 +215,23 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
   }
 
   // Quita un adjunto de la idea original (o uno aún sin enviar) y borra el archivo y su versión legible.
+  // Quitarlo de una idea ya dictaminada es como editarla: queda pendiente de reanálisis.
   async function quitarAdjunto(c, i, ruta) {
-    const idea = await leerIdea(c, i);
-    if (idea.estado === 'en-proceso') throw new Error('en-proceso');
-    const ficha = (idea.adjuntos ?? []).find((a) => a.ruta === ruta);
+    const previa = await leerIdea(c, i);
+    if (previa.estado === 'en-proceso') throw new Error('en-proceso');
+    const ficha = (previa.adjuntos ?? []).find((a) => a.ruta === ruta);
     if (!ficha || (ficha.mensaje !== null && ficha.mensaje !== 1)) throw new Error('ruta-invalida');
     const archivos = [ficha.ruta, ...ficha.lectura];
-    await proteger(archivos.map((a) => rel(c, i, a)), async () => {
+    await proteger([...archivos.map((a) => rel(c, i, a)), rel(c, i, 'idea.json')], async () => {
       for (const a of archivos) await fs.rm(path.join(dirIdea(c, i), a), { force: true });
+      const actual = await leerIdea(c, i);
+      const parche = { adjuntos: (actual.adjuntos ?? []).filter((a) => a.ruta !== ruta) };
+      if (ficha.mensaje === 1 && (await tieneDictamen(c, i))) Object.assign(parche, { estado: 'replica-pendiente', editadaTrasDictamen: true });
+      await guardarIdea({ ...actual, ...parche, actualizada: new Date().toISOString() });
     });
-    return actualizar(c, i, { adjuntos: idea.adjuntos.filter((a) => a !== ficha && a.ruta !== ruta) });
+    return leerIdea(c, i);
   }
+
 
   // Bloque que marca, dentro de una réplica, qué camino eligió el usuario (se puede quitar sin tocar su texto).
   const RE_ELECCION = /<!-- camino:[a-z0-9-]+ -->[\s\S]*?<!-- \/camino -->\n*/;
@@ -216,9 +241,12 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
     `<!-- camino:${cam.id} -->\n**Elijo el camino «${neutro(cam.titulo)}»**, la variación que propusiste en tu dictamen.` +
     `${comentario ? `\n\n${neutro(comentario)}` : ''}\n<!-- /camino -->\n\n`;
 
+  // Una réplica sin texto se borra, salvo que lleve adjuntos (entonces sigue siendo una réplica).
+  const conAdjuntos = (idea, archivo) => (idea.adjuntos ?? []).some((a) => a.mensaje === Number(archivo.slice(0, 3)));
   async function escribirReplica(c, i, archivo, texto) {
     const ruta = path.join(dirIdea(c, i), 'hilo', archivo);
-    await proteger([rel(c, i, 'hilo', archivo)], () => (texto.trim() ? escribirAtomico(ruta, texto) : fs.rm(ruta, { force: true })));
+    const queda = texto.trim() || conAdjuntos(await leerIdea(c, i), archivo);
+    await proteger([rel(c, i, 'hilo', archivo)], () => (queda ? escribirAtomico(ruta, texto) : fs.rm(ruta, { force: true })));
   }
 
   // Elegir (o desmarcar) uno de los caminos que propone el último dictamen.
@@ -263,7 +291,7 @@ export function crearAlmacenIdeas(cfg, { alEscribir = async () => {}, proteger: 
     if (misma) {
       await escribirReplica(c, i, archivo, resto);
       // Sigue pendiente si queda texto en la réplica o una edición de la idea sin analizar.
-      const pendienteAun = resto.trim() || idea.editadaTrasDictamen;
+      const pendienteAun = resto.trim() || conAdjuntos(idea, archivo) || idea.editadaTrasDictamen;
       return actualizar(c, i, { eleccion: null, estado: pendienteAun ? 'replica-pendiente' : (idea.veredicto ?? ultimo.meta?.veredicto ?? idea.estado) });
     }
     await escribirReplica(c, i, archivo, bloqueEleccion(cam, nota) + resto);

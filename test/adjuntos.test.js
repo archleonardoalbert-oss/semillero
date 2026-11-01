@@ -151,3 +151,87 @@ test('un adjunto HTML se descarga, nunca se abre como página de Semillero', asy
   assert.equal(r.headers['content-type'], 'application/octet-stream');
   assert.equal(r.headers['x-content-type-options'], 'nosniff');
 });
+
+// ---------------------------------------------------------------------------------------------------------
+// Con el candado en serie del guard real (cada escritura espera a la anterior).
+import { crearAlmacenCarpetas } from '../server/store/carpetas.js';
+import { crearAlmacenIdeas } from '../server/store/ideas.js';
+async function almacen({ lectura } = {}) {
+  const cfg = await cfgTemporal();
+  await crearAlmacenCarpetas(cfg).crear({ nombre: 'IA' });
+  let cadena = Promise.resolve();
+  const proteger = (rutas, fn) => {
+    const r = cadena.then(fn);
+    cadena = r.catch(() => {});
+    return r;
+  };
+  const ideas = crearAlmacenIdeas(cfg, { proteger, ...(lectura && { lectura }) });
+  await ideas.crear('ia', { titulo: 'X', cuerpo: 'y' });
+  return { cfg, ideas };
+}
+const DICTAMEN = '---\nveredicto: aceptada\n---\nBien';
+
+test('dos subidas a la vez se guardan las dos en la lista de la idea', async () => {
+  let soltar;
+  const lenta = new Promise((r) => (soltar = r));
+  const { ideas } = await almacen({ lectura: async (ruta) => (ruta.endsWith('.mp4') ? (await lenta, { tipo: 'directo', lectura: [], aviso: null }) : { tipo: 'directo', lectura: [], aviso: null }) });
+  const a = ideas.adjuntar('ia', 'x', 'video.mp4', Buffer.from('v'), { mensaje: 1 });
+  await new Promise((r) => setTimeout(r, 30));
+  const b = ideas.adjuntar('ia', 'x', 'foto.png', Buffer.from('p'));
+  await new Promise((r) => setTimeout(r, 30));
+  soltar();
+  await Promise.all([a, b]);
+  const lista = (await ideas.obtener('ia', 'x')).adjuntos.map((f) => f.ruta).sort();
+  assert.deepEqual(lista, ['adjuntos/foto.png', 'adjuntos/video.mp4']);
+});
+
+test('una conversión lenta no bloquea el resto de escrituras', async () => {
+  let soltar;
+  const lenta = new Promise((r) => (soltar = r));
+  const { ideas } = await almacen({ lectura: async () => (await lenta, { tipo: 'directo', lectura: [], aviso: null }) });
+  const a = ideas.adjuntar('ia', 'x', 'video.mp4', Buffer.from('v'), { mensaje: 1 });
+  await new Promise((r) => setTimeout(r, 30));
+  const editar = ideas.editarOriginal('ia', 'x', { cuerpo: 'texto nuevo' });
+  const gana = await Promise.race([editar.then(() => 'editado'), new Promise((r) => setTimeout(() => r('bloqueado'), 500))]);
+  soltar();
+  await a;
+  assert.equal(gana, 'editado');
+});
+
+test('archivos .tmp y nombres reservados se guardan con un nombre que se puede servir y commitear', async () => {
+  const { ideas } = await almacen();
+  assert.doesNotMatch((await ideas.adjuntar('ia', 'x', 'notas.tmp', Buffer.from('t'))).ruta, /\.tmp$/);
+  assert.notEqual((await ideas.adjuntar('ia', 'x', 'registro', Buffer.from('r'))).ruta, 'adjuntos/registro');
+});
+
+test('quitar un adjunto de la idea ya dictaminada la deja pendiente de reanálisis', async () => {
+  const { cfg, ideas } = await almacen();
+  const f = await ideas.adjuntar('ia', 'x', 'a.pdf', Buffer.from('%PDF'), { mensaje: 1 });
+  await fs.writeFile(path.join(cfg.datos, 'carpetas/ia/ideas/x/hilo/002-claude.md'), DICTAMEN);
+  await ideas.actualizar('ia', 'x', { estado: 'aceptada', editadaTrasDictamen: false });
+  const idea = await ideas.quitarAdjunto('ia', 'x', f.ruta);
+  assert.equal(idea.estado, 'replica-pendiente');
+  assert.equal(idea.editadaTrasDictamen, true);
+});
+
+test('una réplica solo con adjuntos sobrevive a elegir y desmarcar un camino', async () => {
+  const { cfg, ideas } = await almacen();
+  await fs.writeFile(path.join(cfg.datos, 'carpetas/ia/ideas/x/hilo/002-claude.md'), '---\nveredicto: cambios\netapa: 2\nresumen: Bien\n---\n\nBien\n\n```semillero-caminos\n[{"id":"a","tipo":"variacion","titulo":"A","descripcion":"d"}]\n```\n');
+  await ideas.actualizar('ia', 'x', { estado: 'cambios', veredicto: 'cambios' });
+  const f = await ideas.adjuntar('ia', 'x', 'datos.csv', Buffer.from('a,b'));
+  await ideas.responder('ia', 'x', '', [f.ruta]);
+  await ideas.elegirCamino('ia', 'x', { dictamen: '002-claude.md', camino: 'a' });
+  const idea = await ideas.elegirCamino('ia', 'x', { dictamen: '002-claude.md', camino: 'a' });
+  assert.equal(idea.estado, 'replica-pendiente');
+  const replica = (await ideas.obtener('ia', 'x')).hilo.find((m) => m.n === 3);
+  assert.deepEqual(replica?.adjuntos.map((a) => a.ruta), ['adjuntos/datos.csv']);
+});
+
+test('un documento cuyo XML descomprimido es enorme se rechaza sin agotar la memoria', { timeout: 60000 }, async () => {
+  const d = await tmp();
+  execFileSync('python3', ['-I', '-c', `import sys,zipfile\nz=zipfile.ZipFile(sys.argv[1],'w',zipfile.ZIP_DEFLATED)\nz.writestr('word/document.xml','<w:document xmlns:w="w"><w:body>'+'<w:t/>'*12000000+'</w:body></w:document>')`, path.join(d, 'bomba.docx')]);
+  const t0 = Date.now();
+  const r = await prepararLectura(path.join(d, 'bomba.docx'), path.join(d, 'lectura'));
+  assert.equal(r.tipo, 'ilegible');
+  assert.ok(Date.now() - t0 < 20000);
+});

@@ -5,12 +5,15 @@ Formatos: docx, pptx, xlsx, odt, odp, ods, epub, rtf y la lista de contenido de 
 """
 import html
 import re
+import resource
 import sys
 import zipfile
 import posixpath
 import xml.etree.ElementTree as ET
 
 MAX_DESCOMPRIMIDO = 300 * 1024 * 1024  # contra ZIP bomba
+MAX_XML = 40 * 1024 * 1024  # una parte XML mayor crearía millones de nodos en memoria
+MAX_MEMORIA = 1536 * 1024 * 1024
 MAX_SALIDA = 4 * 1024 * 1024
 
 
@@ -26,6 +29,8 @@ def leer(z, nombre):
 
 
 def xml(z, nombre):
+    if z.getinfo(nombre).file_size > MAX_XML:
+        raise ValueError('parte XML demasiado grande')
     return ET.fromstring(leer(z, nombre))
 
 
@@ -186,7 +191,7 @@ def epub(z):
     partes = []
     for i in orden:
         ruta = posixpath.normpath(posixpath.join(base, items.get(i, '')))
-        if ruta in z.namelist():
+        if ruta in z.namelist() and z.getinfo(ruta).file_size <= MAX_XML:
             partes.append(html_a_texto(leer(z, ruta)))
     return '\n\n'.join(partes)
 
@@ -227,6 +232,8 @@ def convertir(archivo):
 
 
 if __name__ == '__main__':
+    # Tope de memoria: un documento malicioso no puede llevarse la RAM del portátil.
+    resource.setrlimit(resource.RLIMIT_AS, (MAX_MEMORIA, MAX_MEMORIA))
     archivo, salida = sys.argv[1], sys.argv[2]
     texto = convertir(archivo)
     if len(texto) > MAX_SALIDA:
