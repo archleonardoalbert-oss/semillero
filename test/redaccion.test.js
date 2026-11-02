@@ -530,3 +530,86 @@ test('una asignatura empezada en el formato antiguo se retoma en su sesión con 
   assert.match(x.llamadas[0].mensaje, /formato nuevo/);
   assert.match(x.llamadas[0].mensaje, /material de partida/);
 });
+
+// Pase de estética: una asignatura terminada se rediseña en su misma sesión sin tocar el contenido.
+async function terminadaConWeb() {
+  const x = await curso({ paralelo: 1 });
+  await x.escribir('e1');
+  await x.guard.commitear([path.relative(x.cfg.datos, x.dir)], 'asignatura terminada');
+  await fs.writeFile(path.join(x.dir, 'germinacion/redaccion.json'), JSON.stringify({ iniciada: true, nodos: { e1: { estado: 'lista', sesion: 's1', formato: 2 }, e2: { estado: 'pausada' } } }));
+  await x.motor.recuperar();
+  return x;
+}
+
+test('mejorar la estética retoma la sesión de una asignatura terminada con el encargo visual y vuelve a quedar lista', async () => {
+  const x = await terminadaConWeb();
+  await x.motor.mejorarEstetica(x.ref, 'e1');
+  assert.ok(await hasta(() => x.llamadas.length === 1));
+  assert.equal(x.llamadas[0].resume, 's1');
+  assert.match(x.llamadas[0].mensaje, /estética/);
+  assert.match(x.llamadas[0].mensaje, /contenido/);
+  await x.terminar(0);
+  const e1json = async () => JSON.parse(await fs.readFile(path.join(x.dir, 'germinacion/redaccion.json'), 'utf8')).nodos.e1;
+  assert.ok(await hasta(async () => (await e1json()).estado === 'lista' && (await e1json()).estetica === null));
+  const e1 = JSON.parse(await fs.readFile(path.join(x.dir, 'germinacion/redaccion.json'), 'utf8')).nodos.e1;
+  assert.equal(e1.estetica ?? null, null);
+  // Solo una asignatura terminada se puede rediseñar.
+  await assert.rejects(x.motor.mejorarEstetica(x.ref, 'e2'), /estado-invalido/);
+});
+
+test('si el rediseño no pasa la revisión, vuelve la web anterior y la asignatura sigue lista con el motivo', async () => {
+  const x = await terminadaConWeb();
+  await x.motor.mejorarEstetica(x.ref, 'e1');
+  const e1json = async () => JSON.parse(await fs.readFile(path.join(x.dir, 'germinacion/redaccion.json'), 'utf8')).nodos.e1;
+  // La redacción y su corrección (INTENTOS = 2), las dos con la web rota.
+  await x.terminar(0, { rota: true });
+  assert.ok(await hasta(() => x.llamadas.length === 2));
+  await x.terminar(1, { rota: true });
+  assert.ok(await hasta(async () => (await e1json()).estado === 'lista'));
+  const e1 = JSON.parse(await fs.readFile(path.join(x.dir, 'germinacion/redaccion.json'), 'utf8')).nodos.e1;
+  assert.equal(e1.estado, 'lista');
+  assert.match(e1.errorEstetica, /se rompe/);
+  assert.equal(await fs.readFile(path.join(x.dir, 'germinacion/cursos/e1/c01.html'), 'utf8'), '<main>Conferencia</main>');
+});
+
+test('un pase de estética pausado a medias y luego fallido devuelve la web ORIGINAL, no la de la pausa', async () => {
+  const x = await terminadaConWeb();
+  const e1json = async () => JSON.parse(await fs.readFile(path.join(x.dir, 'germinacion/redaccion.json'), 'utf8')).nodos.e1;
+  await x.motor.mejorarEstetica(x.ref, 'e1');
+  assert.ok(await hasta(() => x.llamadas.length === 1));
+  await fs.writeFile(path.join(x.dir, 'germinacion/cursos/e1/c01.html'), '<main>WEB-ROTA a medias</main>');
+  const pausa = x.motor.pausarNodo(x.ref, 'e1');
+  x.llamadas[0].resolve({ codigo: null, abortado: true, resultado: null });
+  await pausa;
+  assert.equal((await e1json()).estado, 'pausada');
+  await x.motor.continuarNodo(x.ref, 'e1');
+  assert.ok(await hasta(() => x.llamadas.length === 2));
+  await x.terminar(1, { rota: true });
+  assert.ok(await hasta(() => x.llamadas.length === 3));
+  await x.terminar(2, { rota: true });
+  assert.ok(await hasta(async () => (await e1json()).estado === 'lista'));
+  assert.equal(await fs.readFile(path.join(x.dir, 'germinacion/cursos/e1/c01.html'), 'utf8'), '<main>Conferencia</main>');
+  assert.equal(await x.guard.commiteado(path.relative(x.cfg.datos, path.join(x.dir, 'germinacion/cursos/e1/c01.html'))), '<main>Conferencia</main>');
+});
+
+test('si Semillero se reinicia durante un pase de estética, se retoma el encargo en la misma sesión (no se redacta de cero)', async () => {
+  const x = await curso({ paralelo: 1 });
+  await x.escribir('e1');
+  await fs.writeFile(path.join(x.dir, 'germinacion/redaccion.json'), JSON.stringify({ iniciada: true, nodos: { e1: { estado: 'redactando', estetica: 'en-curso', sesion: 's1', formato: 2 }, e2: { estado: 'pausada' } } }));
+  await x.motor.recuperar();
+  assert.ok(await hasta(() => x.llamadas.length === 1));
+  assert.equal(x.llamadas[0].resume, 's1');
+  assert.match(x.llamadas[0].mensaje, /pase de estética/);
+});
+
+test('si la sesión del pase ya no existe o falla la red, la asignatura sigue lista con su web original', async () => {
+  const x = await terminadaConWeb();
+  const e1json = async () => JSON.parse(await fs.readFile(path.join(x.dir, 'germinacion/redaccion.json'), 'utf8')).nodos.e1;
+  await x.motor.mejorarEstetica(x.ref, 'e1');
+  assert.ok(await hasta(() => x.llamadas.length === 1));
+  await fs.writeFile(path.join(x.dir, 'germinacion/cursos/e1/c01.html'), '<main>a medias</main>');
+  x.llamadas[0].resolve({ codigo: 1, abortado: false, resultado: null, stderr: 'No conversation found with session ID: s1' });
+  assert.ok(await hasta(async () => (await e1json()).estado === 'lista'));
+  assert.ok((await e1json()).errorEstetica);
+  assert.equal(await fs.readFile(path.join(x.dir, 'germinacion/cursos/e1/c01.html'), 'utf8'), '<main>Conferencia</main>');
+});

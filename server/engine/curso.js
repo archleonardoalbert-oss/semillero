@@ -31,8 +31,14 @@ La asignatura es una **web estática completa** en \`germinacion/cursos/<nodo>/\
   - \`localStorage\`, \`sessionStorage\`, las cookies e IndexedDB pueden fallar: envuélvelos en \`try/catch\` y que la página funcione sin ellos;
   - \`fetch\` solo puede leer archivos de la propia carpeta del curso, con rutas relativas;
   - nada de formularios que envíen datos.
+- **Tema claro y oscuro (obligatorio, se comprueba).** Semillero tiene un interruptor de tema y lo pasa a la web en la URL (\`?tema=claro\` o \`?tema=oscuro\`). Cada página lleva en su \`<head>\`, ANTES de los estilos, este script en línea (evita el parpadeo):
+  \`<script>document.documentElement.dataset.tema = new URLSearchParams(location.search).get('tema') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro')</script>\`
+  Tus estilos definen los colores en variables CSS para \`:root\` (claro) y \`:root[data-tema="oscuro"]\`. El tema puede cambiar sin recargar: el puente actualiza \`data-tema\` y lanza el evento \`semillero-tema\` en \`document\` (con \`detail.tema\`); tus motores lo escuchan y redibujan. Si quieres un interruptor propio dentro de la web, llama a \`window.semillero.cambiarTema('oscuro' | 'claro')\` (y lee el actual con \`window.semillero.tema\`). El comprobador mide la página en los dos temas y la rechaza si el oscuro no se distingue del claro.
+- **Transiciones entre páginas.** Las webs aisladas no admiten \`@view-transition\` (no funciona con origen opaco). El puente anima la salida y la entrada: al pulsar un enlace interno pone \`data-saliendo\` en \`<html>\`, espera \`--semillero-salida\` (por defecto \`200ms\`, máximo 800) y navega conservando el tema; al cargar, \`<main>\` entra con un fundido. Personalízalo con tus estilos (los del puente tienen especificidad cero): por ejemplo \`html[data-saliendo] main { … }\` para la salida y tu propia animación de entrada. Respeta \`prefers-reduced-motion\`.
+- **Móvil.** Con \`<meta name="viewport" content="width=device-width, initial-scale=1">\`; a 390 px de ancho nada se desborda horizontalmente (se comprueba).
 - **Sin errores.** Ninguna página puede dar errores de JavaScript ni de consola, ni tener enlaces internos rotos.
 - **Comprobación.** Comprueba la web entera con \`node ${PROBAR_SITIO} <ruta absoluta de germinacion/cursos/<nodo>>\` (comprueba cada .html de la raíz). Imprime \`"ok": true\` o los fallos por página. Corrige hasta que dé \`"ok": true\`.
+- **Mírala.** Añade \`--capturas /tmp/capturas-<nodo>\` (antes de la ruta del curso) para que guarde cada página en claro, oscuro y móvil, y **ábrelas con Read** para juzgar su belleza y legibilidad como un director de arte (manual, 2.6). Hazlo varias veces mientras construyes, no solo al final.
 
 **El índice de la asignatura** (obligatorio, formato EXACTO, versión 2) va en \`germinacion/nodos/<nodo>/indice.json\`:
 
@@ -94,7 +100,10 @@ ${RECURSOS}
 5. Cuando todo esté impecable y el comprobador dé \`"ok": true\`, escribe el índice. Responde con un resumen breve de lo que hiciste.`;
 }
 
-export function mensajeRedaccion({ idea, rutaIdea, nodo, mapa, dependencias, respuestasDiagnostico, idiomas, reintento = null, continuar = false, migrar = false }) {
+export function mensajeRedaccion({ idea, rutaIdea, nodo, mapa, dependencias, respuestasDiagnostico, idiomas, reintento = null, continuar = false, migrar = false, estetica = false }) {
+  if (estetica) {
+    return `Encargo nuevo para tu asignatura del nodo «${nodo.titulo}» (${nodo.id}), que ya está terminada: **un pase de estética**. Su contenido es muy bueno y NO hay que cambiarlo (ni el texto, ni la estructura, ni los ejercicios, ni las demostraciones; solo lo imprescindible para el nuevo diseño). Lo que se queda corto es el atractivo visual. Relee en tus instrucciones de sistema la sección 2.6 del manual («Atractivo visual») y las reglas técnicas del formato (tema claro/oscuro con data-tema, transiciones con el puente, móvil), que han cambiado. Después rediseña la web de ${rutaIdea ? `${rutaIdea}/germinacion/cursos/${nodo.id}/` : `germinacion/cursos/${nodo.id}/`}: un concepto visual más rico y nacido del tema, modo claro y oscuro igual de cuidados, fondo ambientado y vivo pero sereno, una portada memorable, transiciones fluidas, microinteracciones y acabados. Actualiza DISENO.md. Mira las capturas del comprobador (--capturas) en claro, oscuro y móvil y critícalas hasta que sea precioso. Los motores deben seguir funcionando y redibujarse al cambiar de tema. Al terminar, el comprobador debe dar "ok": true y el índice (versión 2) debe seguir siendo válido.`;
+  }
   if (migrar) {
     return `Semillero ha cambiado el formato de las asignaturas: a partir de ahora cada asignatura es una **web propia, única y espectacular** (formato nuevo), no documentos Markdown. Tus instrucciones de sistema describen el formato nuevo con todo detalle, junto al manual pedagógico y visual que debes seguir. Rehaz la asignatura «${nodo.titulo}» (${nodo.id}) en el formato nuevo, en germinacion/cursos/${nodo.id}/. Lo que ya investigaste y escribiste en el formato antiguo (germinacion/nodos/${nodo.id}/*.md y las descargas) es tu material de partida: aprovéchalo, mejóralo y llévalo al nuevo formato; no lo copies tal cual. Al terminar, el índice debe ser la versión 2. ${NOTA_INTERRUPCION}`;
   }

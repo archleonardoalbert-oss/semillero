@@ -2,7 +2,7 @@
   import SesionEnVivo from './SesionEnVivo.svelte';
   // El programa de una asignatura de curso en la lámina de su nodo: sus conferencias, clases prácticas y
   // demostraciones para valientes o, mientras no está redactada, su estado y su mando (comenzar, pausar, continuar).
-  // `alAccion(accion)` con 'comenzar' | 'pausar' | 'continuar'; sin ella (visor exportado) no hay mandos.
+  // `alAccion(accion)` con 'comenzar' | 'pausar' | 'continuar' | 'estetica'; sin ella (visor exportado) no hay mandos.
   // `actividad`: lo que hace ahora la sesión que la redacta (solo mientras está en marcha).
   // `borradores`: lo ya escrito de una asignatura sin terminar ({ archivo, clase, documento }); `alAbrirBorrador(archivo)`.
   // `alEntrar`: abre la web propia de la asignatura (índice versión 2) por su portada.
@@ -29,7 +29,20 @@
     pausada: { texto: 'En pausa. Lo escrito está guardado y la sesión seguirá exactamente donde estaba.', accion: 'continuar', boton: 'Continuar esta asignatura', primario: true },
     error: { accion: 'comenzar', boton: 'Volver a redactarla' },
   };
-  let mando = $derived(MANDO[estado?.estado] ?? MANDO.sin);
+  let mando = $derived(
+    estado?.estetica && ['pendiente', 'redactando'].includes(estado.estado)
+      ? { ...MANDO[estado.estado], texto: estado.estado === 'pendiente' ? 'En espera de turno para rediseñar su estética.' : 'Su sesión está rediseñando la estética de la web: tema claro y oscuro, fondo, transiciones y acabados. El contenido no cambia.' }
+      : (MANDO[estado?.estado] ?? MANDO.sin),
+  );
+  let mejorando = $state(false);
+  async function mejorarEstetica() {
+    mejorando = true;
+    try {
+      await alAccion('estetica');
+    } finally {
+      mejorando = false;
+    }
+  }
   let enviando = $state(false);
   async function pulsar() {
     enviando = true;
@@ -48,6 +61,13 @@
         <span class="t-entrar">Entrar en el curso</span>
         <span class="s-entrar">Una web hecha solo para «{nodo.titulo}»: {plural(indice.conferencias.length, 'conferencia', 'conferencias')}{indice.practicas.length ? `, ${plural(indice.practicas.length, 'clase práctica', 'clases prácticas')}` : ''}{indice.valientes.length ? ` y ${plural(indice.valientes.length, 'demostración para valientes', 'demostraciones para valientes')}` : ''}</span>
       </button>
+    {/if}
+    {#if indice.version === 2 && alAccion && estado?.estado === 'lista'}
+      <div class="estetica">
+        <button class="boton discreto" disabled={mejorando} onclick={mejorarEstetica}>Mejorar la estética</button>
+        <span>Su misma sesión rediseña lo visual (tema claro y oscuro, fondo vivo, transiciones) sin tocar el contenido.</span>
+      </div>
+      {#if estado.errorEstetica}<p class="error-estetica">El último rediseño no pasó la revisión y se conservó la web anterior: {estado.errorEstetica}</p>{/if}
     {/if}
     {#if estado?.tokens}<p class="consumo">Redactarla consumió {cifra(estado.tokens.generados)} tokens generados y {cifra(estado.tokens.leidos)} leídos.</p>{/if}
     <h2>Conferencias</h2>
@@ -259,6 +279,20 @@
   }
   .en-vivo {
     margin: 0 0 1.4rem;
+  }
+  .estetica {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.9rem;
+    margin: -0.6rem 0 1.2rem;
+    color: var(--liquen-apagado);
+    font-size: var(--t-1);
+  }
+  .error-estetica {
+    margin: -0.4rem 0 1.2rem;
+    color: var(--rechazada, #e88);
+    font-size: var(--t-1);
   }
   .consumo {
     margin: 0 0 1rem;

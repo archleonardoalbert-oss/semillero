@@ -218,6 +218,7 @@ test('las sesiones de un curso reciben sus reglas: nunca rechazar, diagnóstico 
   const r = promptRedactor();
   for (const t of ['Manual del redactor de cursos', 'Inversión de la pericia', 'Freeman', 'Tversky', 'Ainsworth', 'web propia', '/semillero-puente.js', '"version": 2', 'NUNCA descargues de sitios piratas', PROBAR_SITIO]) assert.ok(r.includes(t), t);
   assert.ok(!r.includes('S.definirEscena'), 'el motor de EDO ya no se ofrece');
+  for (const t of ['Atractivo visual', 'Brom', 'data-tema', 'semillero-tema', '--capturas', 'prefers-reduced-motion', '--semillero-salida']) assert.ok(r.includes(t), t);
   assert.ok(argsRedaccion({ ajustes: { esfuerzo: 'high' }, mensaje: 'x' }).some((a) => a.includes('Bash(node:*)')));
   const m = mensajeRedaccion({
     idea: { titulo: 'Topología' }, rutaIdea: 'carpetas/a/ideas/t', nodo: { id: 'e1', titulo: 'Grupos', documento: 'nodos/e1.md', plan: [{ titulo: 'Grupos libres', objetivos: ['Presentar un grupo'] }] },

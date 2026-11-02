@@ -17,6 +17,64 @@ estilo.textContent = `
 `;
 document.head.append(estilo);
 
+// --- Tema claro / oscuro ------------------------------------------------------------------------------
+// Semillero decide el tema (interruptor en su barra) y lo pasa en la URL (?tema=) y por mensaje. La web lo
+// aplica con su script en línea del <head> (para no parpadear) y con estilos en :root[data-tema="oscuro"].
+// Aquí se mantiene al día: data-tema, color-scheme y el evento «semillero-tema» para los motores.
+const RE_TEMA = /^(claro|oscuro)$/;
+const temaDelSistema = () => (matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+function aplicarTema(tema) {
+  if (!RE_TEMA.test(tema ?? '')) return;
+  const html = document.documentElement;
+  const cambia = html.dataset.tema !== tema;
+  html.dataset.tema = tema;
+  html.style.colorScheme = tema === 'oscuro' ? 'dark' : 'light';
+  if (cambia) document.dispatchEvent(new CustomEvent('semillero-tema', { detail: { tema } }));
+}
+aplicarTema(new URLSearchParams(location.search).get('tema') ?? document.documentElement.dataset.tema ?? temaDelSistema());
+// API para la web: leer el tema y pedir cambiarlo (Semillero lo guarda y lo devuelve por mensaje).
+window.semillero = Object.freeze({
+  get tema() { return document.documentElement.dataset.tema; },
+  cambiarTema(tema) {
+    if (!RE_TEMA.test(tema ?? '')) return;
+    if (dentro) enviar({ tipo: 'semillero-cambiar-tema', tema });
+    else aplicarTema(tema);
+  },
+});
+
+// --- Transiciones entre páginas -------------------------------------------------------------------------
+// La web corre aislada y el navegador no hace @view-transition entre sus páginas: se anima la salida (con
+// html[data-saliendo]) y la entrada (al cargar). Estilos por defecto con :where() (especificidad 0): la web
+// los sustituye con los suyos. La duración de la salida se lee de --semillero-salida (por defecto 200ms).
+const transiciones = document.createElement('style');
+transiciones.textContent = `
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes semillero-entrada { from { opacity: 0; transform: translateY(10px); } }
+    :where(html:not([data-saliendo])) :where(main) { animation: semillero-entrada 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+    :where(html[data-saliendo]) :where(main) { opacity: 0; transform: translateY(-6px); transition: opacity 0.2s ease, transform 0.2s ease; }
+  }
+`;
+document.head.prepend(transiciones);
+const menosMovimiento = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.addEventListener('click', (e) => {
+  const a = e.target.closest?.('a[href]');
+  if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (a.target && a.target !== '_self') return;
+  if (a.hasAttribute('download')) return;
+  const url = new URL(a.href, location.href);
+  const carpeta = location.pathname.replace(/[^/]*$/, '');
+  if (url.host !== location.host || !url.pathname.startsWith(carpeta) || !/\.html$/.test(url.pathname)) return;
+  if (url.pathname === location.pathname) return; // la misma página (anclas, href="#"): sin transición
+  e.preventDefault();
+  url.searchParams.set('tema', document.documentElement.dataset.tema ?? temaDelSistema());
+  const css = getComputedStyle(document.documentElement).getPropertyValue('--semillero-salida').trim();
+  const ms = menosMovimiento() ? 0 : Math.min(800, css.endsWith('ms') ? parseFloat(css) : css.endsWith('s') ? parseFloat(css) * 1000 : 200) || 0;
+  document.documentElement.dataset.saliendo = '';
+  setTimeout(() => location.assign(url.href), ms);
+});
+// Al volver con «atrás» (caché de páginas), la página no puede quedarse en su estado de salida.
+addEventListener('pageshow', () => delete document.documentElement.dataset.saliendo);
+
 // Selección → Semillero ofrece Explicar / Corregir.
 document.addEventListener('pointerup', () => setTimeout(() => {
   const sel = getSelection();
@@ -45,6 +103,7 @@ window.addEventListener('message', (ev) => {
     }
     aportar('puente', porNombre);
   } else if (m?.tipo === 'semillero-limpiar-seleccion') getSelection()?.removeAllRanges();
+  else if (m?.tipo === 'semillero-tema') aplicarTema(m.tema);
 });
 
 // Pulsar sobre un fragmento glosado abre su glosa en Semillero.
@@ -59,6 +118,6 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('keydown', (e) => e.key === 'Escape' && enviar({ tipo: 'semillero-tecla', tecla: 'Escape' }));
-const avisarPagina = () => enviar({ tipo: 'semillero-pagina', titulo: document.title });
+const avisarPagina = () => enviar({ tipo: 'semillero-pagina', titulo: document.title, tema: document.documentElement.dataset.tema });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', avisarPagina);
 else avisarPagina();

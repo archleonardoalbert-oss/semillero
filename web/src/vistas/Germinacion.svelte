@@ -78,7 +78,7 @@
   onDestroy(quitarRedaccion);
 
   // Mando de una asignatura: comenzar, pausar o continuar solo esa.
-  const NOMBRE_ACCION = { comenzar: 'comenzar', pausar: 'pausar', continuar: 'continuar' };
+  const NOMBRE_ACCION = { comenzar: 'comenzar', pausar: 'pausar', continuar: 'continuar', estetica: 'mejorar la estética de' };
   async function accionNodo(n, accion) {
     try {
       datos = { ...datos, redaccion: await api.redaccionNodo(ref.carpetaId, ref.ideaId, n, accion) };

@@ -108,6 +108,25 @@ export function crearGuard(cfg) {
     });
   }
 
+  // El commit actual (para volver a él más tarde con restaurarDesde).
+  async function cabeza() {
+    return (await git('rev-parse', 'HEAD')).stdout.trim();
+  }
+
+  // Devuelve rutas (o carpetas con "/**") a como estaban en `commit` (aunque después se hayan commiteado
+  // otras versiones) y commitea la vuelta atrás.
+  function restaurarDesde(commit, rutas, mensaje) {
+    return enSerie(async () => {
+      for (const r of rutas) {
+        const p = r.replace(/\/\*\*$/, '');
+        await fs.rm(path.join(cfg.datos, p), { recursive: true, force: true });
+        await git('rm', '-r', '-q', '--cached', '--ignore-unmatch', '--', p);
+        if ((await git('ls-tree', '-r', '--name-only', commit, '--', p)).stdout.trim()) await git('checkout', commit, '--', p);
+      }
+      await commitearSinBloqueo(rutas.map((r) => r.replace(/\/\*\*$/, '')), mensaje);
+    });
+  }
+
   // Contenido de una ruta en el último commit, o null.
   async function commiteado(ruta) {
     try {
@@ -117,5 +136,5 @@ export function crearGuard(cfg) {
     }
   }
 
-  return { iniciar, commitear, proteger, verificar, cambios, restaurar, commiteado };
+  return { iniciar, commitear, proteger, verificar, cambios, restaurar, restaurarDesde, cabeza, commiteado };
 }

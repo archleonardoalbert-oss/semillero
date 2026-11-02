@@ -11,6 +11,23 @@
   let { nodo, carpeta, pagina = 'index.html', glosas = null, HojaGlosa = null, base = '', aviso = null, alCerrar } = $props();
 
   let marco = $state();
+  // El tema de las webs de curso: el del sistema hasta que se elige uno con el interruptor (se recuerda).
+  const CLAVE_TEMA = 'semillero-tema-cursos';
+  const leerTema = () => {
+    try {
+      const t = localStorage.getItem(CLAVE_TEMA);
+      if (t === 'claro' || t === 'oscuro') return t;
+    } catch {}
+    return matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+  };
+  let tema = $state(leerTema());
+  function fijarTema(t) {
+    tema = t;
+    try {
+      localStorage.setItem(CLAVE_TEMA, t);
+    } catch {}
+    marco?.contentWindow?.postMessage({ tipo: 'semillero-tema', tema: t }, '*');
+  }
   let titulo = $state('');
   // La página la decide el puente al cargar; hasta entonces, la pedida.
   let documentoCargado = $state(null);
@@ -19,7 +36,7 @@
   let panel = $state(null); // { x, y, vistaPrevia, fragmento, ancla }
   let abierta = $state(null);
   // Solo la página inicial: después navega la propia web (y el puente avisa de dónde está).
-  const src = untrack(() => `${carpeta}${pagina}`);
+  const src = untrack(() => `${carpeta}${pagina}?tema=${tema}`);
 
   function alMensaje(ev) {
     if (!marco || ev.source !== marco.contentWindow) return;
@@ -30,6 +47,7 @@
       documentoCargado = documentoDeCurso(m.pagina, nodo.id) ?? false;
       panel = null;
       enviarGlosas();
+      if (m.tema !== tema) marco.contentWindow.postMessage({ tipo: 'semillero-tema', tema }, '*');
     } else if (m.tipo === 'semillero-seleccion' && glosas && documento) {
       const r = marco.getBoundingClientRect();
       const md = String(m.fragmento?.markdown ?? '');
@@ -42,6 +60,7 @@
       };
     } else if (m.tipo === 'semillero-sin-seleccion') panel = null;
     else if (m.tipo === 'semillero-abrir-glosa') abierta = m.id;
+    else if (m.tipo === 'semillero-cambiar-tema' && (m.tema === 'claro' || m.tema === 'oscuro')) fijarTema(m.tema);
     else if (m.tipo === 'semillero-tecla' && m.tecla === 'Escape') escape();
   }
 
@@ -90,6 +109,14 @@
     </button>
     {#if titulo}<span class="pagina">{titulo}</span>{/if}
     {#if aviso}<span class="aviso" title={aviso}>Borrador</span>{/if}
+    <button class="tema" onclick={() => fijarTema(tema === 'oscuro' ? 'claro' : 'oscuro')}
+      aria-label={tema === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} title={tema === 'oscuro' ? 'Modo claro' : 'Modo oscuro'}>
+      {#if tema === 'oscuro'}
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6" /><path d="M10 1.8v2.1M10 16.1v2.1M1.8 10h2.1M16.1 10h2.1M4.2 4.2l1.5 1.5M14.3 14.3l1.5 1.5M4.2 15.8l1.5-1.5M14.3 5.7l1.5-1.5" /></svg>
+      {:else}
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 12.3A7 7 0 0 1 7.7 3.5a7 7 0 1 0 8.8 8.8Z" /></svg>
+      {/if}
+    </button>
   </header>
   <iframe bind:this={marco} {src} title="Curso: {nodo.titulo}" sandbox="allow-scripts allow-popups"></iframe>
 </div>
@@ -162,6 +189,35 @@
     color: var(--proceso);
     font-size: 0.72rem;
     cursor: help;
+  }
+  .aviso + .tema {
+    margin-left: 0.6rem;
+  }
+  .tema {
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    margin-left: auto;
+    border: 1px solid var(--linea);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--liquen-tenue);
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, transform 0.3s;
+  }
+  .tema:hover {
+    color: var(--liquen);
+    border-color: var(--linea-viva);
+    transform: rotate(-12deg);
+  }
+  .tema svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
   }
   .capa-glosas {
     position: fixed;

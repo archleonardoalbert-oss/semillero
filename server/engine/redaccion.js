@@ -160,7 +160,12 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
       if (!carpeta || !nodo) throw new Error('El nodo ya no existe en el plan de estudios');
       // Lo que había antes de empezar (sesión, formato, tokens): se lee antes de marcarla como en marcha.
       const previo = (await leerEstado(ref)).nodos[n] ?? {};
-      await cambiarNodo(ref, n, { estado: 'redactando', error: null, formato: 2 });
+      // Pase de estética: «pendiente» al pedirlo, «en-curso» desde que arranca (si se pausa, se continúa).
+      const estetica = previo.estetica ? (previo.estetica === 'pendiente' ? 'empezar' : 'continuar') : null;
+      a.estetica = Boolean(estetica);
+      // La web original del pase: si el rediseño fracasa, se vuelve a ESTE commit (las pausas commitean lo hecho).
+      a.esteticaBase = estetica ? (previo.esteticaBase ?? await guard.cabeza()) : null;
+      await cambiarNodo(ref, n, { estado: 'redactando', error: null, formato: 2, ...(estetica && { estetica: 'en-curso', esteticaBase: a.esteticaBase }) });
       const idea = await ideas.obtener(ref.carpetaId, ref.ideaId);
       const progreso = await germinacion.leerProgreso(ref.carpetaId, ref.ideaId);
       const estado = await leerEstado(ref);
@@ -185,6 +190,10 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
         respuestasDiagnostico: listaRespuestas(mapa, progreso.respuestas),
         idiomas: Array.isArray(progreso.respuestas?.idiomas) ? progreso.respuestas.idiomas : [],
       })}`;
+      if (estetica === 'empezar') {
+        const encargo = mensajeRedaccion({ nodo, estetica: true, rutaIdea: rutaIdea(ref) });
+        mensaje = sesion ? encargo : `${mensaje}\n\n${encargo}`;
+      }
       for (let intento = 1; intento <= INTENTOS; intento++) {
         const marca = new Date().toISOString().replace(/[:.]/g, '-');
         const r = await ejecutar({
@@ -202,9 +211,12 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
         const ajenos = [...cola.objetivosAjenos(objetivosActivos), ...[...activas].filter(([x]) => x !== k).flatMap(([, o]) => o.objetivos)];
         await guard.verificar({ propios: objetivos, ajenosActivos: ajenos });
         if (a.motivo === 'detener') {
-          // Apagado: lo escrito a medias se descarta y el nodo empezará de nuevo en el próximo arranque.
+          // Apagado: lo escrito a medias se descarta y el nodo empezará de nuevo en el próximo arranque (un pase de
+          // estética, en cambio, recibe de nuevo su encargo en la misma sesión).
           await guard.restaurar(objetivos);
-          final = { estado: 'pendiente', error: null, reanudar: false };
+          final = a.estetica
+            ? { estado: 'pendiente', error: null, estetica: 'pendiente', reanudar: Boolean(sesion) }
+            : { estado: 'pendiente', error: null, reanudar: false };
           break;
         }
         if (a.motivo === 'pausa-usuario') {
@@ -236,7 +248,7 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
         if (v.ok) {
           await fs.writeFile(path.join(cfg.datos, rutaIdea(ref), 'germinacion/nodos', n, 'indice.json'), `${JSON.stringify(v.indice, null, 2)}\n`);
           await guard.commitear(objetivos.map(sinComodin), `redacción ${k}`);
-          final = { estado: 'lista', error: null, intentos: intento, sesion, reanudar: false };
+          final = { estado: 'lista', error: null, intentos: intento, sesion, reanudar: false, estetica: null, errorEstetica: null };
           break;
         }
         if (intento === INTENTOS || !sesion) {
@@ -250,6 +262,15 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
       await guard.restaurar(objetivos).catch(() => {});
       final = { estado: 'error', error: String(e.message ?? e) };
     }
+    // Un rediseño que fracasa (revisión, red, sesión perdida…) vuelve a la web original y la asignatura sigue lista.
+    if (a.estetica && final?.estado === 'error') {
+      try {
+        if (a.esteticaBase) await guard.restaurarDesde(a.esteticaBase, objetivos, `redacción ${k}: se deshace el pase de estética`);
+        final = { ...final, estado: 'lista', error: null, estetica: null, esteticaBase: null, errorEstetica: final.error, reanudar: false };
+      } catch (e) {
+        final = { ...final, error: `${final.error} (y no se pudo volver a la web original: ${e.message})` };
+      }
+    } else if (final?.estado === 'lista') final = { ...final, esteticaBase: null };
     // El estado final se escribe antes de liberar el hueco: un planificar en medio no vuelve a encolar el nodo.
     if (a.actividad && final) {
       const { generados, leidos } = a.actividad.resumen().tokens;
@@ -384,6 +405,24 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
     a.control.abort();
     await a.promesa;
   }
+  // Rediseño visual de una asignatura terminada (formato web): su misma sesión, sin tocar el contenido.
+  async function mejorarEstetica(ref, n) {
+    const k = clave(ref, n);
+    if (reservados.has(k) || activas.has(k) || fila.some((f) => clave(f.ref, f.nodo) === k)) throw new Error('en-proceso');
+    reservados.add(k);
+    try {
+      const x = await nodoDe(ref, n);
+      const indice = JSON.parse(await fs.readFile(path.join(cfg.datos, rutaIdea(ref), 'germinacion/nodos', n, 'indice.json'), 'utf8').catch(() => 'null'));
+      if (x?.estado !== 'lista' || indice?.version !== 2) throw new Error('estado-invalido');
+      await cambiarNodo(ref, n, { estado: 'pendiente', error: null, errorEstetica: null, intentos: 0, estetica: 'pendiente', reanudar: Boolean(x.sesion) });
+      permitidosNodo.add(k);
+      pausadosNodo.delete(k);
+      fila.push({ ref, nodo: n });
+    } finally {
+      reservados.delete(k);
+    }
+    await bombear();
+  }
   async function continuarNodo(ref, n) {
     const x = await nodoDe(ref, n);
     if (x?.estado !== 'pausada') throw new Error('estado-invalido');
@@ -478,7 +517,8 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
       for (const [n, x] of Object.entries(e.nodos)) {
         if (x.estado !== 'redactando') continue;
         await guard.restaurar(objetivosNodo(ref, n));
-        await cambiarNodo(ref, n, { estado: 'pendiente', reanudar: false });
+        // Un pase de estética cortado recibe otra vez su encargo en la misma sesión; lo demás empieza de nuevo.
+        await cambiarNodo(ref, n, x.estetica ? { estado: 'pendiente', estetica: 'pendiente', reanudar: Boolean(x.sesion) } : { estado: 'pendiente', reanudar: false });
       }
     }
   }
@@ -515,5 +555,5 @@ export function crearMotorRedaccion({ cfg, ideas, carpetas, germinacion, guard, 
       .catch((e) => console.error('[redaccion]', e));
   });
 
-  return Object.assign(emisor, { planificar, estado, ocupada, reintentar, recuperar, restaurarInterrumpidas, apagar, pausar, continuar, pausadaManual, comenzar, comenzarNodo, pausarNodo, continuarNodo, objetivosActivos, detenerLatido: () => clearInterval(latido) });
+  return Object.assign(emisor, { planificar, estado, ocupada, reintentar, recuperar, restaurarInterrumpidas, apagar, pausar, continuar, pausadaManual, comenzar, comenzarNodo, pausarNodo, continuarNodo, mejorarEstetica, objetivosActivos, detenerLatido: () => clearInterval(latido) });
 }

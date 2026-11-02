@@ -34,7 +34,9 @@ async function sitio(paginas) {
   }
   return dir;
 }
-const PAGINA = (cuerpo, extra = '') => `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>T</title><script type="module" src="/semillero-puente.js"></script>${extra}</head><body><main>${cuerpo}</main></body></html>`;
+// Una página con su tema claro/oscuro (como exige el formato): script en línea + estilos por data-tema.
+const TEMA = `<script>document.documentElement.dataset.tema = new URLSearchParams(location.search).get('tema') || 'claro'</script><style>body{background:#f6f4ee;color:#1b1e25}:root[data-tema=oscuro] body{background:#12141a;color:#e8e4da}</style>`;
+const PAGINA = (cuerpo, extra = '', tema = TEMA) => `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>T</title>${tema}<script type="module" src="/semillero-puente.js"></script>${extra}</head><body><main>${cuerpo}</main></body></html>`;
 const LARGO = '<p>' + 'Texto de la conferencia con contenido suficiente. '.repeat(20) + '</p>';
 
 test('una web correcta pasa: todas las páginas cargan sin errores ni conexiones fuera', { timeout: 120000 }, async () => {
@@ -123,4 +125,26 @@ test('el visor solo acepta glosas sobre páginas del curso que se está viendo',
   for (const malo of ['/x/germinacion/nodos/otro.md', '/x/germinacion/cursos/e2/c01.html', '/x/germinacion/cursos/e1/temas/a.html', '/x/germinacion/cursos/e1/%E0%A4%A.html', '/x/germinacion/cursos/e1/../e2/c.html']) {
     assert.equal(documentoDeCurso(malo, 'e1'), null, malo);
   }
+});
+
+test('una página sin modo oscuro o que se desborda en el móvil no pasa', { timeout: 120000 }, async () => {
+  const dir = await sitio({
+    'index.html': PAGINA(LARGO, '', '<style>body{background:#fff}</style>'),
+    'c01.html': PAGINA(LARGO + '<div style="width:1400px;height:20px"></div>'),
+  });
+  const r = await probarSitio(dir, ['index.html', 'c01.html']);
+  assert.equal(r.ok, false);
+  const t = r.errores.join('\n');
+  assert.match(t, /index\.html.*modo oscuro/s);
+  assert.match(t, /c01\.html.*móvil/s);
+  assert.doesNotMatch(t, /c01\.html.*modo oscuro/s);
+});
+
+test('con capturas, el comprobador deja cada página en claro, oscuro y móvil para revisarla', { timeout: 120000 }, async () => {
+  const dir = await sitio({ 'index.html': PAGINA(LARGO) });
+  const capturas = await fs.mkdtemp(path.join(os.tmpdir(), 'semillero-capturas-'));
+  const r = await probarSitio(dir, ['index.html'], { capturas });
+  assert.equal(r.ok, true, r.errores.join('\n'));
+  assert.deepEqual((await fs.readdir(capturas)).sort(), ['index-claro.png', 'index-movil.png', 'index-oscuro.png']);
+  assert.deepEqual(r.capturas.map((c) => path.basename(c)).sort(), ['index-claro.png', 'index-movil.png', 'index-oscuro.png']);
 });

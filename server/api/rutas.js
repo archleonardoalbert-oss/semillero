@@ -294,7 +294,7 @@ export async function construirApp(cfg, { cola: colaInyectada, ejecutarGlosa, ej
     await motorRedaccion.comenzar(refDe(req));
     return motorRedaccion.estado(refDe(req));
   });
-  for (const [accion, fn] of [['comenzar', 'comenzarNodo'], ['pausar', 'pausarNodo'], ['continuar', 'continuarNodo']]) {
+  for (const [accion, fn] of [['comenzar', 'comenzarNodo'], ['pausar', 'pausarNodo'], ['continuar', 'continuarNodo'], ['estetica', 'mejorarEstetica']]) {
     app.post(`${RD}/:n/${accion}`, async (req) => {
       await motorRedaccion[fn](refDe(req), req.params.n);
       return motorRedaccion.estado(refDe(req));
