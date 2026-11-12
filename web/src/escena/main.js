@@ -7,6 +7,7 @@ import 'katex/dist/katex.min.css';
 import './escena.css';
 import { crearEstudio } from './motor/estudio.js';
 import { instanciar } from './api.js';
+import { DEMO } from '../lib/archivos.js';
 
 const q = new URLSearchParams(location.search);
 const raiz = document.getElementById('escena');
@@ -18,7 +19,9 @@ document.addEventListener('keydown', (e) => e.key === 'Escape' && parent.postMes
 try {
   const ruta = q.get('m') ?? '';
   // Solo módulos de escenas de la idea, servidos por Semillero o por el visor exportado.
-  if (!/^\/archivos\/[^?#]+\/germinacion\/escenas\/[a-z0-9-]+\/[a-z0-9-]+\.js$/.test(ruta)) throw new Error('escena no válida');
+  // En la demo publicada los archivos van con ruta relativa (demo/archivos/...).
+  const prefijo = DEMO ? /^demo\/archivos\// : /^\/archivos\//;
+  if (!prefijo.test(ruta) || !/^[^?#]+\/germinacion\/escenas\/[a-z0-9-]+\/[a-z0-9-]+\.js$/.test(ruta)) throw new Error('escena no válida');
   const escena = instanciar(await import(/* @vite-ignore */ ruta));
   const estudio = crearEstudio({ pasos: [], escena, nombre: q.get('t') ?? 'escena', sinPasos: true, teclado: false });
   raiz.append(estudio.raiz);
