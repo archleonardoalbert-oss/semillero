@@ -1,4 +1,5 @@
 <script>
+  import { RAIZ_ARCHIVOS } from '../lib/archivos.js';
   import { onMount } from 'svelte';
   import { Crepe } from '@milkdown/crepe';
   import '@milkdown/crepe/theme/common/style.css';
@@ -10,7 +11,7 @@
   let raiz;
   let crepe;
 
-  const aUrl = (url) => (/^(https?:|data:|blob:|\/)/i.test(url) ? url : `/archivos/${base}/${url}`);
+  const aUrl = (url) => (/^(https?:|data:|blob:|\/)/i.test(url) ? url : `${RAIZ_ARCHIVOS}/${base}/${url}`);
 
   onMount(() => {
     crepe = new Crepe({

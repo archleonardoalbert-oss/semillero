@@ -1,5 +1,9 @@
+import { DEMO, RAIZ_ARCHIVOS } from './archivos.js';
+import { pedirDemo } from './demo.js';
+
 // Cliente de la API local. Los errores llevan el código que manda el servidor.
 async function pedir(metodo, url, cuerpo, { tipo } = {}) {
+  if (DEMO) return pedirDemo(metodo, url);
   const opciones = { method: metodo, headers: {} };
   if (cuerpo instanceof Blob) {
     opciones.body = cuerpo;
@@ -49,7 +53,7 @@ export const api = {
   germinacion: (c, i) => pedir('GET', `${idea(c, i)}/germinacion`),
   responderDiagnostico: (c, i, respuestas) => pedir('PUT', `${idea(c, i)}/germinacion/respuestas`, { respuestas }),
   marcarNodo: (c, i, n, datos) => pedir('PATCH', `${idea(c, i)}/germinacion/nodos/${encodeURIComponent(n)}`, datos),
-  documento: (c, i, rel) => pedir('GET', `/archivos/carpetas/${encodeURIComponent(c)}/ideas/${encodeURIComponent(i)}/${rel}`),
+  documento: (c, i, rel) => pedir('GET', `${RAIZ_ARCHIVOS}/carpetas/${encodeURIComponent(c)}/ideas/${encodeURIComponent(i)}/${rel}`),
   taller: (c, i, n) => pedir('GET', `${idea(c, i)}/germinacion/talleres/${encodeURIComponent(n)}`),
   enviarTaller: (c, i, n, datos) => pedir('POST', `${idea(c, i)}/germinacion/talleres/${encodeURIComponent(n)}/mensajes`, datos),
   adjuntarTaller: (c, i, n, archivo) =>
@@ -84,6 +88,7 @@ export const api = {
   reintentarRedaccion: (c, i, n) => pedir('POST', `${idea(c, i)}/germinacion/redaccion/${encodeURIComponent(n)}/reintentar`),
   // El ejecutable autónomo de una germinación: tarda unos segundos en compilarse.
   exportar: async (c, i, so) => {
+    if (DEMO) return pedirDemo('POST', 'exportar');
     const r = await fetch(`/api/carpetas/${encodeURIComponent(c)}/ideas/${encodeURIComponent(i)}/exportar/${so}`);
     if (!r.ok) {
       const datos = await r.json().catch(() => ({}));
@@ -95,5 +100,7 @@ export const api = {
   guardarAjustes: (datos) => pedir('PUT', '/api/ajustes', datos),
 };
 
-export const urlArchivo = (rutaIdea, relativa) => `/archivos/${rutaIdea}/${relativa}`;
+export const urlArchivo = (rutaIdea, relativa) => `${RAIZ_ARCHIVOS}/${rutaIdea}/${relativa}`;
 export const rutaIdea = (c, i) => `carpetas/${c}/ideas/${i}`;
+
+export { RAIZ_ARCHIVOS };

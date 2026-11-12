@@ -1,3 +1,5 @@
+import { DEMO } from './archivos.js';
+import { AVISO_DEMO } from './demo.js';
 import { api } from './api.js';
 
 // Estado compartido por todas las vistas, alimentado por la API y el WebSocket.
@@ -35,10 +37,17 @@ export function refrescar() {
 }
 
 export function avisar(texto, tipo = 'info') {
+  if (DEMO && texto.includes(AVISO_DEMO)) [texto, tipo] = [AVISO_DEMO, 'info'];
   global.aviso = { texto, tipo, id: Date.now() };
 }
 
 function conectar() {
+  // La demo publicada no tiene servidor: los datos están grabados y nada cambia.
+  if (DEMO) {
+    global.conectado = true;
+    refrescar();
+    return;
+  }
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
   ws.onopen = () => {
     global.conectado = true;

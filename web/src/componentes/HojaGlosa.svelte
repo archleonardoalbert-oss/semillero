@@ -1,4 +1,5 @@
 <script>
+  import { RAIZ_ARCHIVOS } from '../lib/archivos.js';
   import { fly, fade } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import { renderizar } from '../lib/render.js';
@@ -45,7 +46,7 @@
     <button class="cerrar" onclick={alCerrar} aria-label="Cerrar">×</button>
   </header>
 
-  <blockquote class="fragmento manuscrito">{@html renderizar(glosa.fragmento.markdown.replace(/\]\((carpetas\/)/g, '](/archivos/$1'), '')}</blockquote>
+  <blockquote class="fragmento manuscrito">{@html renderizar(glosa.fragmento.markdown.replace(/\]\((carpetas\/)/g, '](' + RAIZ_ARCHIVOS + '/$1'), '')}</blockquote>
 
   {#if glosa.correccion}
     <p class="veredicto {glosa.correccion}">{VEREDICTO[glosa.correccion]}</p>

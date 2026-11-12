@@ -1,4 +1,5 @@
 <script>
+  import { RAIZ_ARCHIVOS } from '../lib/archivos.js';
   import { onDestroy, tick } from 'svelte';
   import { fly, slide } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
@@ -197,7 +198,7 @@
           {#if m.adjuntos?.length}
             <ul class="adjuntos">
               {#each m.adjuntos as a (a)}
-                <li><a href="/archivos/{base}/{a}" target="_blank" rel="noopener">{a.split('/').at(-1)}</a></li>
+                <li><a href="{RAIZ_ARCHIVOS}/{base}/{a}" target="_blank" rel="noopener">{a.split('/').at(-1)}</a></li>
               {/each}
             </ul>
           {/if}

@@ -1,4 +1,5 @@
 <script>
+  import { RAIZ_ARCHIVOS } from '../lib/archivos.js';
   import { getContext } from 'svelte';
   import { onDestroy } from 'svelte';
   import { cubicOut, cubicIn } from 'svelte/easing';
@@ -23,7 +24,7 @@
   let leyendo = $state(null); // id de la conferencia, práctica o demostración abierta en el lector
   // La web propia de la asignatura (índice versión 2): qué página está abierta y si es un borrador.
   let enCurso = $state(null); // { pagina, borrador }
-  let carpetaCurso = $derived(`/archivos/${base}/germinacion/cursos/${nodo.id}/`);
+  let carpetaCurso = $derived(`${RAIZ_ARCHIVOS}/${base}/germinacion/cursos/${nodo.id}/`);
   const esWeb = (indice) => indice?.version === 2;
   const paginaDe = (indice, id) => [...indice.conferencias, ...indice.practicas, ...indice.valientes].find((x) => x.id === id)?.pagina ?? 'index.html';
   let glosasCurso = $derived(glosas && Object.assign(Object.create(glosas), { alFallar: (e) => avisar(e.message === 'cuota' ? 'La investigación está pausada por cuota: las glosas también esperan.' : `No se pudo glosar: ${e.message}`, 'error') }));
@@ -272,7 +273,7 @@
                   {#if r.autores}<span class="autores">{r.autores}{r.anio ? `, ${r.anio}` : ''}</span>{/if}
                   {#if r.nota}<div class="nota manuscrito">{@html renderizar(r.nota, base)}</div>{/if}
                   <span class="acciones">
-                    {#if r.archivo}<a class="boton" href="/archivos/{base}/germinacion/{r.archivo.split('/').map(encodeURIComponent).join('/')}" target="_blank" rel="noopener">Abrir PDF</a>{/if}
+                    {#if r.archivo}<a class="boton" href="{RAIZ_ARCHIVOS}/{base}/germinacion/{r.archivo.split('/').map(encodeURIComponent).join('/')}" target="_blank" rel="noopener">Abrir PDF</a>{/if}
                     {#if r.url}<a class="boton discreto" href={r.url} target="_blank" rel="noopener noreferrer">Fuente original</a>{/if}
                   </span>
                 </li>

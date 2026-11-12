@@ -1,3 +1,4 @@
+import { RAIZ_ARCHIVOS } from './archivos.js';
 import { Marked } from 'marked';
 import katex from 'katex';
 
@@ -56,7 +57,7 @@ const RE_ESCENA = /^escenas\/[a-z0-9-]{1,40}\/[a-z0-9-]{1,60}\.js$/;
 export function crearRenderizador(purificador) {
   return function renderizar(md, baseArchivos = '') {
     const resolver = (href) =>
-      /^(https?:|data:|\/)/i.test(href) || !baseArchivos ? href : `/archivos/${baseArchivos}/${href.replace(/^\.\//, '')}`;
+      /^(https?:|data:|\/)/i.test(href) || !baseArchivos ? href : `${RAIZ_ARCHIVOS}/${baseArchivos}/${href.replace(/^\.\//, '')}`;
 
     const marked = new Marked({ gfm: true, breaks: false });
     marked.use(matematicas);
@@ -85,7 +86,7 @@ export function crearRenderizador(purificador) {
             /* no es una escena: no se monta nada */
           }
           if (!e || !RE_ESCENA.test(e.archivo ?? '') || !baseArchivos) return '<p class="escena-rota">(escena mal citada)</p>\n';
-          const ruta = `/archivos/${baseArchivos}/germinacion/${e.archivo}`;
+          const ruta = `${RAIZ_ARCHIVOS}/${baseArchivos}/germinacion/${e.archivo}`;
           const pie = e.pie ? `<figcaption>${escapar(String(e.pie))}</figcaption>` : '';
           return `<figure class="escena-curso" data-escena="${escapar(ruta)}" data-titulo="${escapar(String(e.titulo ?? ''))}"><div class="hueco-escena"></div>${pie}</figure>\n`;
         },

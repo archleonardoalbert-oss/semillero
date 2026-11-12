@@ -1,4 +1,5 @@
 <script>
+  import { RAIZ_ARCHIVOS } from '../lib/archivos.js';
   import { avisar } from '../lib/estado.svelte.js';
 
   // Lista de adjuntos (imágenes o documentos) con botón para añadir, también arrastrando o pegando.
@@ -42,8 +43,8 @@
 <div class="adjuntos" class:encima ondragover={(e) => (e.preventDefault(), (encima = true))} ondragleave={() => (encima = false)} ondrop={soltar}>
   {#each rutas as r, k (ruta(r))}
     <span class="adjunto" class:con-aviso={aviso(r)} title={aviso(r)}>
-      {#if imagen(r)}<img src="/archivos/{base}/{ruta(r)}" alt="" />{/if}
-      <a href="/archivos/{base}/{ruta(r)}" target="_blank" rel="noopener">{nombre(r)}</a>
+      {#if imagen(r)}<img src="{RAIZ_ARCHIVOS}/{base}/{ruta(r)}" alt="" />{/if}
+      <a href="{RAIZ_ARCHIVOS}/{base}/{ruta(r)}" target="_blank" rel="noopener">{nombre(r)}</a>
       {#if aviso(r)}<span class="marca" aria-label={aviso(r)}>!</span>{/if}
       {#if !deshabilitado}<button aria-label="Quitar {nombre(r)}" onclick={() => (alQuitar ? alQuitar(r) : alCambiar(rutas.filter((_, j) => j !== k)))}>×</button>{/if}
     </span>

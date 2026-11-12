@@ -1,4 +1,5 @@
 <script>
+  import { RAIZ_ARCHIVOS } from '../lib/archivos.js';
   import { untrack } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
@@ -40,7 +41,7 @@
     return () => (vigente = false);
   });
 
-  const archivo = (r) => `/archivos/${base}/germinacion/${r.archivo.split('/').map(encodeURIComponent).join('/')}`;
+  const archivo = (r) => `${RAIZ_ARCHIVOS}/${base}/germinacion/${r.archivo.split('/').map(encodeURIComponent).join('/')}`;
   const esPdf = (r) => /\.pdf$/i.test(r.archivo);
   const ir = (k) => k >= 0 && k < piezas.length && (actual = piezas[k].id);
   function tecla(e) {

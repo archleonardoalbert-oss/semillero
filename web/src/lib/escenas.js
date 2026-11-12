@@ -1,3 +1,4 @@
+import { DEMO } from './archivos.js';
 // Acción de Svelte: monta en un documento ya renderizado sus escenas de curso, cada una en un iframe aislado
 // (sandbox="allow-scripts": origen opaco, sin acceso a la API ni a los datos). La escena avisa de su alto
 // y el iframe crece con ella. Vigila el contenedor: los documentos se re-renderizan (glosas, enmiendas).
@@ -26,7 +27,7 @@ export function escenas(nodo) {
       f.title = fig.dataset.titulo || 'Escena animada';
       f.className = 'marco-escena';
       f.style.height = `${ALTO_INICIAL}px`;
-      f.src = `/escena.html?${new URLSearchParams({ m: fig.dataset.escena, t: fig.dataset.titulo ?? '', id: `e${++siguiente}` })}`;
+      f.src = `${DEMO ? '' : '/'}escena.html?${new URLSearchParams({ m: fig.dataset.escena, t: fig.dataset.titulo ?? '', id: `e${++siguiente}` })}`;
       (fig.querySelector('.hueco-escena') ?? fig).append(f);
       marcos.add(f);
     }

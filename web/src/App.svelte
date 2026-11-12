@@ -1,4 +1,5 @@
 <script>
+  import { DEMO } from './lib/archivos.js';
   import { ruta, ir, enlace } from './lib/ruta.svelte.js';
   import { global } from './lib/estado.svelte.js';
   import Aviso from './componentes/Aviso.svelte';
@@ -12,6 +13,13 @@
   const navegar = (e, destino) => (e.preventDefault(), ir(destino));
 </script>
 
+{#if DEMO}
+  <div class="demo">
+    <span><b>Demo de solo lectura</b> · dos ideas reales analizadas por Claude. Lee los dictámenes, las réplicas y el árbol de germinación.</span>
+    <a href="../">← Volver a Raven</a>
+  </div>
+{/if}
+
 <header class="barra">
   <a class="marca" href={enlace.inicio()} onclick={(e) => navegar(e, enlace.inicio())}>
     <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 27V14m0 0c-1-4.5-5.5-6.5-9-5.5 1 4.5 4.5 6.5 9 5.5m0 0c1-4.5 5.5-6.5 9-5.5-1 4.5-4.5 6.5-9 5.5" /></svg>
@@ -19,7 +27,7 @@
   </a>
   <nav>
     <a href={enlace.notas()} onclick={(e) => navegar(e, enlace.notas())} class:actual={ruta.nombre === 'notas'}>Memoria</a>
-    <a href={enlace.ajustes()} onclick={(e) => navegar(e, enlace.ajustes())} class:actual={ruta.nombre === 'ajustes'}>Ajustes</a>
+    {#if !DEMO}<a href={enlace.ajustes()} onclick={(e) => navegar(e, enlace.ajustes())} class:actual={ruta.nombre === 'ajustes'}>Ajustes</a>{/if}
     <span class="conexion" class:viva={global.conectado} title={global.conectado ? 'Conectado al servidor' : 'Sin conexión con el servidor'}></span>
   </nav>
 </header>
@@ -43,6 +51,19 @@
 <Aviso />
 
 <style>
+  .demo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.2rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.55rem 1rem;
+    font-size: 0.9rem;
+    text-align: center;
+    background: color-mix(in oklab, #7c5cff 22%, var(--humus));
+    border-bottom: 1px solid color-mix(in oklab, #7c5cff 45%, transparent);
+  }
+  .demo a { font-weight: 600; white-space: nowrap; }
   .barra {
     position: sticky;
     top: 0;

@@ -1,4 +1,5 @@
 <script>
+  import { RAIZ_ARCHIVOS } from '../lib/archivos.js';
   import { getContext } from 'svelte';
   import { cubicOut, cubicIn } from 'svelte/easing';
   import { renderizar } from '../lib/render.js';
@@ -23,7 +24,7 @@
   let recursos = $derived((mapa.recursos ?? []).filter((r) => nodo.recursos.includes(r.id)));
   let requiere = $derived(mapa.nodos.filter((n) => nodo.depende.includes(n.id)));
   let abre = $derived(mapa.nodos.filter((n) => n.depende.includes(nodo.id)));
-  const archivo = (r) => `/archivos/${base}/germinacion/${r.archivo.split('/').map(encodeURIComponent).join('/')}`;
+  const archivo = (r) => `${RAIZ_ARCHIVOS}/${base}/germinacion/${r.archivo.split('/').map(encodeURIComponent).join('/')}`;
   const esPdf = (r) => /\.pdf$/i.test(r.archivo);
 
   function brotar(_n, { x, y, duration = 650 }) {
@@ -116,7 +117,7 @@
 </div>
 
 {#if enCurso}
-  <VisorCurso {nodo} carpeta="/archivos/{base}/germinacion/cursos/{nodo.id}/" pagina={enCurso} alCerrar={() => (enCurso = null)} />
+  <VisorCurso {nodo} carpeta="{RAIZ_ARCHIVOS}/{base}/germinacion/cursos/{nodo.id}/" pagina={enCurso} alCerrar={() => (enCurso = null)} />
 {/if}
 {#if leyendo && indice && !esWeb}
   <Lector {nodo} {indice} inicial={leyendo} {base}
