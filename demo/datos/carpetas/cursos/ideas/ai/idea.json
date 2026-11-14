@@ -1,0 +1,26 @@
+{
+  "id": "ai",
+  "carpetaId": "cursos",
+  "titulo": "AI",
+  "creada": "2026-10-26T03:47:25.146Z",
+  "actualizada": "2026-10-26T06:34:28.020Z",
+  "estado": "aceptada",
+  "estadoPrevio": "error",
+  "interrumpida": false,
+  "archivoDestino": null,
+  "veredicto": "cambios",
+  "etiqueta": "Sí, pero acotado y con proyectos",
+  "etapa": 2,
+  "resumen": "Aprender IA merece tu tiempo: la demanda es la más fuerte del mercado tecnológico y sigue creciendo, pero «todo el mundo de la IA» no es un plan; acótalo a ML aplicado con pocos datos y a la ingeniería de LLM, con probabilidad como base y proyectos como prueba.",
+  "ultimoVeredicto": "2026-10-26T03:57:02.959Z",
+  "eleccion": null,
+  "editadaTrasDictamen": false,
+  "error": null,
+  "enmendados": [],
+  "trabajo": "germinacion",
+  "germinacion": {
+    "fase": "mapa",
+    "iniciada": "2026-10-26T04:10:53.190Z",
+    "ultima": "2026-10-26T06:34:28.019Z"
+  }
+}

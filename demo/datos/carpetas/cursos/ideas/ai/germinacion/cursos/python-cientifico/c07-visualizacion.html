@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.dataset.tema = new URLSearchParams(location.search).get('tema') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro')</script>
+<script>document.documentElement.classList.add('js')</script>
+<title>Visualización y análisis exploratorio · Python científico</title>
+<meta name="description" content="Un resumen numérico puede ser idéntico para datos que cuentan historias opuestas. Elegir el gráfico por la pregunta y hacer un análisis exploratorio con método, que encuentre los problemas antes de modelar.">
+<meta name="theme-color" content="#f3efe4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0f15" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3.5' fill='%231b1e25'/%3E%3Crect x='2.5' y='2.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='6.5' y='2.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='10.5' y='2.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='2.5' y='6.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='6.5' y='6.5' width='3' height='3' rx='.6' fill='%23e69f00'/%3E%3Crect x='10.5' y='6.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='2.5' y='10.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='6.5' y='10.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='10.5' y='10.5' width='3' height='3' rx='.6' fill='%23cc79a7'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="lib/katex/katex.min.css">
+<link rel="stylesheet" href="css/curso.css">
+<script type="module" src="/semillero-puente.js"></script>
+<script type="module" src="motores/sitio.js"></script>
+</head>
+<body data-pieza="c07-visualizacion">
+<canvas id="fondo" aria-hidden="true"></canvas>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="barra"><a class="marca" href="index.html"><span class="chip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>Python científico</a><nav class="tira" aria-label="Programa de la asignatura"><span class="grupo"><a class="byte " href="index.html" data-pieza="index" title="Python científico y entorno de trabajo" aria-label="Python científico y entorno de trabajo">⌂</a></span><span class="grupo"><a class="byte c" href="c01-entorno.html" data-pieza="c01-entorno" title="Un entorno que funcione desde Cuba" aria-label="Un entorno que funcione desde Cuba">c1</a><a class="byte c" href="c02-ndarray.html" data-pieza="c02-ndarray" title="NumPy I: el ndarray" aria-label="NumPy I: el ndarray">c2</a><a class="byte c" href="c03-vectores.html" data-pieza="c03-vectores" title="NumPy II: pensar en vectores" aria-label="NumPy II: pensar en vectores">c3</a><a class="byte c" href="c04-aleatoriedad.html" data-pieza="c04-aleatoriedad" title="Aleatoriedad reproducible" aria-label="Aleatoriedad reproducible">c4</a><a class="byte c" href="c05-datos-sucios.html" data-pieza="c05-datos-sucios" title="pandas I: datos sucios" aria-label="pandas I: datos sucios">c5</a><a class="byte c" href="c06-agregar.html" data-pieza="c06-agregar" title="pandas II: agregar y reorganizar" aria-label="pandas II: agregar y reorganizar">c6</a><a class="byte c actual" href="c07-visualizacion.html" data-pieza="c07-visualizacion" title="Visualización y análisis exploratorio" aria-label="Visualización y análisis exploratorio" aria-current="page">c7</a><a class="byte c" href="c08-proyecto.html" data-pieza="c08-proyecto" title="Código de proyecto, no de cuaderno" aria-label="Código de proyecto, no de cuaderno">c8</a></span><span class="grupo"><a class="byte p" href="p01-entorno.html" data-pieza="p01-entorno" title="Tu entorno, verificado y reproducible" aria-label="Tu entorno, verificado y reproducible">p1</a><a class="byte p" href="p02-vectorizar.html" data-pieza="p02-vectorizar" title="Pensar en vectores: NumPy y aleatoriedad" aria-label="Pensar en vectores: NumPy y aleatoriedad">p2</a><a class="byte p" href="p03-pandas.html" data-pieza="p03-pandas" title="Datos reales: ecología y un comercio en línea" aria-label="Datos reales: ecología y un comercio en línea">p3</a><a class="byte p" href="p04-paquete.html" data-pieza="p04-paquete" title="De los ejercicios a un paquete con pruebas" aria-label="De los ejercicios a un paquete con pruebas">p4</a></span><span class="grupo"><a class="byte v" href="v01-einsum.html" data-pieza="v01-einsum" title="einsum: qué calcula y por qué es el idioma de los transformers" aria-label="einsum: qué calcula y por qué es el idioma de los transformers">v1</a><a class="byte v" href="v02-memoria-distancias.html" data-pieza="v02-memoria-distancias" title="La memoria de las distancias por pares, en bytes" aria-label="La memoria de las distancias por pares, en bytes">v2</a><a class="byte v" href="v03-reshape-vista.html" data-pieza="v03-reshape-vista" title="Cuándo aplanar un arreglo es una vista" aria-label="Cuándo aplanar un arreglo es una vista">v3</a></span></nav><button type="button" class="interruptor" aria-label="Cambiar de tema"><svg class="sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg></button><span class="progreso" aria-hidden="true"></span></header>
+<div class="pagina">
+<aside class="rail" aria-label="En esta página"><h2>En esta página</h2><ol><li><a href="#los-resumenes-no-bastan" data-seccion="los-resumenes-no-bastan">Los resúmenes no bastan</a></li><li><a href="#matplotlib-la-interfaz-de-objetos" data-seccion="matplotlib-la-interfaz-de-objetos">Matplotlib: la interfaz de objetos</a></li><li><a href="#elegir-el-grafico-por-la-pregunta" data-seccion="elegir-el-grafico-por-la-pregunta">Elegir el gráfico por la pregunta</a></li><li><a href="#el-analisis-exploratorio-como-procedimiento" data-seccion="el-analisis-exploratorio-como-procedimiento">El análisis exploratorio como procedimiento</a></li><li><a href="#ejemplo-resuelto-el-eda-de-una-mipyme" data-seccion="ejemplo-resuelto-el-eda-de-una-mipyme">Ejemplo resuelto: el EDA de una mipyme</a></li><li><a href="#buscar-fugas-antes-de-modelar" data-seccion="buscar-fugas-antes-de-modelar">Buscar fugas antes de modelar</a></li><li><a href="#un-grafico-para-publicar" data-seccion="un-grafico-para-publicar">Un gráfico para publicar</a></li><li><a href="#errores-tipicos" data-seccion="errores-tipicos">Errores típicos</a></li><li><a href="#preguntas-de-recuperacion" data-seccion="preguntas-de-recuperacion">Preguntas de recuperación</a></li><li><a href="#lecturas" data-seccion="lecturas">Lecturas</a></li></ol><a class="volver" href="index.html">← Programa de la asignatura</a></aside>
+<main id="contenido">
+
+<header class="cabeza"><div class="tipo"><span class="num">07</span><span>Conferencia</span></div><h1>Visualización y análisis exploratorio</h1><p class="resumen">Un resumen numérico puede ser idéntico para datos que cuentan historias opuestas. Elegir el gráfico por la pregunta y hacer un análisis exploratorio con método, que encuentre los problemas antes de modelar.</p><div class="metas"><span>≈ 3 h de estudio</span><span>2 motores interactivos</span><span>un EDA resuelto con cuatro problemas reales</span></div></header>
+<article class="texto">
+<div class="caja objetivos"><p><strong>Objetivos.</strong> Al terminar serás capaz de:</p>
+<ol>
+<li><strong>Elegir</strong> el gráfico a partir de la pregunta (distribución, grupos, relación, evolución, magnitud) y <strong>justificar</strong> la elección.</li>
+<li><strong>Construir</strong> gráficos con la interfaz de objetos de matplotlib y con seaborn, con ejes, unidades y escalas honestas.</li>
+<li><strong>Ejecutar</strong> un análisis exploratorio con una lista fija que <strong>encuentre problemas antes de modelar</strong>: centinelas, cambios de unidad, huecos, censura y fugas.</li>
+<li><strong>Detectar</strong> cuándo un gráfico engaña y <strong>corregirlo</strong>.</li>
+</ol>
+</div>
+<div class="caja prereq"><p><strong>Prerrequisitos.</strong> <a href="c05-datos-sucios.html">Conferencias 5</a> y <a href="c06-agregar.html">6</a>. Estadística descriptiva (media, mediana, cuartiles, correlación), que marcaste como conocida.</p>
+</div>
+<h2 id="los-resumenes-no-bastan"><span class="n">§ 1</span>Los resúmenes no bastan</h2>
+<p>Cuatro conjuntos de 11 puntos <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mi>x</mi><mo separator="true">,</mo><mi>y</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(x, y)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">y</span><span class="mclose">)</span></span></span></span> tienen la misma media de <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi></mrow><annotation encoding="application/x-tex">x</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span> (9), la misma varianza de <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi></mrow><annotation encoding="application/x-tex">x</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span> (11), la misma media de <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>y</mi></mrow><annotation encoding="application/x-tex">y</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">y</span></span></span></span> (7,50), la misma varianza de <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>y</mi></mrow><annotation encoding="application/x-tex">y</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">y</span></span></span></span> (4,12), la misma correlación (0,816) y la misma recta de regresión, <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>y</mi><mo>=</mo><mn>3,00</mn><mo>+</mo><mn>0,500</mn><mtext> </mtext><mi>x</mi></mrow><annotation encoding="application/x-tex">y = 3{,}00 + 0{,}500\,x</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">y</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8389em;vertical-align:-0.1944em;"></span><span class="mord">3</span><span class="mord"><span class="mpunct">,</span></span><span class="mord">00</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8389em;vertical-align:-0.1944em;"></span><span class="mord">0</span><span class="mord"><span class="mpunct">,</span></span><span class="mord">500</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">x</span></span></span></span>. Antes de verlos: <strong>¿ajustarías el mismo modelo a los cuatro?</strong> Comprométete y después pulsa el botón.</p>
+<figure class="widget" data-widget="anscombe" data-opciones="{}"><div class="w-cab"><span class="w-tit">El cuarteto de Anscombe (1973)</span><span class="w-tipo">motor interactivo</span></div><div class="w-cuerpo"><p class="sin-js">Esta visualización necesita JavaScript.</p></div><figcaption>Los estadísticos de la tabla se calculan aquí mismo a partir de los datos originales. Los gráficos solo aparecen cuando decides que ya tienes tu predicción.</figcaption></figure>
+<p>Anscombe construyó estos datos para demostrar la razón de ser de esta conferencia: <strong>un modelo, una métrica o un resumen pueden ser idénticos para datos opuestos</strong>. Solo mirándolos se ve que en II hace falta un término cuadrático, que en III un punto arrastra la recta y que en IV toda la «correlación» la fabrica una sola observación. Ninguna métrica de validación te lo habría dicho. Y en un proyecto de portafolio, el análisis exploratorio es lo que demuestra que entiendes el problema, no solo que sabes llamar a <code>fit</code>.</p>
+<h2 id="matplotlib-la-interfaz-de-objetos"><span class="n">§ 2</span>Matplotlib: la interfaz de objetos</h2>
+<p>Matplotlib tiene dos interfaces. La de <strong>estado</strong> (<code>plt.plot</code>, <code>plt.title</code>) actúa sobre «la figura actual» y confunde en cuanto hay varias. Usa siempre la de <strong>objetos</strong>:</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">import</span> matplotlib.pyplot <span class="tk-k">as</span> <span class="tk-b">plt</span>
+
+fig, ax = <span class="tk-b">plt</span>.subplots(figsize=(<span class="tk-n">7</span>, <span class="tk-n">4</span>))
+ax.plot(fechas, unidades, color=&quot;tab:blue<span class="tk-s">&quot;, lw=1.5, label=&quot;</span>diarias&quot;)
+ax.plot(fechas, media7, color=&quot;tab:orange<span class="tk-s">&quot;, lw=2, label=&quot;</span>media móvil <span class="tk-n">7</span> dí<span class="tk-k">as</span>&quot;)
+ax.<span class="tk-b">set</span>(title=&quot;Ventas de arroz, tienda Centro<span class="tk-s">&quot;, xlabel=&quot;</span>fecha<span class="tk-s">&quot;, ylabel=&quot;</span>unidades por día&quot;)
+ax.legend()
+fig.tight_layout()
+fig.savefig(&quot;figuras/arroz.png&quot;, dpi=<span class="tk-n">150</span>)</code></pre></div>
+<div class="caja def"><p><strong>Definición 1 (anatomía).</strong> Una <strong>figura</strong> es el lienzo; contiene uno o varios <strong>ejes</strong> (<code>Axes</code>), cada uno un gráfico con su sistema de coordenadas, marcas, etiquetas y leyenda. <code>fig, axs = plt.subplots(2, 2)</code> crea una cuadrícula y devuelve un arreglo de NumPy de ejes (<code>axs[0, 1]</code>, <code>for ax in axs.flat:</code>).</p>
+</div>
+<p>Lo mínimo de todo gráfico: un título que diga qué se ve, ejes con nombre <strong>y unidades</strong>, y leyenda si hay más de una serie.</p>
+<p><strong>seaborn</strong> construye sobre matplotlib y entiende el <strong>formato largo</strong> (<a href="c06-agregar.html">conferencia 6</a>): dices qué columna va en cada eje y cuál define el color o los paneles.</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">import</span> seaborn <span class="tk-k">as</span> <span class="tk-b">sns</span>
+<span class="tk-b">sns</span>.histplot(data=ventas, x=&quot;precio<span class="tk-s">&quot;, hue=&quot;</span>tienda<span class="tk-s">&quot;, bins=40, element=&quot;</span>step&quot;, ax=ax)
+<span class="tk-b">sns</span>.boxplot(data=ventas, x=&quot;tienda<span class="tk-s">&quot;, y=&quot;</span>precio&quot;, ax=ax)
+<span class="tk-b">sns</span>.scatterplot(data=ventas, x=&quot;precio<span class="tk-s">&quot;, y=&quot;</span>unidades&quot;, alpha=<span class="tk-n">0.5</span>, ax=ax)
+<span class="tk-b">sns</span>.relplot(data=semanal, x=&quot;fecha<span class="tk-s">&quot;, y=&quot;</span>unidades<span class="tk-s">&quot;, col=&quot;</span>producto<span class="tk-s">&quot;, col_wrap=3, kind=&quot;</span>line&quot;)
+<span class="tk-b">sns</span>.heatmap(tabla.corr(numeric_only=<span class="tk-k">True</span>), vmin=-<span class="tk-n">1</span>, vmax=<span class="tk-n">1</span>, cmap=&quot;BrBG&quot;, annot=<span class="tk-k">True</span>, ax=ax)</code></pre></div>
+<p>Las funciones con <code>ax=</code> dibujan en ejes que tú creas; <code>relplot</code>, <code>displot</code> y <code>catplot</code> crean su propia figura con paneles (<strong>múltiplos pequeños</strong>: el mismo gráfico repetido por grupo, con los mismos ejes, para comparar de un vistazo).</p>
+<h2 id="elegir-el-grafico-por-la-pregunta"><span class="n">§ 3</span>Elegir el gráfico por la pregunta</h2>
+<figure><img src="img/galeria-preguntas.png" alt="Seis preguntas y el gráfico que las responde: distribución (histograma), comparación entre grupos (cajas), relación (dispersión), evolución (líneas), magnitud por categoría (barras ordenadas que empiezan en 0) y asociación entre muchas variables (mapa de calor con escala divergente centrada en 0)." loading="lazy"><figcaption>Seis preguntas y el gráfico que las responde: distribución (histograma), comparación entre grupos (cajas), relación (dispersión), evolución (líneas), magnitud por categoría (barras ordenadas que empiezan en 0) y asociación entre muchas variables (mapa de calor con escala divergente centrada en 0).</figcaption></figure>
+<div class="tabla"><table>
+<thead>
+<tr>
+<th>Pregunta</th>
+<th>Gráfico</th>
+<th>Alternativas</th>
+<th>Evita</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>¿Cómo se distribuye una variable?</td>
+<td>histograma</td>
+<td>densidad, ECDF, cajas</td>
+<td>un histograma con 5 <em>bins</em></td>
+</tr>
+<tr>
+<td>¿Difieren los grupos?</td>
+<td>cajas</td>
+<td>violines, puntos</td>
+<td>barras con la media sola</td>
+</tr>
+<tr>
+<td>¿Se relacionan dos numéricas?</td>
+<td>dispersión</td>
+<td><code>hexbin</code> con muchos puntos</td>
+<td>líneas que unen puntos sin orden</td>
+</tr>
+<tr>
+<td>¿Cómo cambia en el tiempo?</td>
+<td>líneas</td>
+<td>pequeños múltiplos por grupo</td>
+<td>barras por día con muchos días</td>
+</tr>
+<tr>
+<td>¿Cuánto por categoría?</td>
+<td>barras <strong>ordenadas</strong>, desde 0</td>
+<td>puntos</td>
+<td>tartas de más de 3 sectores</td>
+</tr>
+<tr>
+<td>¿Qué variables van juntas?</td>
+<td>mapa de calor de correlaciones</td>
+<td><code>pairplot</code></td>
+<td>colores arcoíris</td>
+</tr>
+</tbody></table></div>
+<p>Cuatro reglas de honestidad:</p>
+<ol>
+<li><strong>Las barras empiezan en 0.</strong> La longitud de una barra <em>es</em> el valor; con el eje cortado, una diferencia del 3 % parece del 300 %. Las líneas y los puntos sí admiten el eje recortado: codifican posición, no longitud.</li>
+<li><strong>Una escala por eje.</strong> Nunca dos ejes verticales con escalas distintas en el mismo gráfico: cualquier «cruce» es un artefacto de las escalas elegidas. Dos magnitudes, dos paneles.</li>
+<li><strong>Escala logarítmica para cola larga</strong> (precios, ingresos) y para magnitudes que varían en órdenes de magnitud. Dilo en el eje.</li>
+<li><strong>El color significa algo, y siempre lo mismo:</strong> una categoría, una magnitud (un solo tono, de claro a oscuro) o un signo (divergente, con el neutro en 0). Nunca el arcoíris (<code>jet</code>): crea fronteras que no existen.</li>
+</ol>
+<p>Tres trampas frecuentes: el <strong>sobretrazado</strong> (con 100 000 puntos, una dispersión es una mancha: <code>alpha</code>, una muestra o <code>hexbin</code>); las <strong>medias sin dispersión</strong> (barras con la media esconden si los grupos se solapan por completo); y los <strong>bins del histograma</strong>, que cambian la historia:</p>
+<figure class="widget" data-widget="bins" data-opciones="{}"><div class="w-cab"><span class="w-tit">El número de bins cambia lo que ves</span><span class="w-tipo">motor interactivo</span></div><div class="w-cuerpo"><p class="sin-js">Esta visualización necesita JavaScript.</p></div><figcaption>Los mismos 400 precios. Empieza con 4 bins: ¿cuántos grupos de precio hay? Sube a 15, luego a 80, y por último muestra la regla de Freedman-Diaconis.</figcaption></figure>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Antes de seguir: ¿qué gráfico harías para (a) ¿las ventas del sábado son mayores?; (b) ¿las tiendas con más existencias venden más?; (c) la evolución semanal de los 5 productos principales en 2025?</span></summary><div class="dentro"><p>(a) Cajas de las ventas diarias por día de la semana: comparación entre 7 grupos mostrando la dispersión. (b) Dispersión de existencias frente a ventas, un punto por tienda y día (cuidado con la censura, sección 5). (c) Líneas: cinco en un panel si se distinguen, o cinco pequeños múltiplos con el mismo eje si se cruzan mucho.</p>
+</div></details>
+<h2 id="el-analisis-exploratorio-como-procedimiento"><span class="n">§ 4</span>El análisis exploratorio como procedimiento</h2>
+<div class="caja def"><p><strong>Definición 2 (análisis exploratorio de datos).</strong> El EDA (Tukey, 1977) es el examen sistemático de unos datos <strong>antes de modelarlos</strong>, con dos fines: <strong>entender</strong> el fenómeno y <strong>encontrar problemas</strong> (errores, sesgos, fugas) que invalidarían un modelo.</p>
+</div>
+<p>Un EDA no es «hacer muchos gráficos»: es responder una lista en orden y escribir las respuestas.</p>
+<ol>
+<li><strong>La pregunta y la unidad.</strong> ¿Qué quieres predecir o entender? ¿Qué es una fila? ¿Qué filas <em>deberían</em> existir (todos los días, todos los productos)?</li>
+<li><strong>Estructura y calidad:</strong> la rutina de la <a href="c05-datos-sucios.html">conferencia 5</a>.</li>
+<li><strong>Cada variable:</strong> histograma de cada numérica (en log si tiene cola larga), barras de cada categórica. Centinelas, picos raros, imposibles.</li>
+<li><strong>El tiempo:</strong> la serie completa con el calendario relleno. Huecos, saltos de nivel, ceros sospechosos.</li>
+<li><strong>Por grupos:</strong> lo mismo por tienda, producto o fuente. Un problema de un solo grupo se esconde en el total.</li>
+<li><strong>Relaciones:</strong> cada variable frente a la objetivo; correlaciones entre predictoras.</li>
+<li><strong>Fugas:</strong> variables que predicen <strong>demasiado</strong> bien, que solo se conocen <strong>después</strong> del hecho, identificadores con señal, duplicados que caerían en entrenamiento y prueba a la vez.</li>
+<li><strong>Conclusiones escritas:</strong> hallazgos y <strong>decisiones</strong> (qué se corrige, qué se descarta, qué se pregunta).</li>
+</ol>
+<p>El punto 8 es el que convierte unos gráficos en un análisis.</p>
+<h2 id="ejemplo-resuelto-el-eda-de-una-mipyme"><span class="n">§ 5</span>Ejemplo resuelto: el EDA de una mipyme</h2>
+<p>Una tienda te da un año de ventas diarias de un producto, el registro de 1500 precios en tres tiendas y las existencias al abrir de 400 días; quiere predecir la demanda. Antes de leer la solución, mira la figura y <strong>busca cuatro problemas</strong>, uno por panel. Los datos son sintéticos; los problemas, frecuentes en la vida real.</p>
+<figure><img src="img/eda-ventas.png" alt="Cuatro gráficos de un análisis exploratorio. 1: serie diaria con un tramo sin datos y ocho días seguidos a cero. 2: histograma de precios con una barra aislada en 999. 3: cajas de precio por tienda, la de Cerro estirada hasta casi 0. 4: ventas frente a existencias, con los puntos que nunca superan la diagonal." loading="lazy"><figcaption>Cuatro gráficos de un análisis exploratorio. 1: serie diaria con un tramo sin datos y ocho días seguidos a cero. 2: histograma de precios con una barra aislada en 999. 3: cajas de precio por tienda, la de Cerro estirada hasta casi 0. 4: ventas frente a existencias, con los puntos que nunca superan la diagonal.</figcaption></figure>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Los cuatro problemas y sus decisiones</span></summary><div class="dentro"><p><strong>Panel 1 (el tiempo).</strong> Un <strong>hueco</strong> de 13 días (150-163) sin registro: no son ceros, son días desconocidos; <em>decisión:</em> marcar el periodo y no imputarlo. Y <strong>ocho días seguidos con exactamente 0</strong> en un producto que vende unas 40 al día: la probabilidad de eso por azar es despreciable; casi seguro es una <strong>rotura de inventario</strong>. <em>Decisión:</em> esos ceros <strong>no son demanda cero</strong>; preguntar y, si se confirma, tratarlos como demanda desconocida. Sin rellenar el calendario, el hueco quedaría unido por una recta y no se vería.</p>
+<p><strong>Panel 2 (cada variable).</strong> Una barra aislada en <strong>999</strong>: <code>value_counts</code> dice que son exactamente 25 ventas. <em>Decisión:</em> centinela («precio pendiente») → faltante.</p>
+<p><strong>Panel 3 (por grupos).</strong> Centro y Playa rondan 180-190 CUP; la caja de Cerro se estira desde casi 0: <strong>la mitad de sus registros está en otra unidad</strong> (en torno a 1,85 en vez de 185). El histograma global no lo mostraba. <em>Decisión:</em> preguntar, corregir con una regla documentada para esa tienda y ese periodo, y comprobar que la caja corregida se parece a las demás.</p>
+<p><strong>Panel 4 (relaciones).</strong> Los puntos nunca superan la diagonal ventas = existencias, y muchos se apilan <strong>sobre</strong> ella: cuando había pocas existencias, se vendió todo; la demanda real pudo ser mayor. Es <strong>demanda censurada</strong>. Un modelo que trate «ventas» como «demanda» predecirá de menos justo en los días de más demanda. <em>Decisión:</em> marcar esos días como censurados (lo tratarás en Series temporales).</p>
+<div class="tabla"><table>
+<thead>
+<tr>
+<th>Hallazgo</th>
+<th>Evidencia</th>
+<th>Decisión</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>13 días sin registro</td>
+<td>panel 1, <code>isna()</code></td>
+<td>marcar; no imputar</td>
+</tr>
+<tr>
+<td>8 ceros seguidos</td>
+<td>panel 1</td>
+<td>probable rotura de inventario; preguntar</td>
+</tr>
+<tr>
+<td>25 precios = 999</td>
+<td>panel 2, <code>value_counts</code></td>
+<td>centinela → <code>NaN</code></td>
+</tr>
+<tr>
+<td>precios de Cerro ×100</td>
+<td>panel 3, <code>groupby</code> + cajas</td>
+<td>corregir con regla documentada</td>
+</tr>
+<tr>
+<td>ventas ≤ existencias</td>
+<td>panel 4</td>
+<td>demanda censurada: variable <code>censurado</code></td>
+</tr>
+</tbody></table></div>
+<p>Ninguno de estos problemas produce un error de Python. Todos producen un modelo peor que parece bueno.</p>
+</div></details>
+<div class="autoexp"><span class="etq">Explícalo con tus palabras</span><p><strong>En el panel 4, ¿qué patrón verías si la tienda <strong>nunca</strong> se quedara sin existencias, y por qué eso confirma que la acumulación sobre la diagonal es censura?</strong> ---
+Una nube centrada en la demanda media (unas 25 unidades) sin relación con las existencias y, sobre todo, lejos de la diagonal: las existencias nunca serían el límite. La acumulación justo <strong>sobre</strong> la diagonal significa que en esos días la cantidad vendida la decidió el inventario, no los clientes; la demanda verdadera es «al menos» ese valor. Eso es exactamente una observación censurada.</p>
+<textarea aria-label="Tu explicación" placeholder="Escribe aquí tu explicación antes de abrir la respuesta modelo…"></textarea><details><summary>Compara con una respuesta modelo</summary><div class="dentro"></div></details></div>
+<h2 id="buscar-fugas-antes-de-modelar"><span class="n">§ 6</span>Buscar fugas antes de modelar</h2>
+<p>La fuga de datos es el error más caro del ML: el modelo brilla en la evaluación y falla en producción. Muchas se ven en un EDA si se buscan a propósito:</p>
+<ul>
+<li><strong>Una variable predice demasiado bien.</strong> Si una sola separa casi perfectamente las clases, pregunta si se conoce <strong>antes</strong> del hecho. Ejemplo: «fecha de devolución» para predecir si un pedido se devolverá.</li>
+<li><strong>Identificadores con señal.</strong> Un número de factura asignado por orden puede correlacionarse con la etiqueta si el fenómeno cambió en el tiempo.</li>
+<li><strong>Agregados con futuro.</strong> Una «media de ventas del producto» calculada con todo el año y usada para predecir enero.</li>
+<li><strong>Duplicados entre entrenamiento y prueba:</strong> la prueba mide memoria, no generalización.</li>
+</ul>
+<h2 id="un-grafico-para-publicar"><span class="n">§ 7</span>Un gráfico para publicar</h2>
+<p>En un portafolio, un reclutador mira cada gráfico diez segundos. <strong>Título con la conclusión</strong>, no con la variable («La demanda de arroz crece un 25 % en el año», no «Ventas frente a fecha»); solo lo necesario (sin bordes superior y derecho, rotulando las líneas en vez de leyenda si se puede); el contexto en gris y lo importante en color; letra legible y <code>png</code> a 150-200 ppp.</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>fig, ax = <span class="tk-b">plt</span>.subplots(figsize=(<span class="tk-n">7</span>, <span class="tk-n">3.5</span>))
+ax.plot(s.index, s, color=&quot;<span class="tk-n">0.7</span>&quot;, lw=<span class="tk-n">1</span>)                     <span class="tk-c"># contexto, en gris</span>
+ax.plot(s.index, s.rolling(<span class="tk-n">28</span>).mean(), color=&quot;tab:blue&quot;, lw=<span class="tk-n">2.5</span>)
+ax.axvspan(inicio_hueco, fin_hueco, color=&quot;tab:red&quot;, alpha=<span class="tk-n">0.15</span>)
+ax.text(inicio_hueco, s.<span class="tk-b">max</span>(), &quot;sin registros<span class="tk-s">&quot;, color=&quot;</span>tab:red<span class="tk-s">&quot;, va=&quot;</span>top&quot;)
+ax.spines[[&quot;top<span class="tk-s">&quot;, &quot;</span>right&quot;]].set_visible(<span class="tk-k">False</span>)
+ax.<span class="tk-b">set</span>(title=&quot;La demanda de arroz crece un <span class="tk-n">25</span> % en el año<span class="tk-s">&quot;, ylabel=&quot;</span>unidades por día&quot;)</code></pre></div>
+<h2 id="errores-tipicos"><span class="n">§ 8</span>Errores típicos</h2>
+<div class="tabla"><table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Síntoma</th>
+<th>Arreglo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Confiar en resúmenes numéricos</td>
+<td>«r = 0,8: hay relación lineal»</td>
+<td>grafica siempre</td>
+</tr>
+<tr>
+<td>Barras que no empiezan en 0</td>
+<td>diferencias exageradas</td>
+<td>eje desde 0, o puntos</td>
+</tr>
+<tr>
+<td>Dos ejes y con escalas distintas</td>
+<td>cruces sin significado</td>
+<td>dos paneles</td>
+</tr>
+<tr>
+<td>Bins arbitrarios</td>
+<td>modas ocultas o ruido</td>
+<td>varios; <code>bins=&quot;fd&quot;</code></td>
+</tr>
+<tr>
+<td>Graficar sin rellenar el calendario</td>
+<td>huecos invisibles</td>
+<td><code>reindex</code> antes</td>
+</tr>
+<tr>
+<td>Mirar solo el total</td>
+<td>problemas de un grupo ocultos</td>
+<td>por grupos, múltiplos pequeños</td>
+</tr>
+<tr>
+<td>EDA sin conclusiones escritas</td>
+<td>gráficos que nadie interpreta</td>
+<td>tabla de hallazgos y decisiones</td>
+</tr>
+</tbody></table></div>
+<div class="caja llevas"><p><strong>Ideas que te llevas</strong></p><ul>
+<li><strong>Resúmenes idénticos, datos opuestos:</strong> mira antes de modelar.</li>
+<li><strong>La pregunta elige el gráfico.</strong> Barras desde 0; una escala por eje; log para cola larga; color con significado.</li>
+<li><strong><code>fig, ax = plt.subplots()</code></strong> y seaborn sobre tablas largas; múltiplos pequeños para comparar grupos.</li>
+<li><strong>EDA = lista fija + conclusiones escritas.</strong> Los problemas graves no dan error.</li>
+</ul>
+</div>
+<h2 id="preguntas-de-recuperacion"><span class="n">§ 9</span>Preguntas de recuperación</h2>
+<ol>
+<li>¿Qué demuestra el cuarteto de Anscombe y qué consecuencia práctica tiene?</li>
+<li>¿Qué gráfico usarías para comparar la distribución de precios entre 5 tiendas, y por qué no barras con la media?</li>
+<li>¿Por qué las barras deben empezar en 0 y las líneas no necesariamente?</li>
+<li>Enumera los ocho puntos de la lista del EDA.</li>
+<li>¿Cómo se ve la demanda censurada en ventas frente a existencias?</li>
+</ol>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Respuestas</span></summary><div class="dentro"><ol>
+<li>Que datos con los mismos resúmenes pueden tener estructuras opuestas: hay que graficar antes de modelar o concluir.</li>
+<li>Cajas o violines (con los puntos si son pocos): las barras con la media esconden la dispersión y el solapamiento.</li>
+<li>La barra codifica con su longitud, proporcional al valor solo desde 0; la línea codifica con la posición.</li>
+<li>Pregunta y unidad; estructura y calidad; cada variable; el tiempo; por grupos; relaciones; fugas; conclusiones escritas.</li>
+<li>Los puntos nunca superan la diagonal y muchos se apilan sobre ella.</li>
+</ol>
+</div></details>
+<h2 id="lecturas"><span class="n">§ 10</span>Lecturas</h2>
+<ul>
+<li><strong>Data Carpentry, «Análisis y visualización de datos usando Python»</strong>, en español, CC BY 4.0: episodio 9 («Entrada de datos y visualización: Matplotlib y Pandas»).</li>
+<li><strong>Matplotlib, «Quick start guide»</strong> (<code>https://matplotlib.org/stable/users/explain/quick_start.html</code>), en inglés.</li>
+<li><strong>seaborn, «User guide and tutorial»</strong> (<code>https://seaborn.pydata.org/tutorial.html</code>), en inglés.</li>
+<li><strong>Anscombe, F. J. (1973). «Graphs in Statistical Analysis». <em>The American Statistician</em>, 27(1), 17-21.</strong></li>
+</ul>
+
+</article>
+<nav class="pie" aria-label="Anterior y siguiente"><a class="ant" href="c06-agregar.html"><small>← Anterior</small><span>pandas II: agregar y reorganizar</span></a><a class="sig" href="p03-pandas.html"><small>Siguiente →</small><span>Datos reales: ecología y un comercio en línea</span></a></nav>
+</main>
+</div>
+</body>
+</html>

@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.dataset.tema = new URLSearchParams(location.search).get('tema') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro')</script>
+<script>document.documentElement.classList.add('js')</script>
+<title>Un entorno que funcione desde Cuba · Python científico</title>
+<meta name="description" content="PyTorch con CUDA en tu GPU, descargado una sola vez y reinstalable sin conexión. Elegir la variante correcta, verificar que la GPU calcula de verdad y saber cuántos gigabytes cuesta antes de pagarlos.">
+<meta name="theme-color" content="#f3efe4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0f15" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3.5' fill='%231b1e25'/%3E%3Crect x='2.5' y='2.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='6.5' y='2.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='10.5' y='2.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='2.5' y='6.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='6.5' y='6.5' width='3' height='3' rx='.6' fill='%23e69f00'/%3E%3Crect x='10.5' y='6.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='2.5' y='10.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='6.5' y='10.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='10.5' y='10.5' width='3' height='3' rx='.6' fill='%23cc79a7'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="lib/katex/katex.min.css">
+<link rel="stylesheet" href="css/curso.css">
+<script type="module" src="/semillero-puente.js"></script>
+<script type="module" src="motores/sitio.js"></script>
+</head>
+<body data-pieza="c01-entorno">
+<canvas id="fondo" aria-hidden="true"></canvas>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="barra"><a class="marca" href="index.html"><span class="chip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>Python científico</a><nav class="tira" aria-label="Programa de la asignatura"><span class="grupo"><a class="byte " href="index.html" data-pieza="index" title="Python científico y entorno de trabajo" aria-label="Python científico y entorno de trabajo">⌂</a></span><span class="grupo"><a class="byte c actual" href="c01-entorno.html" data-pieza="c01-entorno" title="Un entorno que funcione desde Cuba" aria-label="Un entorno que funcione desde Cuba" aria-current="page">c1</a><a class="byte c" href="c02-ndarray.html" data-pieza="c02-ndarray" title="NumPy I: el ndarray" aria-label="NumPy I: el ndarray">c2</a><a class="byte c" href="c03-vectores.html" data-pieza="c03-vectores" title="NumPy II: pensar en vectores" aria-label="NumPy II: pensar en vectores">c3</a><a class="byte c" href="c04-aleatoriedad.html" data-pieza="c04-aleatoriedad" title="Aleatoriedad reproducible" aria-label="Aleatoriedad reproducible">c4</a><a class="byte c" href="c05-datos-sucios.html" data-pieza="c05-datos-sucios" title="pandas I: datos sucios" aria-label="pandas I: datos sucios">c5</a><a class="byte c" href="c06-agregar.html" data-pieza="c06-agregar" title="pandas II: agregar y reorganizar" aria-label="pandas II: agregar y reorganizar">c6</a><a class="byte c" href="c07-visualizacion.html" data-pieza="c07-visualizacion" title="Visualización y análisis exploratorio" aria-label="Visualización y análisis exploratorio">c7</a><a class="byte c" href="c08-proyecto.html" data-pieza="c08-proyecto" title="Código de proyecto, no de cuaderno" aria-label="Código de proyecto, no de cuaderno">c8</a></span><span class="grupo"><a class="byte p" href="p01-entorno.html" data-pieza="p01-entorno" title="Tu entorno, verificado y reproducible" aria-label="Tu entorno, verificado y reproducible">p1</a><a class="byte p" href="p02-vectorizar.html" data-pieza="p02-vectorizar" title="Pensar en vectores: NumPy y aleatoriedad" aria-label="Pensar en vectores: NumPy y aleatoriedad">p2</a><a class="byte p" href="p03-pandas.html" data-pieza="p03-pandas" title="Datos reales: ecología y un comercio en línea" aria-label="Datos reales: ecología y un comercio en línea">p3</a><a class="byte p" href="p04-paquete.html" data-pieza="p04-paquete" title="De los ejercicios a un paquete con pruebas" aria-label="De los ejercicios a un paquete con pruebas">p4</a></span><span class="grupo"><a class="byte v" href="v01-einsum.html" data-pieza="v01-einsum" title="einsum: qué calcula y por qué es el idioma de los transformers" aria-label="einsum: qué calcula y por qué es el idioma de los transformers">v1</a><a class="byte v" href="v02-memoria-distancias.html" data-pieza="v02-memoria-distancias" title="La memoria de las distancias por pares, en bytes" aria-label="La memoria de las distancias por pares, en bytes">v2</a><a class="byte v" href="v03-reshape-vista.html" data-pieza="v03-reshape-vista" title="Cuándo aplanar un arreglo es una vista" aria-label="Cuándo aplanar un arreglo es una vista">v3</a></span></nav><button type="button" class="interruptor" aria-label="Cambiar de tema"><svg class="sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg></button><span class="progreso" aria-hidden="true"></span></header>
+<div class="pagina">
+<aside class="rail" aria-label="En esta página"><h2>En esta página</h2><ol><li><a href="#el-problema-real" data-seccion="el-problema-real">El problema real</a></li><li><a href="#vocabulario-minimo" data-seccion="vocabulario-minimo">Vocabulario mínimo</a></li><li><a href="#python-y-el-entorno-virtual" data-seccion="python-y-el-entorno-virtual">Python y el entorno virtual</a></li><li><a href="#pytorch-con-cuda-elegir-la-variante" data-seccion="pytorch-con-cuda-elegir-la-variante">PyTorch con CUDA: elegir la variante</a></li><li><a href="#descargar-una-vez-instalar-siempre" data-seccion="descargar-una-vez-instalar-siempre">Descargar una vez, instalar siempre</a></li><li><a href="#verificar-que-la-gpu-calcula-de-verdad" data-seccion="verificar-que-la-gpu-calcula-de-verdad">Verificar que la GPU calcula de verdad</a></li><li><a href="#estimar-el-consumo-antes-de-descargar" data-seccion="estimar-el-consumo-antes-de-descargar">Estimar el consumo antes de descargar</a></li><li><a href="#jupyter-vs-code-y-git" data-seccion="jupyter-vs-code-y-git">Jupyter, VS Code y Git</a></li><li><a href="#ejemplo-integrador-resuelto" data-seccion="ejemplo-integrador-resuelto">Ejemplo integrador resuelto</a></li><li><a href="#errores-tipicos" data-seccion="errores-tipicos">Errores típicos</a></li><li><a href="#preguntas-de-recuperacion" data-seccion="preguntas-de-recuperacion">Preguntas de recuperación</a></li><li><a href="#lecturas" data-seccion="lecturas">Lecturas</a></li></ol><a class="volver" href="index.html">← Programa de la asignatura</a></aside>
+<main id="contenido">
+
+<header class="cabeza"><div class="tipo"><span class="num">01</span><span>Conferencia</span></div><h1>Un entorno que funcione desde Cuba</h1><p class="resumen">PyTorch con CUDA en tu GPU, descargado una sola vez y reinstalable sin conexión. Elegir la variante correcta, verificar que la GPU calcula de verdad y saber cuántos gigabytes cuesta antes de pagarlos.</p><div class="metas"><span>≈ 3 h de estudio</span><span>2 motores interactivos</span><span>la prueba de fuego: reinstalar sin red</span></div></header>
+<article class="texto">
+<div class="caja objetivos"><p><strong>Objetivos.</strong> Al terminar serás capaz de:</p>
+<ol>
+<li><strong>Crear</strong> un entorno virtual aislado y <strong>explicar</strong> qué contiene.</li>
+<li><strong>Elegir</strong> la variante de PyTorch (<code>cu126</code> o <code>cu130</code>) que corresponde a tu GPU y a tu controlador, <strong>instalarla</strong> y <strong>verificar</strong> que <code>torch.cuda.is_available()</code> devuelve <code>True</code> y que la GPU calcula de verdad.</li>
+<li><strong>Guardar</strong> las dependencias en una carpeta local de ruedas y <strong>reinstalar</strong> el entorno entero sin conexión.</li>
+<li><strong>Fijar</strong> las versiones exactas para que el entorno sea reproducible.</li>
+<li><strong>Estimar</strong> cuántos gigabytes cuesta la instalación antes de descargarla y <strong>decidir</strong> qué bajar este mes.</li>
+<li><strong>Publicar</strong> el primer repositorio del portafolio en GitHub.</li>
+</ol>
+</div>
+<div class="caja prereq"><p><strong>Prerrequisitos.</strong> Python general, moverte por carpetas en la terminal y Git básico. Nada más: es la primera conferencia. Si te falta soltura con la terminal, los episodios 1-3 de «La Terminal de Unix» de Software Carpentry (en español, enlace al final) bastan.</p>
+</div>
+<div class="caja nota"><p><strong>Por qué va primero.</strong> Casi todo lo que descargarás en este curso (PyTorch, modelos de Hugging Face, conjuntos de datos) cuesta gigabytes, y tu conexión es el recurso escaso. Si montas el entorno con prisa en la semana 5, en mitad de un proyecto, lo harás mal y lo pagarás dos veces.</p>
+</div>
+<h2 id="el-problema-real"><span class="n">§ 1</span>El problema real</h2>
+<p>Tu situación, según el diagnóstico:</p>
+<ul>
+<li><strong>Funcionan sin VPN:</strong> GitHub (clonar y subir) y Hugging Face (descargar modelos).</li>
+<li><strong>Solo con VPN:</strong> Kaggle, Colab y, probablemente, PyPI, el repositorio del que <code>pip</code> baja los paquetes.</li>
+<li><strong>Equipo:</strong> una GPU NVIDIA con 6 GB de VRAM o menos. <strong>Datos:</strong> de 10 a 50 GB al mes.</li>
+</ul>
+<p>Esto convierte la instalación en un problema de ingeniería con restricciones. Un tutorial dice «ejecuta <code>pip install torch</code>». Para ti esa línea puede no conectar (PyPI sin VPN), y si conecta por VPN baja unos 3 GB por un canal lento y caro; si mañana rompes el entorno, te obliga a bajarlos otra vez. El objetivo de hoy es que <strong>pagues esa descarga una sola vez</strong>, que quede guardada en tu disco de forma que reconstruyas el entorno sin red en cinco minutos, y que sepas comprobar que la GPU funciona.</p>
+<div class="caja reto"><p><strong>Problema para pensar (5 minutos).</strong> Ya instalaste PyTorch por VPN y funciona. Mañana un compañero con tu misma máquina quiere el mismo entorno, y tú quieres poder reinstalarlo si formateas el disco. Ninguno de los dos tendrá VPN. ¿Qué guardarías hoy y cómo lo usarías mañana? Escribe tu plan en tres líneas antes de abrir la respuesta.</p>
+</div>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Lo que hace falta (y por qué la idea ingenua falla)</span></summary><div class="dentro"><p>La idea ingenua es copiar la carpeta del entorno (<code>.venv/</code>) a un USB. Funciona a veces, pero es frágil: un entorno virtual guarda <strong>rutas absolutas</strong> (en los guiones de <code>bin/</code> y en <code>pyvenv.cfg</code>) y depende del intérprete exacto con el que se creó. Lo robusto es guardar dos cosas: los <strong>archivos de instalación</strong> (las ruedas <code>.whl</code>) de cada paquete, en una carpeta, y la <strong>lista exacta de versiones</strong> (<code>requirements.txt</code> con <code>==</code>). Mañana se crea un entorno nuevo y se instala desde la carpeta, sin red. Es lo que construimos en la sección 5.</p>
+</div></details>
+<h2 id="vocabulario-minimo"><span class="n">§ 2</span>Vocabulario mínimo</h2>
+<div class="caja def"><p><strong>Definición 1 (rueda).</strong> Un paquete de Python se distribuye como una <strong>rueda</strong> (<em>wheel</em>, <code>.whl</code>: un zip ya compilado, listo para copiar) o como una <strong>distribución de código fuente</strong> (<em>sdist</em>, <code>.tar.gz</code>: hay que construirla en tu máquina, a veces compilando C o C++). El nombre de una rueda dice para qué sirve: <code>numpy-2.3.4-cp312-cp312-manylinux_2_28_x86_64.whl</code> es NumPy 2.3.4 para CPython 3.12 en Linux de 64 bits. <strong>Una rueda para Python 3.12 no sirve para Python 3.13.</strong></p>
+</div>
+<div class="caja def"><p><strong>Definición 2 (entorno virtual).</strong> Una carpeta con su propio intérprete de Python (un enlace al del sistema) y su propia carpeta <code>site-packages</code>. Al <em>activarlo</em>, <code>python</code> y <code>pip</code> apuntan a esa carpeta: cada proyecto tiene sus versiones sin interferir con los demás ni con el sistema.</p>
+</div>
+<div class="caja def"><p><strong>Definición 3 (índice de paquetes).</strong> Un servidor que lista distribuciones. PyPI (<code>pypi.org</code>) es el oficial; PyTorch mantiene el suyo (<code>download.pytorch.org/whl/...</code>) para sus variantes con CUDA. <code>pip</code> acepta otros índices con <code>--index-url</code> y carpetas locales con <code>--find-links</code>.</p>
+</div>
+<div class="caja def"><p><strong>Definición 4 (controlador, CUDA y capacidad de cómputo).</strong> El <strong>controlador</strong> (<em>driver</em>) de NVIDIA se instala en el sistema operativo y fija la versión <strong>máxima</strong> de CUDA que la GPU puede ejecutar. Las <strong>bibliotecas de CUDA</strong> (cuBLAS, cuDNN…) son las que usa PyTorch. La <strong>capacidad de cómputo</strong> de la GPU es un número como 6.1 (Pascal: GTX 1060), 7.5 (Turing: GTX 1660, RTX 2060), 8.6 (Ampere: RTX 3050/3060) u 8.9 (Ada: RTX 4050/4060); cada compilación de PyTorch trae código solo para una lista de capacidades.</p>
+</div>
+<p>La consecuencia más útil: <strong>no necesitas instalar el «CUDA Toolkit» de NVIDIA.</strong> Las ruedas de PyTorch traen sus bibliotecas de CUDA como paquetes de <code>pip</code> (<code>nvidia-cublas-…</code>, <code>nvidia-cudnn-…</code>). Lo único que pones tú en el sistema es el controlador. El <em>Toolkit</em> (compilador <code>nvcc</code>) solo hace falta para <strong>compilar</strong> extensiones de CUDA, y te ahorra 3-4 GB no bajarlo.</p>
+<h2 id="python-y-el-entorno-virtual"><span class="n">§ 3</span>Python y el entorno virtual</h2>
+<p>Usa una versión de Python para la que existan ruedas de todo lo que necesitas. En octubre de 2026, PyTorch 2.13 (julio de 2026) publica ruedas para Python 3.10 a 3.14 y pandas 3.0 exige Python ≥ 3.11; algunas bibliotecas tardan meses en publicar ruedas para la última versión. <strong>Recomendación: Python 3.12 o 3.13.</strong> Si tu sistema trae otra (las distribuciones al día ya traen 3.14), no la cambies: instala otra al lado. <code>uv python install 3.12</code> (de Astral) descarga un Python ya compilado desde GitHub, que te funciona sin VPN.</p>
+<div class="caja obs"><p><strong>Observación 1 (lo que no he podido verificar).</strong> No he podido comprobar desde Cuba qué servidores responden con tu conexión. Todo lo que dependa de eso aparece como «pruébalo», con el comando exacto. Dedica 10 minutos esta semana y apunta el resultado en el <code>README</code> de tu repositorio.</p>
+</div>
+<div class="codigo"><span class="lengua">bash</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># Linux / macOS</span>
+<span class="tk-k">python3.12</span><span class="tk-o"> -m</span> venv .venv          <span class="tk-c"># crea .venv con su propio python y pip</span>
+<span class="tk-k">source</span> .venv/bin/activate         <span class="tk-c"># a partir de aquí, `python` es el del entorno</span>
+<span class="tk-k">python</span><span class="tk-o"> -c</span> <span class="tk-s">&quot;import sys; print(sys.prefix)&quot;</span>   <span class="tk-c"># debe imprimir la ruta a .venv</span>
+
+<span class="tk-c"># Windows (PowerShell)</span>
+<span class="tk-k">py</span> -<span class="tk-n">3.12</span><span class="tk-o"> -m</span> venv .venv
+.venv\Scripts\Activate.ps1</code></pre></div>
+<p>Tres reglas que ahorran días: <strong>un entorno por proyecto</strong>, dentro del proyecto y fuera de Git; <strong>nunca <code>sudo pip</code></strong> ni instalar en el Python del sistema (las distribuciones recientes lo bloquean con <code>externally-managed-environment</code>); y <strong>comprueba qué <code>python</code> usas</strong> (<code>which python</code>). La mitad de los «no me encuentra el módulo» son un entorno sin activar.</p>
+<div class="caja nota"><p><strong>¿Y conda?</strong> <code>conda</code>/<code>mamba</code> con <code>conda-forge</code> es una alternativa sólida, pero añade otra fuente de paquetes que también tendrías que poder descargar, y PyTorch dejó de publicar en su canal de conda a partir de la 2.6 (enero de 2025). Para este curso, <code>venv</code> + <code>pip</code> (o <code>uv</code>) es más simple y basta.</p>
+</div>
+<div class="predice" data-correcta="1"><span class="etq">Predice antes de seguir</span><p class="q">Activaste <code>.venv</code>, instalaste <code>torch</code> y funcionó. Abres otra terminal y <code>python -c &quot;import torch&quot;</code> da <code>ModuleNotFoundError</code>. ¿Por qué?</p><ol class="opciones"><li><button type="button" data-i="0"><span class="letra">A</span><span>La instalación se corrompió al cerrar la terminal.</span></button></li><li><button type="button" data-i="1"><span class="letra">B</span><span>La activación solo vale en la terminal donde se hizo; la nueva usa el Python del sistema.</span></button></li><li><button type="button" data-i="2"><span class="letra">C</span><span>Hay que reinstalar <code>torch</code> en cada sesión.</span></button></li></ol><details class="revela"><summary>Comprométete con una opción y después mira la explicación</summary><div class="dentro"><p>Activa otra vez el entorno o llama al intérprete por su ruta (<code>.venv/bin/python</code>). VS Code y Jupyter tienen su propio selector de intérprete: elige el de <code>.venv</code>.</p>
+</div></details></div>
+<h2 id="pytorch-con-cuda-elegir-la-variante"><span class="n">§ 4</span>PyTorch con CUDA: elegir la variante</h2>
+<p>PyTorch publica varias compilaciones de la misma versión, una por versión de CUDA. Para la 2.13:</p>
+<div class="tabla"><table>
+<thead>
+<tr>
+<th>Variante</th>
+<th>CUDA</th>
+<th>Capacidades de cómputo</th>
+<th>Controlador</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>cu126</code></td>
+<td>12.6</td>
+<td>incluye Pascal (6.x), Volta, Turing, Ampere, Ada, Hopper</td>
+<td>cualquiera de CUDA 12 (serie 525 o posterior)</td>
+</tr>
+<tr>
+<td><code>cu130</code></td>
+<td>13.0</td>
+<td><strong>desde Turing (7.5)</strong></td>
+<td>serie 580 o posterior</td>
+</tr>
+<tr>
+<td><code>cu132</code></td>
+<td>13.2</td>
+<td>como <code>cu130</code></td>
+<td>experimental</td>
+</tr>
+<tr>
+<td><code>cpu</code></td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody></table></div>
+<p>Desde PyTorch 2.11, <code>pip install torch</code> <strong>desde PyPI</strong> instala en Linux la variante de CUDA 13.0 (y en Windows, la de CPU). De la tabla sale la regla de decisión:</p>
+<div class="caja def"><p><strong>Regla.</strong> Dos números deciden: la capacidad de cómputo de la GPU y la versión de CUDA que admite el controlador (<code>nvidia-smi</code>). Si la GPU es <strong>Pascal</strong> (GTX 10xx), <strong><code>cu126</code></strong>: las variantes de CUDA 13 no traen código para ella. Si es Turing o posterior y el controlador dice «CUDA Version: 13.0» o más, <strong><code>cu130</code></strong>. Si es Turing o posterior pero el controlador solo llega a 12.x, <strong><code>cu126</code></strong> (o actualiza el controlador).</p>
+</div>
+<div class="caja obs"><p><strong>Observación 2 (fecha de caducidad).</strong> PyTorch anunció que la 2.14 será la última versión con ruedas de CUDA 12: desde la 2.15 no habrá <code>cu126</code>. Si tu GPU es Pascal, <strong>fija PyTorch 2.13 o 2.14 y guarda sus ruedas</strong>: te servirán todo el curso.</p>
+</div>
+<p>Para diagnosticar tu máquina, sin descargar nada:</p>
+<div class="codigo"><span class="lengua">bash</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">nvidia-smi</span><span class="tk-o"> --query-gpu</span>=name,compute_cap,memory.total,driver_version<span class="tk-o"> --format</span>=csv
+<span class="tk-k">nvidia-smi</span>        <span class="tk-c"># la cabecera dice «CUDA Version: X.Y»: la MÁXIMA que admite el controlador</span></code></pre></div>
+<p>Si <code>nvidia-smi</code> no existe o falla, el controlador no está instalado o no cargó: arregla eso primero. Prueba el motor con tu GPU real y con la de un compañero:</p>
+<figure class="widget" data-widget="variante" data-opciones="{}"><div class="w-cab"><span class="w-tit">Qué variante de PyTorch te toca</span><span class="w-tipo">motor interactivo</span></div><div class="w-cuerpo"><p class="sin-js">Esta visualización necesita JavaScript.</p></div><figcaption>Las cinco capas del entorno: las dos del medio llegan con pip dentro del entorno virtual; el controlador va en el sistema operativo, una sola vez. Ninguna capa puede ser más moderna de lo que admite la de debajo.</figcaption></figure>
+<aside class="caja refuta"><p><strong>Error típico: «Si <code>torch.cuda.is_available()</code> da <code>True</code>, la GPU funciona»</strong></p><p><strong>Por qué es tentador:</strong> es la comprobación que aparece en todos los tutoriales. <strong>Por qué es falso:</strong> <code>is_available()</code> solo comprueba que hay un controlador y una GPU visibles, no que la rueda tenga código para esa GPU. Con una GTX 1060 (Pascal, 6.1) y la rueda de CUDA 13 de PyPI, <code>is_available()</code> da <code>True</code> y la primera multiplicación falla con <code>no kernel image is available for execution on the device</code>. <strong>Lo correcto:</strong> ejecutar una operación real en la GPU y consultar <code>torch.cuda.get_arch_list()</code> (sección 6).</p>
+</aside>
+<h2 id="descargar-una-vez-instalar-siempre"><span class="n">§ 5</span>Descargar una vez, instalar siempre</h2>
+<p><code>pip</code> separa <strong>descargar</strong> de <strong>instalar</strong>:</p>
+<ul>
+<li><code>pip download -d carpeta paquetes…</code> baja las ruedas del paquete <strong>y de todas sus dependencias</strong>, sin instalar.</li>
+<li><code>pip install --no-index --find-links carpeta paquetes…</code> instala <strong>sin red</strong>, buscando solo en esa carpeta. Si falta algo, falla de inmediato: mejor hoy que dentro de tres meses.</li>
+</ul>
+<p><strong>Paso 1. Los requisitos de alto nivel</strong> en <code>requirements.in</code> (solo lo que importas directamente):</p>
+<div class="codigo"><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>torch==2.13.0
+numpy
+pandas
+matplotlib
+seaborn
+scikit-learn
+jupyterlab
+ipykernel
+pytest
+openpyxl        # para leer Excel con pandas
+pyarrow         # Parquet y texto rápido en pandas 3
+setuptools      # para instalar tus paquetes sin red (conferencia 8)</code></pre></div>
+<p>Se fija <code>torch</code> porque es el pesado y porque la variante de CUDA va ligada a la versión.</p>
+<p><strong>Paso 2. Descargar</strong> (cambia <code>cu126</code> por la variante que te dio la sección 4), con el Python 3.12 del entorno activado, porque las ruedas se descargan para el Python y el sistema desde los que ejecutas la orden:</p>
+<div class="codigo"><span class="lengua">bash</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">mkdir</span><span class="tk-o"> -p</span> ~/ruedas/py312
+<span class="tk-k">pip</span> download<span class="tk-o"> -d</span> ~/ruedas/py312 \
+   <span class="tk-o"> --index-url</span> https://download.pytorch.org/whl/cu126 \
+   <span class="tk-o"> --extra-index-url</span> https://pypi.org/simple \
+   <span class="tk-o"> -r</span> requirements.in</code></pre></div>
+<p><strong>Paso 3. Instalar desde la carpeta</strong>, aunque tengas red, para probar que está completa:</p>
+<div class="codigo"><span class="lengua">bash</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">pip</span> install<span class="tk-o"> --no-index</span><span class="tk-o"> --find-links</span> ~/ruedas/py312<span class="tk-o"> -r</span> requirements.in</code></pre></div>
+<p><strong>Paso 4. Congelar</strong> las versiones exactas: <code>pip freeze &gt; requirements.txt</code>. Ahora <code>requirements.txt</code> tiene <strong>todas</strong> las dependencias, también las indirectas, con <code>==</code>. <code>requirements.in</code> dice lo que quieres; <code>requirements.txt</code>, exactamente lo que tienes. El segundo es el que va a GitHub.</p>
+<p><strong>Paso 5. Copia de seguridad</strong> de la carpeta <code>ruedas/</code>: un disco externo y, si puedes, una copia fuera de tu máquina. Como Hugging Face te funciona sin VPN, una opción práctica es un <strong>repositorio privado de Hugging Face</strong> (tipo <em>dataset</em>) al que subes la carpeta desde una conexión con VPN y del que la bajas después sin ella. Mantén esas copias privadas: las bibliotecas de NVIDIA tienen su propia licencia, que limita la redistribución pública.</p>
+<div class="caja nota"><p><strong>¿Y un espejo de PyPI?</strong> No he podido verificar ninguno accesible desde Cuba. Si te dan una dirección, pruébala sin instalar nada: <code>pip download --no-deps -d /tmp/prueba --index-url https://ESPEJO/simple numpy</code>. Si baja una rueda, funciona; guárdalo en <code>~/.config/pip/pip.conf</code> (<code>[global]</code> y <code>index-url = …</code>). Ojo: un espejo de PyPI casi nunca replica el índice de PyTorch: las ruedas con CUDA tendrás que bajarlas igual.</p>
+</div>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Antes de seguir: el paso 3 responde <code>Could not find a version that satisfies the requirement pyarrow</code>. ¿Qué significa?</span></summary><div class="dentro"><p>Que en la carpeta no hay una rueda de <code>pyarrow</code> compatible con <strong>ese</strong> Python y <strong>ese</strong> sistema: la descarga se cortó, o descargaste con otro Python (3.13) e instalas con 3.12. Con red, <code>pip download -d ~/ruedas/py312 pyarrow</code> con el mismo Python baja solo lo que falta. Por eso se instala de prueba el mismo día de la descarga.</p>
+</div></details>
+<h2 id="verificar-que-la-gpu-calcula-de-verdad"><span class="n">§ 6</span>Verificar que la GPU calcula de verdad</h2>
+<p>Una verificación seria comprueba cuatro cosas: que <code>torch</code> es la variante con CUDA (<code>torch.version.cuda</code> no es <code>None</code>); que ve la GPU; que la rueda trae código para tu capacidad (<code>get_arch_list()</code> contiene <code>sm_XY</code>); y que <strong>una operación real</strong> en la GPU da lo mismo que en la CPU.</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">import</span> <span class="tk-b">torch</span>
+
+<span class="tk-b">print</span>(&quot;<span class="tk-b">torch</span><span class="tk-s">&quot;, torch.__version__, &quot;</span>| CUDA de la rueda:&quot;, <span class="tk-b">torch</span>.version.cuda)
+<span class="tk-b">print</span>(&quot;¿GPU disponible?&quot;, <span class="tk-b">torch</span>.cuda.is_available())
+<span class="tk-k">if</span> <span class="tk-b">torch</span>.cuda.is_available():
+    mayor, menor = <span class="tk-b">torch</span>.cuda.get_device_capability(<span class="tk-n">0</span>)
+    libre, total = <span class="tk-b">torch</span>.cuda.mem_get_info()                  <span class="tk-c"># bytes</span>
+    <span class="tk-b">print</span>(<span class="tk-s">f&quot;{torch.cuda.get_device_name(0)} | capacidad {mayor}.{menor} | &quot;</span>
+          <span class="tk-s">f&quot;libre {libre / 2**30:.2f} de {total / 2**30:.2f} GiB&quot;</span>)
+    <span class="tk-b">print</span>(&quot;arquitecturas de la rueda:&quot;, <span class="tk-b">torch</span>.cuda.get_arch_list())
+    a, b = <span class="tk-b">torch</span>.randn(<span class="tk-n">2048</span>, <span class="tk-n">2048</span>), <span class="tk-b">torch</span>.randn(<span class="tk-n">2048</span>, <span class="tk-n">2048</span>)
+    en_gpu = (a.to(&quot;cuda<span class="tk-s">&quot;) @ b.to(&quot;</span>cuda&quot;)).cpu()
+    <span class="tk-b">print</span>(&quot;¿coinciden CPU y GPU?&quot;, <span class="tk-b">torch</span>.allclose(a @ b, en_gpu, rtol=<span class="tk-n">1e-3</span>, atol=<span class="tk-n">1e-3</span>))</code></pre></div>
+<p>Cuatro detalles: <code>torch.version.cuda</code> es la versión <strong>con la que se compiló la rueda</strong> (si es <code>None</code>, instalaste la de CPU); <code>mem_get_info()</code> da bytes, y dividir entre <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mn>2</mn><mn>30</mn></msup></mrow><annotation encoding="application/x-tex">2^{30}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8141em;"></span><span class="mord"><span class="mord">2</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">30</span></span></span></span></span></span></span></span></span></span></span></span> da GiB (tus «6 GB» son 6 GiB, de los que el escritorio usa unos cientos de MiB); se compara con <code>allclose</code> porque la GPU suma en otro orden y puede usar TF32, así que los últimos dígitos difieren (lo verás en la <a href="c03-vectores.html">conferencia 3</a>); y la primera operación tarda segundos (inicializa CUDA): no midas tiempos con ella. En la <a href="p01-entorno.html">práctica 1</a> lo convertirás en <code>verificar_entorno.py</code>.</p>
+<h2 id="estimar-el-consumo-antes-de-descargar"><span class="n">§ 7</span>Estimar el consumo antes de descargar</h2>
+<div class="tabla"><table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Descarga aproximada</th>
+<th>Comentario</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>torch</code> 2.13 (variante CUDA), solo la rueda</td>
+<td>0,8-1 GB</td>
+<td>desde la 2.13, CUDA va en ruedas aparte</td>
+</tr>
+<tr>
+<td>bibliotecas de NVIDIA (<code>nvidia-*</code>)</td>
+<td>1,5-2,5 GB</td>
+<td>cuDNN y cuBLAS son las grandes</td>
+</tr>
+<tr>
+<td><code>triton</code></td>
+<td>0,15-0,2 GB</td>
+<td>lo usa <code>torch.compile</code></td>
+</tr>
+<tr>
+<td>pila científica (numpy, pandas, matplotlib, scikit-learn, pyarrow, jupyterlab…)</td>
+<td>0,2-0,3 GB</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Total del entorno del curso</strong></td>
+<td><strong>≈ 3-4 GB, una vez</strong></td>
+<td>instalado ocupa ≈ 6-8 GB de disco</td>
+</tr>
+</tbody></table></div>
+<p>Son órdenes de magnitud con margen: los tamaños cambian con cada versión. El método para medir tú: el índice muestra el tamaño de cada archivo (<code>https://download.pytorch.org/whl/torch/</code>); <code>pip download</code> imprime <code>Downloading torch-…whl (… MB)</code> antes de bajarlo (puedes cortar con Ctrl+C); y <code>du -sh ~/ruedas/py312</code> da el total real, que apuntarás en tu <code>README</code>.</p>
+<figure class="widget" data-widget="presupuesto" data-opciones="{}"><div class="w-cab"><span class="w-tit">Tu mes de datos</span><span class="w-tipo">motor interactivo</span></div><div class="w-cuerpo"><p class="sin-js">Esta visualización necesita JavaScript.</p></div><figcaption>Activa «me equivoqué de variante» y «rompí el entorno y no guardé las ruedas»: es lo que cuesta no hacer este procedimiento.</figcaption></figure>
+<div class="caja obs"><p><strong>Observación 3 (la caché de pip).</strong> <code>pip</code> guarda lo que descarga en <code>~/.cache/pip</code> y, con red, a veces no vuelve a descargar. Pero la caché no está pensada para instalar sin red ni para copiarla a otra máquina: para eso está la carpeta de ruedas.</p>
+</div>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Antes de seguir: ¿<code>cu130</code> y <code>cu126</code> comparten las bibliotecas de NVIDIA? ¿Qué implica para tu presupuesto?</span></summary><div class="dentro"><p>No: <code>cu126</code> depende de paquetes <code>nvidia-*-cu12</code> y <code>cu130</code>, de paquetes de CUDA 13. Cambiar de variante es volver a bajar casi todo, unos 3 GB. Por eso se decide la variante <strong>antes</strong> de descargar.</p>
+</div></details>
+<h2 id="jupyter-vs-code-y-git"><span class="n">§ 8</span>Jupyter, VS Code y Git</h2>
+<p><strong>JupyterLab</strong> es ideal para <strong>explorar</strong>; <strong>VS Code</strong> abre cuadernos y archivos <code>.py</code> y depura los dos. Para que un cuaderno use el Python del entorno, regístralo una vez como núcleo: <code>python -m ipykernel install --user --name curso-ai --display-name &quot;Python (curso AI)&quot;</code>. En la <a href="c08-proyecto.html">conferencia 8</a> verás por qué el código que importa no se queda en cuadernos.</p>
+<p><strong>GitHub te funciona sin VPN: es tu escaparate para el empleo remoto.</strong> Cada práctica va a un repositorio público:</p>
+<div class="codigo"><span class="lengua">bash</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">git</span> init curso-ai-python &amp;&amp; cd curso-ai-python
+<span class="tk-k">printf</span> <span class="tk-s">&quot;.venv/\n__pycache__/\n.ipynb_checkpoints/\ndata/raw/\n*.whl\n&quot;</span> &gt; .gitignore
+<span class="tk-k">git</span> add .gitignore &amp;&amp; git commit<span class="tk-o"> -m</span> <span class="tk-s">&quot;Estructura inicial&quot;</span>
+<span class="tk-k">git</span> remote add origin git@github.com:TU_USUARIO/curso-ai-python.git
+<span class="tk-k">git</span> push<span class="tk-o"> -u</span> origin main</code></pre></div>
+<p>Nunca van a Git el entorno virtual, las ruedas, los datos grandes ni las claves. Siempre van el código, <code>requirements.in</code>, <code>requirements.txt</code> y el <code>README</code> con las instrucciones para reproducir.</p>
+<h2 id="ejemplo-integrador-resuelto"><span class="n">§ 9</span>Ejemplo integrador resuelto</h2>
+<div class="caja ejemplo"><p><strong>Ejemplo 1 (del cero al entorno verificado).</strong> Linux, RTX 3050 de 6 GB (8.6), controlador con «CUDA Version: 13.0» y VPN solo esta tarde.</p>
+<ol>
+<li><strong>Diagnóstico (sin red):</strong> capacidad 8.6 y CUDA 13.0 → <code>cu130</code>.</li>
+<li><strong>Python 3.12</strong> con <code>uv python install 3.12</code> (desde GitHub, sin VPN) o el del sistema.</li>
+<li><strong>Entorno:</strong> <code>python3.12 -m venv .venv &amp;&amp; source .venv/bin/activate</code> y <code>python -m pip install --upgrade pip</code>.</li>
+<li><strong>Con VPN, descarga</strong> con <code>--index-url https://download.pytorch.org/whl/cu130</code>; apunta los tamaños que imprime.</li>
+<li><strong>Todavía con VPN, instala desde la carpeta.</strong> Si falta algo, bájalo ahora.</li>
+<li><strong>Verifica:</strong> <code>CUDA de la rueda: 13.0</code>, <code>True</code>, <code>sm_86</code> en la lista y <code>¿coinciden CPU y GPU? True</code>.</li>
+<li><strong>Congela</strong> (<code>pip freeze &gt; requirements.txt</code>) y <strong>mide</strong> (<code>du -sh ~/ruedas/py312</code>).</li>
+<li><strong>Prueba de fuego, sin VPN:</strong> borra <code>.venv</code>, créalo de nuevo e instala desde <code>ruedas/</code>. Si la verificación vuelve a pasar, tu entorno es reproducible sin red.</li>
+<li><strong>Publica</strong> el <code>README</code> con la variante, la versión de Python, el tamaño medido y los dos comandos de instalación.</li>
+</ol>
+<p>El paso 8 es el que casi nadie hace y el que demuestra que lo conseguiste.</p>
+</div>
+<div class="autoexp"><span class="etq">Explícalo con tus palabras</span><p><strong>¿Por qué el paso 5 (instalar desde la carpeta) se hace <strong>con</strong> VPN, si el objetivo es poder instalar sin ella?</strong> ---
+Porque instalar con <code>--no-index</code> es la única forma de comprobar que la carpeta está <strong>completa</strong>: <code>pip</code> solo mira en ella, así que cualquier rueda que falte (una dependencia indirecta, una descarga cortada, una rueda para otro Python) da error en ese momento. Si el error aparece mientras todavía hay VPN, se arregla con un <code>pip download</code> de segundos. Si aparece dentro de tres meses sin VPN, el entorno no se puede reconstruir.</p>
+<textarea aria-label="Tu explicación" placeholder="Escribe aquí tu explicación antes de abrir la respuesta modelo…"></textarea><details><summary>Compara con una respuesta modelo</summary><div class="dentro"></div></details></div>
+<h2 id="errores-tipicos"><span class="n">§ 10</span>Errores típicos</h2>
+<div class="tabla"><table>
+<thead>
+<tr>
+<th>Síntoma</th>
+<th>Causa probable</th>
+<th>Arreglo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>torch.version.cuda</code> es <code>None</code></td>
+<td>variante de CPU (p. ej., <code>pip install torch</code> en Windows)</td>
+<td>reinstala con <code>--index-url …/cu126</code> o <code>…/cu130</code></td>
+</tr>
+<tr>
+<td><code>is_available()</code> es <code>False</code></td>
+<td>controlador ausente o antiguo</td>
+<td><code>nvidia-smi</code>; compara con la variante</td>
+</tr>
+<tr>
+<td><code>no kernel image is available</code></td>
+<td>la rueda no trae código para tu capacidad (Pascal con <code>cu130</code>)</td>
+<td><code>get_arch_list()</code>; <code>cu126</code></td>
+</tr>
+<tr>
+<td><code>ModuleNotFoundError</code> con el paquete instalado</td>
+<td>otro intérprete o núcleo de Jupyter</td>
+<td><code>import sys; print(sys.executable)</code></td>
+</tr>
+<tr>
+<td><code>--no-index</code> no encuentra un paquete</td>
+<td>descarga con otro Python, o incompleta</td>
+<td>descarga con el mismo Python</td>
+</tr>
+<tr>
+<td><code>externally-managed-environment</code></td>
+<td>instalas en el Python del sistema</td>
+<td>entorno virtual</td>
+</tr>
+<tr>
+<td>CPU y GPU no coinciden con <code>==</code></td>
+<td>normal: otro orden de suma y TF32</td>
+<td><code>allclose</code> con tolerancia</td>
+</tr>
+</tbody></table></div>
+<div class="caja llevas"><p><strong>Ideas que te llevas</strong></p><ul>
+<li><strong>Separa descargar de instalar:</strong> <code>pip download</code> una vez; <code>pip install --no-index --find-links</code> siempre.</li>
+<li><strong><code>requirements.in</code> dice lo que quieres; <code>requirements.txt</code>, lo que tienes</strong>, con <code>==</code>.</li>
+<li><strong>La variante se decide por dos números:</strong> capacidad de cómputo y CUDA del controlador. Pascal → <code>cu126</code>.</li>
+<li><strong>Verificar es ejecutar,</strong> no preguntar: una operación real en la GPU comparada con la CPU.</li>
+<li><strong>Estima antes de descargar y mide después.</strong> La prueba de fuego: borrar y reconstruir sin red.</li>
+</ul>
+</div>
+<h2 id="preguntas-de-recuperacion"><span class="n">§ 11</span>Preguntas de recuperación</h2>
+<ol>
+<li>¿Qué diferencia hay entre una rueda y una distribución de código fuente? ¿Por qué te conviene tener solo ruedas?</li>
+<li>Escribe de memoria las dos órdenes de <code>pip</code> que permiten instalar sin conexión.</li>
+<li>¿Qué te dice la línea «CUDA Version» de <code>nvidia-smi</code>? ¿Qué no te dice?</li>
+<li>Una GPU con capacidad 6.1 y otra con 8.9: ¿qué variante de PyTorch 2.13 eliges para cada una?</li>
+<li>¿Cuántos GB cuesta descargar el entorno del curso, en orden de magnitud? ¿Cómo lo mides con exactitud?</li>
+</ol>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Respuestas</span></summary><div class="dentro"><ol>
+<li>La rueda está compilada y se instala copiando; la de código fuente hay que construirla, a veces compilando C/C++ con herramientas que quizá no tienes. Con ruedas la instalación sin red es predecible.</li>
+<li><code>pip download -d ruedas/ -r requirements.in</code> (con red) y <code>pip install --no-index --find-links ruedas/ -r requirements.txt</code> (sin red).</li>
+<li>La versión <strong>máxima</strong> de CUDA que admite el controlador. No dice qué CUDA usa tu entorno (eso es <code>torch.version.cuda</code>) ni si la rueda tiene código para tu GPU.</li>
+<li>6.1 (Pascal): <code>cu126</code>. 8.9 (Ada): <code>cu130</code> si el controlador admite CUDA 13; si no, <code>cu126</code>.</li>
+<li>Unos 3-4 GB de descarga. Con los tamaños que imprime <code>pip download</code> y con <code>du -sh</code> sobre la carpeta de ruedas.</li>
+</ol>
+</div></details>
+<h2 id="lecturas"><span class="n">§ 12</span>Lecturas</h2>
+<ul>
+<li><strong>PyTorch, «Get Started Locally»</strong> (<code>https://pytorch.org/get-started/locally/</code>), en inglés: el selector oficial de la orden de instalación. Compruébalo cuando leas esto: las versiones avanzan.</li>
+<li><strong>PyTorch 2.13 Release Blog</strong> (<code>https://pytorch.org/blog/pytorch-2-13-release-blog/</code>), en inglés: variantes de CUDA y versiones de Python de la versión que usamos.</li>
+<li><strong>Software Carpentry, «La Terminal de Unix»</strong> (<code>https://swcarpentry.github.io/shell-novice-es/</code>), en español, CC BY 4.0: episodios 1-3.</li>
+<li><strong>Software Carpentry, «Control de versiones con Git»</strong> (<code>https://swcarpentry.github.io/git-novice-es/</code>), en español, CC BY 4.0: episodios 1-7.</li>
+</ul>
+
+</article>
+<nav class="pie" aria-label="Anterior y siguiente"><a class="ant" href="index.html"><small>← Anterior</small><span>Python científico y entorno de trabajo</span></a><a class="sig" href="p01-entorno.html"><small>Siguiente →</small><span>Tu entorno, verificado y reproducible</span></a></nav>
+</main>
+</div>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "id": "cursos",
+  "nombre": "Cursos",
+  "color": "#9ec5ff",
+  "tipo": "aprendizaje",
+  "descripcion": "",
+  "creada": "2026-10-26T03:47:17.335Z",
+  "orden": 3
+}

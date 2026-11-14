@@ -1,0 +1,65 @@
+{
+  "respuestas": {
+    "p1": "0: 0: Sé calcular autovalores de matrices pequeñas, pero no he trabajado con autovectores izquierdos ni con matrices no simétricas como caso aparte.",
+    "p2": "1: 1: He visto la fórmula de primer orden (quizá en física, como perturbaciones en mecánica cuántica) para el caso simétrico, pero no la sabría deducir para matrices no simétricas.",
+    "p3": "0: 0: Sé resolver EDOs escalares sencillas, pero no he estudiado sistemas de EDOs.",
+    "p4": "1: 1: Programo en Python con `numpy` y bucles y he usado `np.linalg.eig`, pero no sé cómo obtener y emparejar los autovectores izquierdos.",
+    "p5": "0: 0: Conozco la idea de grafo, pero no he estudiado ciencia de redes.",
+    "p6": "0: 0: No sé casi nada de *C. elegans* ni de neurobiología celular más allá de lo general (neurona, sinapsis, potencial de acción).",
+    "p7": "0: 0: Solo conozco estadística descriptiva (media, desviación, correlación de Pearson).",
+    "p8": "Estudio Ciencias de la Computacion, he dado Algebra Lineal, geometria, Algebra bilineal, Logica de orden 0 y orden 1, Analisis matematico, ahora estoy cursando cursos como: EDO, Teoria de numeros, Matematica numerica\n",
+    "p9": "Menos de 5 horas",
+    "p10": "El proyecto se puede decir que es escolar, orientado por el profesor de Matematica Numerica jefe del departamento de matematica aplicada, la fecha de entrega realmente es en 1.5 meses\n"
+  },
+  "nodos": {
+    "e1-autovectores-izquierdos": {
+      "estado": "pendiente"
+    },
+    "i7-validacion-randi": {
+      "notas": "<br />\n"
+    },
+    "e3-edo-lineales-estabilidad": {
+      "estado": "pendiente"
+    },
+    "i2-seguir-autovalor": {
+      "estado": "abierta"
+    }
+  },
+  "enviado": {
+    "respuestas": {
+      "p1": "0: 0: Sé calcular autovalores de matrices pequeñas, pero no he trabajado con autovectores izquierdos ni con matrices no simétricas como caso aparte.",
+      "p2": "1: 1: He visto la fórmula de primer orden (quizá en física, como perturbaciones en mecánica cuántica) para el caso simétrico, pero no la sabría deducir para matrices no simétricas.",
+      "p3": "0: 0: Sé resolver EDOs escalares sencillas, pero no he estudiado sistemas de EDOs.",
+      "p4": "1: 1: Programo en Python con `numpy` y bucles y he usado `np.linalg.eig`, pero no sé cómo obtener y emparejar los autovectores izquierdos.",
+      "p5": "0: 0: Conozco la idea de grafo, pero no he estudiado ciencia de redes.",
+      "p6": "0: 0: No sé casi nada de *C. elegans* ni de neurobiología celular más allá de lo general (neurona, sinapsis, potencial de acción).",
+      "p7": "0: 0: Solo conozco estadística descriptiva (media, desviación, correlación de Pearson).",
+      "p8": "Estudio Ciencias de la Computacion, he dado Algebra Lineal, geometria, Algebra bilineal, Logica de orden 0 y orden 1, Analisis matematico, ahora estoy cursando cursos como: EDO, Teoria de numeros, Matematica numerica\n",
+      "p9": "Menos de 5 horas",
+      "p10": "El proyecto se puede decir que es escolar, orientado por el profesor de Matematica Numerica jefe del departamento de matematica aplicada, la fecha de entrega realmente es en 1.5 meses\n"
+    },
+    "nodos": {
+      "e1-autovectores-izquierdos": {
+        "estado": "pendiente"
+      },
+      "i7-validacion-randi": {
+        "notas": "<br />\n"
+      }
+    }
+  },
+  "peticiones": [
+    {
+      "texto": "El usuario decide germinar esta idea aunque tu último veredicto fue «Cambio sugerido» (Buena base; cambiar matriz y validación). Elige el camino «Ablación sobre el jacobiano con signos». Toma esta como la versión aceptada de la idea y germínala.\n\nEl usuario había dejado esta réplica sin enviar; tenla en cuenta:\n\n**Elijo el camino «Ablación sobre el jacobiano con signos»**, la variación que propusiste en tu dictamen.",
+      "fecha": "2026-10-23T17:56:24.299Z"
+    },
+    {
+      "texto": "El usuario había dejado esta réplica sin enviar; tenla en cuenta:\n\n**Elijo el camino «Ablación sobre el jacobiano con signos»**, la variación que propusiste en tu dictamen.",
+      "fecha": "2026-10-23T18:08:29.067Z"
+    },
+    {
+      "texto": "El usuario había dejado esta réplica sin enviar; tenla en cuenta:\n\n**Elijo el camino «Ablación sobre el jacobiano con signos»**, la variación que propusiste en tu dictamen.\n\nReescribe SOLO los documentos de las 7 incógnitas (germinacion/nodos/i1…i7). Cada uno debe empezar con «## Cómo se llegó a este problema» (introducción amena: antecedentes directos, qué trabajos u observaciones llevaron a plantearlo y cómo surge en esta idea), seguido de «## El problema» (el planteamiento formal) y «## Qué representaría resolverlo». Conserva todo el contenido valioso que ya tienen (estado del arte, enfoques, recursos, referencias), reorganizándolo detrás de esas tres secciones. No cambies los ids, los nodos de estudio, los recursos ni la estructura del mapa: reescribe mapa.json igual que está, actualizando solo el resumen para mencionar este cambio.",
+      "fecha": "2026-10-24T05:20:38.436Z"
+    }
+  ],
+  "pendiente": null
+}

@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.dataset.tema = new URLSearchParams(location.search).get('tema') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro')</script>
+<script>document.documentElement.classList.add('js')</script>
+<title>Código de proyecto, no de cuaderno · Python científico</title>
+<meta name="description" content="Lo que separa un repositorio de portafolio de un cuaderno que nadie puede ejecutar: estructura reproducible, funciones puras, pruebas con pytest y perfilar antes de optimizar.">
+<meta name="theme-color" content="#f3efe4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0f15" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3.5' fill='%231b1e25'/%3E%3Crect x='2.5' y='2.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='6.5' y='2.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='10.5' y='2.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='2.5' y='6.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='6.5' y='6.5' width='3' height='3' rx='.6' fill='%23e69f00'/%3E%3Crect x='10.5' y='6.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='2.5' y='10.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='6.5' y='10.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='10.5' y='10.5' width='3' height='3' rx='.6' fill='%23cc79a7'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="lib/katex/katex.min.css">
+<link rel="stylesheet" href="css/curso.css">
+<script type="module" src="/semillero-puente.js"></script>
+<script type="module" src="motores/sitio.js"></script>
+</head>
+<body data-pieza="c08-proyecto">
+<canvas id="fondo" aria-hidden="true"></canvas>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="barra"><a class="marca" href="index.html"><span class="chip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>Python científico</a><nav class="tira" aria-label="Programa de la asignatura"><span class="grupo"><a class="byte " href="index.html" data-pieza="index" title="Python científico y entorno de trabajo" aria-label="Python científico y entorno de trabajo">⌂</a></span><span class="grupo"><a class="byte c" href="c01-entorno.html" data-pieza="c01-entorno" title="Un entorno que funcione desde Cuba" aria-label="Un entorno que funcione desde Cuba">c1</a><a class="byte c" href="c02-ndarray.html" data-pieza="c02-ndarray" title="NumPy I: el ndarray" aria-label="NumPy I: el ndarray">c2</a><a class="byte c" href="c03-vectores.html" data-pieza="c03-vectores" title="NumPy II: pensar en vectores" aria-label="NumPy II: pensar en vectores">c3</a><a class="byte c" href="c04-aleatoriedad.html" data-pieza="c04-aleatoriedad" title="Aleatoriedad reproducible" aria-label="Aleatoriedad reproducible">c4</a><a class="byte c" href="c05-datos-sucios.html" data-pieza="c05-datos-sucios" title="pandas I: datos sucios" aria-label="pandas I: datos sucios">c5</a><a class="byte c" href="c06-agregar.html" data-pieza="c06-agregar" title="pandas II: agregar y reorganizar" aria-label="pandas II: agregar y reorganizar">c6</a><a class="byte c" href="c07-visualizacion.html" data-pieza="c07-visualizacion" title="Visualización y análisis exploratorio" aria-label="Visualización y análisis exploratorio">c7</a><a class="byte c actual" href="c08-proyecto.html" data-pieza="c08-proyecto" title="Código de proyecto, no de cuaderno" aria-label="Código de proyecto, no de cuaderno" aria-current="page">c8</a></span><span class="grupo"><a class="byte p" href="p01-entorno.html" data-pieza="p01-entorno" title="Tu entorno, verificado y reproducible" aria-label="Tu entorno, verificado y reproducible">p1</a><a class="byte p" href="p02-vectorizar.html" data-pieza="p02-vectorizar" title="Pensar en vectores: NumPy y aleatoriedad" aria-label="Pensar en vectores: NumPy y aleatoriedad">p2</a><a class="byte p" href="p03-pandas.html" data-pieza="p03-pandas" title="Datos reales: ecología y un comercio en línea" aria-label="Datos reales: ecología y un comercio en línea">p3</a><a class="byte p" href="p04-paquete.html" data-pieza="p04-paquete" title="De los ejercicios a un paquete con pruebas" aria-label="De los ejercicios a un paquete con pruebas">p4</a></span><span class="grupo"><a class="byte v" href="v01-einsum.html" data-pieza="v01-einsum" title="einsum: qué calcula y por qué es el idioma de los transformers" aria-label="einsum: qué calcula y por qué es el idioma de los transformers">v1</a><a class="byte v" href="v02-memoria-distancias.html" data-pieza="v02-memoria-distancias" title="La memoria de las distancias por pares, en bytes" aria-label="La memoria de las distancias por pares, en bytes">v2</a><a class="byte v" href="v03-reshape-vista.html" data-pieza="v03-reshape-vista" title="Cuándo aplanar un arreglo es una vista" aria-label="Cuándo aplanar un arreglo es una vista">v3</a></span></nav><button type="button" class="interruptor" aria-label="Cambiar de tema"><svg class="sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg></button><span class="progreso" aria-hidden="true"></span></header>
+<div class="pagina">
+<aside class="rail" aria-label="En esta página"><h2>En esta página</h2><ol><li><a href="#el-cuaderno-que-nadie-puede-ejecutar" data-seccion="el-cuaderno-que-nadie-puede-ejecutar">El cuaderno que nadie puede ejecutar</a></li><li><a href="#un-repositorio-reproducible" data-seccion="un-repositorio-reproducible">Un repositorio reproducible</a></li><li><a href="#del-cuaderno-a-funciones-puras" data-seccion="del-cuaderno-a-funciones-puras">Del cuaderno a funciones puras</a></li><li><a href="#pruebas-con-pytest" data-seccion="pruebas-con-pytest">Pruebas con pytest</a></li><li><a href="#perfilar-medir-antes-de-optimizar" data-seccion="perfilar-medir-antes-de-optimizar">Perfilar: medir antes de optimizar</a></li><li><a href="#el-readme-y-el-un-solo-comando" data-seccion="el-readme-y-el-un-solo-comando">El README y el «un solo comando»</a></li><li><a href="#errores-tipicos" data-seccion="errores-tipicos">Errores típicos</a></li><li><a href="#preguntas-de-recuperacion" data-seccion="preguntas-de-recuperacion">Preguntas de recuperación</a></li><li><a href="#lecturas" data-seccion="lecturas">Lecturas</a></li></ol><a class="volver" href="index.html">← Programa de la asignatura</a></aside>
+<main id="contenido">
+
+<header class="cabeza"><div class="tipo"><span class="num">08</span><span>Conferencia</span></div><h1>Código de proyecto, no de cuaderno</h1><p class="resumen">Lo que separa un repositorio de portafolio de un cuaderno que nadie puede ejecutar: estructura reproducible, funciones puras, pruebas con pytest y perfilar antes de optimizar.</p><div class="metas"><span>≈ 3 h de estudio</span><span>2 motores interactivos</span><span>un perfil real, medido</span></div></header>
+<article class="texto">
+<div class="caja objetivos"><p><strong>Objetivos.</strong> Al terminar serás capaz de:</p>
+<ol>
+<li><strong>Estructurar</strong> un repositorio reproducible (<code>src/</code>, <code>tests/</code>, <code>data/</code>, <code>notebooks/</code>, <code>pyproject.toml</code>, <code>README</code>) que otra persona pueda ejecutar <strong>con un solo comando</strong>, incluso sin conexión.</li>
+<li><strong>Convertir</strong> el código de un cuaderno en funciones puras dentro de un paquete instalable.</li>
+<li><strong>Escribir</strong> pruebas con <code>pytest</code>: casos pequeños, fijaciones, parametrización, reales con tolerancia, archivos temporales y propiedades.</li>
+<li><strong>Perfilar</strong> con <code>%timeit</code>, <code>perf_counter</code> y <code>cProfile</code>, <strong>localizar</strong> el cuello de botella y <strong>verificar</strong> que la versión optimizada da lo mismo.</li>
+</ol>
+</div>
+<div class="caja prereq"><p><strong>Prerrequisitos.</strong> Todo lo anterior, en especial el entorno y Git de la <a href="c01-entorno.html">conferencia 1</a> y la vectorización de la <a href="c03-vectores.html">conferencia 3</a>. De Python: módulos, paquetes e <code>import</code>, que ya conoces de Django.</p>
+</div>
+<h2 id="el-cuaderno-que-nadie-puede-ejecutar"><span class="n">§ 1</span>El cuaderno que nadie puede ejecutar</h2>
+<p>Un repositorio que ve cualquiera que revisa portafolios: <code>Analisis_final_v3 (2).ipynb</code>, sin <code>requirements.txt</code>, que lee <code>C:\Users\Leo\Desktop\ventas.xlsx</code>, cuyas celdas solo funcionan en un orden que nadie recuerda y cuyos resultados cambian cada vez porque no hay semilla. Para un empleo remoto, ese repositorio <strong>resta</strong>: quien te contrata desde otro país no puede verte trabajar; solo ve tu código, y quiere saber si entregas algo que <strong>funciona en otra máquina</strong>.</p>
+<p>Los cuadernos tienen problemas estructurales para el código que importa: <strong>estado oculto</strong> (borras una celda y su resultado sigue en memoria hasta que reinicias), <strong>orden arbitrario</strong>, <strong>difíciles de probar y de reutilizar</strong> (no se importa una función de un <code>.ipynb</code>) y <strong>difíciles de revisar en Git</strong> (un JSON con salidas incrustadas). La solución no es abandonarlos: <strong>cuadernos para explorar y comunicar; módulos para todo lo que se reutiliza.</strong></p>
+<div class="caja reto"><p><strong>Problema para pensar (5 minutos).</strong> Piensa en la red de dígitos que hiciste. Si mañana alguien la clona en otra máquina, ¿qué le faltaría para ejecutarla de principio a fin y obtener <strong>tus mismos números</strong>? Haz la lista.</p>
+</div>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Lo que suele faltar</span></summary><div class="dentro"><p>Las dependencias con versiones exactas; los datos (o cómo obtenerlos) y rutas relativas; las semillas; el orden de ejecución; la versión de Python y el hardware; y una forma de saber que funciona (números esperados o pruebas). Cada punto tiene respuesta en esta conferencia.</p>
+</div></details>
+<h2 id="un-repositorio-reproducible"><span class="n">§ 2</span>Un repositorio reproducible</h2>
+<p>Explora la estructura: cada elemento dice qué contiene y si va a Git.</p>
+<figure class="widget" data-widget="repo" data-opciones="{}"><div class="w-cab"><span class="w-tit">Anatomía de un repositorio reproducible</span><span class="w-tipo">motor interactivo</span></div><div class="w-cuerpo"><p class="sin-js">Esta visualización necesita JavaScript.</p></div><figcaption>Haz clic en cada carpeta o archivo. Fíjate en dos cosas: los datos crudos son de solo lectura, y todo lo demás se puede borrar y regenerar con un comando.</figcaption></figure>
+<p>Las cinco decisiones que importan: <strong>los datos crudos son de solo lectura</strong> (todo lo derivado lo produce el código); <strong>el diseño <code>src/</code></strong> (el código importable vive en <code>src/ventas/</code>, lo que obliga a instalarlo, y así las pruebas prueban lo que se instala); <strong>un punto de entrada</strong> (<code>python -m ventas.pipeline</code> reproduce todo); <strong>rutas relativas a la raíz</strong>, en un solo sitio y con <code>pathlib</code>; y <strong>un <code>README</code> que dice cómo reproducir</strong>, también sin conexión.</p>
+<div class="codigo"><span class="lengua">toml</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># pyproject.toml</span>
+[build-system]
+<span class="tk-k">requires</span> = [<span class="tk-s">&quot;setuptools&gt;=69&quot;</span>]
+<span class="tk-k">build-backend</span> = <span class="tk-s">&quot;setuptools.build_meta&quot;</span>
+
+[project]
+<span class="tk-k">name</span> = <span class="tk-s">&quot;ventas&quot;</span>
+<span class="tk-k">version</span> = <span class="tk-s">&quot;0.1.0&quot;</span>
+<span class="tk-k">requires-python</span> = <span class="tk-s">&quot;&gt;=3.11&quot;</span>
+<span class="tk-k">dependencies</span> = [<span class="tk-s">&quot;numpy&gt;=2.0&quot;</span>, <span class="tk-s">&quot;pandas&gt;=3.0&quot;</span>, <span class="tk-s">&quot;matplotlib&gt;=3.8&quot;</span>, <span class="tk-s">&quot;pyarrow&quot;</span>]
+
+[project.optional-dependencies]
+<span class="tk-k">dev</span> = [<span class="tk-s">&quot;pytest&gt;=8&quot;</span>]
+
+[tool.pytest.ini_options]
+<span class="tk-k">testpaths</span> = [<span class="tk-s">&quot;tests&quot;</span>]</code></pre></div>
+<p>Se instala en modo editable (los cambios en <code>src/</code> se ven sin reinstalar) con <code>pip install -e &quot;.[dev]&quot;</code>.</p>
+<aside class="caja refuta"><p><strong>Error típico: «<code>pip install -e .</code> funciona igual sin conexión»</strong></p><p><strong>Por qué es tentador:</strong> solo instala tu propio código. <strong>Por qué falla:</strong> para construir el paquete, <code>pip</code> crea un entorno aislado y <strong>descarga <code>setuptools</code></strong> de PyPI; sin red, error. <strong>Lo correcto:</strong> guarda la rueda de <code>setuptools</code> en tu carpeta de ruedas (está en el <code>requirements.in</code> de la conferencia 1) y usa <code>pip install --no-index --find-links ~/ruedas/py312 -e &quot;.[dev]&quot;</code>, o instala <code>setuptools</code> en el entorno y añade <code>--no-build-isolation</code>. Escríbelo en el <code>README</code>: es justo el detalle que hace que tu proyecto funcione en Cuba.</p>
+</aside>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># src/ventas/config.py</span>
+<span class="tk-k">from</span> pathlib <span class="tk-k">import</span> Path
+
+RAIZ = Path(__file__).resolve().parents[<span class="tk-n">2</span>]      <span class="tk-c"># src/ventas/config.py → raíz del proyecto</span>
+DATOS_CRUDOS = RAIZ / &quot;data<span class="tk-s">&quot; / &quot;</span>raw&quot;
+DATOS_PROCESADOS = RAIZ / &quot;data<span class="tk-s">&quot; / &quot;</span>processed&quot;
+SEMILLA = <span class="tk-n">2026</span></code></pre></div>
+<p>Nunca <code>&quot;C:\\Users\\...&quot;</code>, nunca <code>os.chdir</code>: <code>Path</code> funciona igual en Linux y en Windows.</p>
+<h2 id="del-cuaderno-a-funciones-puras"><span class="n">§ 3</span>Del cuaderno a funciones puras</h2>
+<div class="caja def"><p><strong>Definición 1 (función pura).</strong> Su resultado depende <strong>solo de sus argumentos</strong> y <strong>no tiene efectos secundarios</strong>: no lee variables globales que cambian, no modifica sus argumentos, no escribe archivos ni imprime.</p>
+</div>
+<p>Las funciones puras se prueban dando una entrada y comprobando la salida. Para refactorizar un cuaderno: identifica los pasos; convierte cada uno en una función <code>DataFrame → DataFrame</code>; <strong>separa la entrada/salida de la lógica</strong>; haz explícito el azar (las funciones reciben un <code>rng</code>); deja en el cuaderno solo las llamadas y los gráficos.</p>
+<div class="caja ejemplo"><p><strong>Ejemplo 1 (refactorizar).</strong> En el cuaderno:</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>df = <span class="tk-b">pd</span>.read_csv(&quot;C:/Users/Leo/Desktop/ventas.csv<span class="tk-s">&quot;, sep=&quot;</span>;&quot;, decimal=&quot;,&quot;)
+df[&quot;tienda<span class="tk-s">&quot;] = df[&quot;</span>tienda&quot;].<span class="tk-b">str</span>.strip().<span class="tk-b">str</span>.title()
+df = df[df[&quot;precio&quot;] != <span class="tk-n">9999</span>]
+df[&quot;importe<span class="tk-s">&quot;] = df[&quot;</span>unidades<span class="tk-s">&quot;] * df[&quot;</span>precio&quot;]</code></pre></div>
+<p>En <code>src/ventas/limpieza.py</code>:</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">import</span> pandas <span class="tk-k">as</span> <span class="tk-b">pd</span>
+
+CENTINELA_PRECIO = <span class="tk-n">9999</span>
+
+<span class="tk-k">def</span> leer_ventas(ruta) -&gt; <span class="tk-b">pd</span>.DataFrame:
+    <span class="tk-s">&quot;&quot;&quot;Lee el CSV de ventas con el formato de la tienda (; y coma decimal).&quot;&quot;&quot;</span>
+    <span class="tk-k">return</span> <span class="tk-b">pd</span>.read_csv(ruta, sep=&quot;;&quot;, decimal=&quot;,&quot;, thousands=&quot;.&quot;,
+                       parse_dates=[&quot;fecha<span class="tk-s">&quot;], date_format=&quot;</span>%d/%m/%Y&quot;)
+
+<span class="tk-k">def</span> limpiar_ventas(df: <span class="tk-b">pd</span>.DataFrame) -&gt; <span class="tk-b">pd</span>.DataFrame:
+    <span class="tk-s">&quot;&quot;&quot;Normaliza tiendas, convierte el centinela de precio en NaN y añade el importe. No modifica df.&quot;&quot;&quot;</span>
+    precio = df[&quot;precio<span class="tk-s">&quot;].mask(df[&quot;</span>precio&quot;] == CENTINELA_PRECIO)
+    <span class="tk-k">return</span> df.assign(tienda=df[&quot;tienda&quot;].<span class="tk-b">str</span>.strip().<span class="tk-b">str</span>.title(),
+                     precio=precio, importe=df[&quot;unidades&quot;] * precio)</code></pre></div>
+<p><strong>Por qué así.</strong> La lectura queda aislada: es la única función que toca el disco. <code>limpiar_ventas</code> es pura gracias a <code>assign</code>. Y hay un <strong>cambio de comportamiento deliberado</strong>: el cuaderno <strong>borraba</strong> las filas con 9999 (perdiendo sus unidades); la función las conserva con precio desconocido, como decidimos en la <a href="c05-datos-sucios.html">conferencia 5</a>. Refactorizar es buen momento para revisar decisiones, pero cada cambio debe ser consciente y tener su prueba.</p>
+</div>
+<div class="predice" data-correcta="2"><span class="etq">Predice antes de seguir</span><p class="q">¿Es pura esta función?</p><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>UMBRAL = <span class="tk-n">5</span>
+<span class="tk-k">def</span> marcar_grandes(df):
+    df[&quot;grande<span class="tk-s">&quot;] = df[&quot;</span>unidades&quot;] &gt; UMBRAL
+    <span class="tk-b">print</span>(df[&quot;grande&quot;].<span class="tk-b">sum</span>())
+    <span class="tk-k">return</span> df</code></pre></div></p>
+<ol class="opciones"><li><button type="button" data-i="0"><span class="letra">A</span><span>Sí: devuelve un <code>DataFrame</code>.</span></button></li><li><button type="button" data-i="1"><span class="letra">B</span><span>Sí, salvo por el <code>print</code>.</span></button></li><li><button type="button" data-i="2"><span class="letra">C</span><span>No, por tres motivos.</span></button></li></ol><details class="revela"><summary>Comprométete con una opción y después mira la explicación</summary><div class="dentro"><p>Depende de una global (<code>UMBRAL</code>), <strong>modifica su argumento</strong> (escribe en la tabla de quien la llama) e imprime. Versión pura: <code>def marcar_grandes(df, umbral): return df.assign(grande=df[&quot;unidades&quot;] &gt; umbral)</code>.</p>
+</div></details></div>
+<h2 id="pruebas-con-pytest"><span class="n">§ 4</span>Pruebas con <code>pytest</code></h2>
+<p>Una prueba es una función <code>test_…</code> en un archivo <code>tests/test_*.py</code> que usa <code>assert</code>; <code>pytest</code> las encuentra y, si fallan, muestra los valores de cada lado.</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># tests/test_limpieza.py</span>
+<span class="tk-k">import</span> numpy <span class="tk-k">as</span> <span class="tk-b">np</span>
+<span class="tk-k">import</span> pandas <span class="tk-k">as</span> <span class="tk-b">pd</span>
+<span class="tk-k">import</span> <span class="tk-b">pytest</span>
+<span class="tk-k">from</span> ventas.limpieza <span class="tk-k">import</span> leer_ventas, limpiar_ventas
+
+<span class="tk-k">def</span> test_centinela_es_nan_y_no_se_pierden_filas():
+    df = <span class="tk-b">pd</span>.DataFrame({&quot;tienda<span class="tk-s">&quot;: [&quot;</span>A<span class="tk-s">&quot;, &quot;</span>A<span class="tk-s">&quot;], &quot;</span>unidades<span class="tk-s">&quot;: [1, 2], &quot;</span>precio&quot;: [<span class="tk-n">10.0</span>, <span class="tk-n">9999.0</span>]})
+    r = limpiar_ventas(df)
+    <span class="tk-k">assert</span> <span class="tk-b">len</span>(r) == <span class="tk-n">2</span>
+    <span class="tk-k">assert</span> <span class="tk-b">np</span>.isnan(r[&quot;precio<span class="tk-s">&quot;].iloc[1]) and np.isnan(r[&quot;</span>importe&quot;].iloc[<span class="tk-n">1</span>])
+
+<span class="tk-k">def</span> test_no_modifica_la_entrada():
+    df = <span class="tk-b">pd</span>.DataFrame({&quot;tienda<span class="tk-s">&quot;: [&quot;</span>a &quot;], &quot;unidades<span class="tk-s">&quot;: [1], &quot;</span>precio&quot;: [<span class="tk-n">9999.0</span>]})
+    copia = df.copy()
+    limpiar_ventas(df)
+    <span class="tk-b">pd</span>.testing.assert_frame_equal(df, copia)
+
+<span class="tk-d">@pytest.mark.parametrize</span>(&quot;entrada, esperado<span class="tk-s">&quot;, [(&quot;</span> centro<span class="tk-s">&quot;, &quot;</span>Centro<span class="tk-s">&quot;), (&quot;</span>CENTRO<span class="tk-s">&quot;, &quot;</span>Centro<span class="tk-s">&quot;), (&quot;</span>playa  &quot;, &quot;Playa&quot;)])
+<span class="tk-k">def</span> test_normalizar_tienda(entrada, esperado):
+    df = <span class="tk-b">pd</span>.DataFrame({&quot;tienda<span class="tk-s">&quot;: [entrada], &quot;</span>unidades<span class="tk-s">&quot;: [1], &quot;</span>precio&quot;: [<span class="tk-n">1.0</span>]})
+    <span class="tk-k">assert</span> limpiar_ventas(df)[&quot;tienda&quot;].iloc[<span class="tk-n">0</span>] == esperado
+
+<span class="tk-k">def</span> test_leer_formato_espanol(tmp_path):                 <span class="tk-c"># tmp_path: carpeta temporal nueva</span>
+    ruta = tmp_path / &quot;v.csv&quot;
+    ruta.write_text(&quot;fecha;tienda;producto;unidades;precio\n03/<span class="tk-n">01</span>/<span class="tk-n">2026</span>;A;arroz;<span class="tk-n">2</span>;<span class="tk-n">1.250</span>,<span class="tk-n">50</span>\n<span class="tk-s">&quot;, encoding=&quot;</span>utf-<span class="tk-n">8</span>&quot;)
+    df = leer_ventas(ruta)
+    <span class="tk-k">assert</span> df[&quot;precio&quot;].iloc[<span class="tk-n">0</span>] == <span class="tk-b">pytest</span>.approx(<span class="tk-n">1250.5</span>)
+    <span class="tk-k">assert</span> df[&quot;fecha<span class="tk-s">&quot;].iloc[0] == pd.Timestamp(&quot;</span><span class="tk-n">2026</span>-<span class="tk-n">01</span>-<span class="tk-n">03</span>&quot;)    <span class="tk-c"># 3 de enero, no 1 de marzo</span></code></pre></div>
+<p>Herramientas que usarás: <code>pytest.approx</code> y <code>np.testing.assert_allclose</code> (nunca <code>==</code> con reales); <strong>fijaciones</strong> (<code>@pytest.fixture</code>: datos que comparten varias pruebas, que <code>pytest</code> pasa a la prueba que tenga un argumento con su nombre); <code>@pytest.mark.parametrize</code> (la misma prueba con varios casos); <code>tmp_path</code> (archivos temporales); y <code>with pytest.raises(pd.errors.MergeError):</code> para comprobar que algo falla como debe.</p>
+<p><strong>Qué probar:</strong> los casos límite (tabla vacía, un solo grupo, todo <code>NaN</code>, columna constante, empates), las decisiones de limpieza, las <strong>propiedades</strong> que deben cumplirse para cualquier entrada, y <strong>cada error real que encuentres</strong> (prueba de regresión, para que no vuelva).</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-d">@pytest.mark.parametrize</span>(&quot;semilla&quot;, [<span class="tk-n">0</span>, <span class="tk-n">1</span>, <span class="tk-n">2</span>])
+<span class="tk-k">def</span> test_estandarizar_propiedades(semilla):
+    X = <span class="tk-b">np</span>.random.default_rng(semilla).normal(loc=<span class="tk-n">5</span>, scale=<span class="tk-n">3</span>, size=(<span class="tk-n">200</span>, <span class="tk-n">4</span>))
+    Z = estandarizar(X)
+    <span class="tk-b">np</span>.testing.assert_allclose(Z.mean(axis=<span class="tk-n">0</span>), <span class="tk-n">0</span>, atol=<span class="tk-n">1e-12</span>)
+    <span class="tk-b">np</span>.testing.assert_allclose(Z.std(axis=<span class="tk-n">0</span>), <span class="tk-n">1</span>, atol=<span class="tk-n">1e-12</span>)
+
+<span class="tk-k">def</span> test_distancias_rapida_igual_a_lenta():             <span class="tk-c"># la prueba que se escribe ANTES de optimizar</span>
+    rng = <span class="tk-b">np</span>.random.default_rng(<span class="tk-n">0</span>)
+    A, B = rng.normal(size=(<span class="tk-n">30</span>, <span class="tk-n">5</span>)), rng.normal(size=(<span class="tk-n">20</span>, <span class="tk-n">5</span>))
+    lenta = ((A[:, <span class="tk-k">None</span>, :] - B[<span class="tk-k">None</span>, :, :]) ** <span class="tk-n">2</span>).<span class="tk-b">sum</span>(-<span class="tk-n">1</span>)
+    <span class="tk-b">np</span>.testing.assert_allclose(distancias(A, B), lenta, atol=<span class="tk-n">1e-10</span>)</code></pre></div>
+<div class="autoexp"><span class="etq">Explícalo con tus palabras</span><p><strong>¿Qué propiedades debe cumplir <code>particion(n, frac_prueba, semilla)</code> de la <a href="c04-aleatoriedad.html">conferencia 4</a>? Escribe la prueba.</strong> ---
+Tamaños correctos, conjuntos disjuntos, que entre los dos cubran todos los índices, y reproducibilidad (misma semilla, mismo resultado; otra semilla, otro):
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">def</span> test_particion():
+    ent, pru = particion(<span class="tk-n">100</span>, <span class="tk-n">0.2</span>, semilla=<span class="tk-n">7</span>)
+    <span class="tk-k">assert</span> <span class="tk-b">len</span>(pru) == <span class="tk-n">20</span> <span class="tk-k">and</span> <span class="tk-b">len</span>(ent) == <span class="tk-n">80</span>
+    <span class="tk-k">assert</span> <span class="tk-b">set</span>(ent).isdisjoint(pru) <span class="tk-k">and</span> <span class="tk-b">set</span>(ent) | <span class="tk-b">set</span>(pru) == <span class="tk-b">set</span>(<span class="tk-b">range</span>(<span class="tk-n">100</span>))
+    <span class="tk-b">np</span>.testing.assert_array_equal(pru, particion(<span class="tk-n">100</span>, <span class="tk-n">0.2</span>, semilla=<span class="tk-n">7</span>)[<span class="tk-n">1</span>])
+    <span class="tk-k">assert</span> <span class="tk-k">not</span> <span class="tk-b">np</span>.array_equal(pru, particion(<span class="tk-n">100</span>, <span class="tk-n">0.2</span>, semilla=<span class="tk-n">8</span>)[<span class="tk-n">1</span>])</code></pre></div></p>
+<textarea aria-label="Tu explicación" placeholder="Escribe aquí tu explicación antes de abrir la respuesta modelo…"></textarea><details><summary>Compara con una respuesta modelo</summary><div class="dentro"></div></details></div>
+<h2 id="perfilar-medir-antes-de-optimizar"><span class="n">§ 5</span>Perfilar: medir antes de optimizar</h2>
+<div class="caja def"><p><strong>Regla.</strong> No optimices por intuición. <strong>Mide</strong>, encuentra la función que se lleva el tiempo, optimiza <strong>solo esa</strong>, comprueba con una prueba que el resultado no cambió y <strong>vuelve a medir</strong>.</p>
+</div>
+<p><strong>Un fragmento:</strong> <code>%timeit expr</code> en Jupyter repite y da media y dispersión. En un <em>script</em>, <code>time.perf_counter()</code> repetido, quedándote con el mínimo (el menos afectado por otras tareas), y siempre <strong>después</strong> de una llamada de calentamiento (la primera paga costes únicos: importar, reservar memoria, inicializar BLAS o CUDA).</p>
+<p><strong>Un programa entero:</strong> <code>cProfile</code>, de la biblioteca estándar, cuenta cuántas veces se llama cada función y cuánto tiempo pasa en ella:</p>
+<div class="codigo"><span class="lengua">bash</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">python</span><span class="tk-o"> -m</span> cProfile<span class="tk-o"> -o</span> perfil.out<span class="tk-o"> -m</span> ventas.pipeline
+<span class="tk-k">python</span><span class="tk-o"> -c</span> <span class="tk-s">&quot;import pstats; pstats.Stats('perfil.out').sort_stats('cumulative').print_stats(10)&quot;</span></code></pre></div>
+<p>En un cuaderno, <code>%prun main()</code>. Esta es la salida real (NumPy 2.5) de una tubería que estandariza 20 000 puntos y asigna cada uno a su centroide más cercano entre 64:</p>
+<div class="codigo"><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.189    0.189 perfil_demo.py:26(pipeline)
+        1    0.086    0.086    0.183    0.183 perfil_demo.py:14(vecino_mas_cercano)
+    20000    0.009    0.000    0.085    0.000 {method 'sum' of 'numpy.ndarray' objects}
+    20005    0.073    0.000    0.073    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+    20000    0.011    0.000    0.011    0.000 {method 'argmin' of 'numpy.ndarray' objects}</code></pre></div>
+<p><strong><code>cumtime</code></strong> es el tiempo en la función <strong>y en todo lo que llama</strong>; <strong><code>tottime</code></strong>, sin contar sus llamadas; <strong><code>ncalls</code></strong> es el delator: <code>sum</code> y <code>argmin</code> se llaman <strong>20 000 veces</strong>, es decir, hay un bucle de Python que llama a NumPy una vez por fila. <code>vecino_mas_cercano</code> se lleva el 97 % del tiempo. Con la vectorización de la <a href="c03-vectores.html">conferencia 3</a>:</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">def</span> vecino_mas_cercano(X, C):
+    D = (X ** <span class="tk-n">2</span>).<span class="tk-b">sum</span>(<span class="tk-n">1</span>)[:, <span class="tk-k">None</span>] + (C ** <span class="tk-n">2</span>).<span class="tk-b">sum</span>(<span class="tk-n">1</span>)[<span class="tk-k">None</span>, :] - <span class="tk-n">2</span> * X @ C.T   <span class="tk-c"># (n, k)</span>
+    <span class="tk-k">return</span> D.argmin(axis=<span class="tk-n">1</span>)</code></pre></div>
+<p>el perfil completo baja de 0,189 s a 0,022 s (medido igual), y la prueba de equivalencia confirma que asigna exactamente los mismos centroides.</p>
+<figure class="widget" data-widget="perfil" data-opciones="{}"><div class="w-cab"><span class="w-tit">El perfil, antes y después</span><span class="w-tipo">motor interactivo</span></div><div class="w-cuerpo"><p class="sin-js">Esta visualización necesita JavaScript.</p></div><figcaption>Cada barra es una función; su ancho, su tiempo acumulado; debajo, lo que llama. Haz clic para ver ncalls, tottime y cumtime, y después activa «después de vectorizar».</figcaption></figure>
+<div class="tabla"><table>
+<thead>
+<tr>
+<th>Patrón lento</th>
+<th>Alternativa</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>for i in range(len(X))</code> sobre filas</td>
+<td>reducciones por eje, <em>broadcasting</em>, <code>@</code></td>
+</tr>
+<tr>
+<td><code>df.iterrows()</code>, <code>df.apply(f, axis=1)</code></td>
+<td>operaciones de columnas, <code>np.where</code>, <code>.str</code>, <code>.dt</code></td>
+</tr>
+<tr>
+<td><code>groupby(...).apply(lambda ...)</code></td>
+<td><code>agg</code>/<code>transform</code> con funciones por nombre</td>
+</tr>
+<tr>
+<td><code>pd.concat</code> dentro de un bucle</td>
+<td>acumular en una lista y concatenar una vez</td>
+</tr>
+<tr>
+<td>leer el mismo CSV grande cada vez</td>
+<td>Parquet</td>
+</tr>
+<tr>
+<td><code>float64</code> donde basta <code>float32</code></td>
+<td>la mitad de memoria y de tráfico</td>
+</tr>
+</tbody></table></div>
+<div class="caja obs"><p><strong>Observación 1 (la memoria también se perfila).</strong> <code>tracemalloc</code> (biblioteca estándar) dice qué líneas reservan más; <code>df.memory_usage(deep=True)</code>, cuánto ocupa cada columna (las de texto suelen ser las grandes). La <a href="v02-memoria-distancias.html">demostración para valientes 2</a> lo usa para medir exactamente lo que predice la teoría.</p>
+</div>
+<h2 id="el-readme-y-el-un-solo-comando"><span class="n">§ 6</span>El <code>README</code> y el «un solo comando»</h2>
+<p>El <code>README</code> contesta cinco preguntas en orden: <strong>qué es</strong> (una frase y el resultado principal), <strong>instalación</strong> (con y sin conexión), <strong>datos</strong> (de dónde, licencia, dónde ponerlos), <strong>ejecución</strong> (<code>python -m ventas.pipeline</code> y <code>pytest</code>) y <strong>resultados y decisiones</strong>. Si hay varios pasos, un <code>Makefile</code> o un <code>tareas.py</code> los encadena. La prueba de calidad es la de la conferencia 1: <strong>clona tu repositorio en otra carpeta, sigue tu <code>README</code> al pie de la letra y comprueba que obtienes los mismos números.</strong></p>
+<div class="caja obs"><p><strong>Observación 2 (integración continua, una ventaja para ti).</strong> GitHub Actions ejecuta tus pruebas en los servidores de GitHub en cada <code>push</code>, y esos servidores sí tienen PyPI. Como GitHub te funciona sin VPN, tienes integración continua sin descargar nada tú. La insignia «tests passing» en el <code>README</code> es una señal que los reclutadores reconocen (lo verás en MLOps).</p>
+</div>
+<h2 id="errores-tipicos"><span class="n">§ 7</span>Errores típicos</h2>
+<div class="tabla"><table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Síntoma</th>
+<th>Arreglo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Rutas absolutas</td>
+<td><code>FileNotFoundError</code> en otra máquina</td>
+<td><code>pathlib</code> relativo a la raíz</td>
+</tr>
+<tr>
+<td>Lógica en el cuaderno</td>
+<td>no se prueba ni se reutiliza</td>
+<td>funciones puras en <code>src/</code></td>
+</tr>
+<tr>
+<td>Funciones que modifican su entrada</td>
+<td>resultados que cambian al reejecutar</td>
+<td><code>assign</code>; prueba «no modifica la entrada»</td>
+</tr>
+<tr>
+<td>Pruebas con <code>==</code> sobre reales</td>
+<td>fallos aleatorios</td>
+<td><code>approx</code>, <code>assert_allclose</code></td>
+</tr>
+<tr>
+<td>Pruebas con azar sin semilla</td>
+<td>fallan a veces</td>
+<td><code>default_rng(semilla)</code></td>
+</tr>
+<tr>
+<td>Optimizar sin medir</td>
+<td>horas en lo que no importaba</td>
+<td><code>cProfile</code> primero</td>
+</tr>
+<tr>
+<td>Optimizar sin prueba de equivalencia</td>
+<td>la versión rápida da otro resultado</td>
+<td>prueba «rápida = lenta»</td>
+</tr>
+</tbody></table></div>
+<div class="caja llevas"><p><strong>Ideas que te llevas</strong></p><ul>
+<li><strong>Cuadernos para explorar; módulos para reutilizar.</strong> Diseño <code>src/</code>, <code>pyproject.toml</code>, instalación editable (también sin red).</li>
+<li><strong>Datos crudos de solo lectura;</strong> todo lo demás se regenera con un comando.</li>
+<li><strong>Funciones puras</strong> y <strong>pruebas</strong> de casos límite, decisiones y propiedades con semilla.</li>
+<li><strong>Perfilar:</strong> <code>cumtime</code> dice qué rama es cara; <code>ncalls</code> alto en NumPy delata un bucle de Python.</li>
+<li><strong>El <code>README</code> es la prueba de fuego:</strong> otra persona, otra carpeta, los mismos números.</li>
+</ul>
+</div>
+<h2 id="preguntas-de-recuperacion"><span class="n">§ 8</span>Preguntas de recuperación</h2>
+<ol>
+<li>Dibuja de memoria la estructura de un proyecto reproducible y di qué va en cada carpeta.</li>
+<li>¿Qué es una función pura y por qué facilita las pruebas?</li>
+<li>¿Qué hace <code>pip install -e .</code> y qué hace falta para que funcione sin conexión?</li>
+<li>En <code>cProfile</code>, ¿qué diferencia hay entre <code>tottime</code> y <code>cumtime</code>, y qué te dice un <code>ncalls</code> alto en una función de NumPy?</li>
+<li>¿Qué prueba escribes <strong>antes</strong> de sustituir una función lenta por una rápida?</li>
+</ol>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Respuestas</span></summary><div class="dentro"><ol>
+<li><code>data/raw</code> (solo lectura), <code>data/processed</code> (regenerable), <code>src/paquete</code>, <code>tests</code>, <code>notebooks</code>, <code>figuras</code>, y en la raíz <code>README.md</code>, <code>pyproject.toml</code>, <code>requirements.txt</code>, <code>.gitignore</code>.</li>
+<li>Su salida depende solo de su entrada y no tiene efectos secundarios: basta una entrada pequeña y comprobar la salida.</li>
+<li>Instala el paquete enlazando el código fuente. Necesita <code>setuptools</code>: sin red, su rueda en la carpeta local o <code>--no-build-isolation</code>.</li>
+<li><code>tottime</code> es el tiempo propio; <code>cumtime</code> incluye lo que llama. Un <code>ncalls</code> alto en <code>sum</code> o <code>reduce</code> delata un bucle de Python que llama a NumPy fila a fila.</li>
+<li>Una que compare las dos versiones sobre entradas aleatorias con semilla fija, con tolerancia si son reales.</li>
+</ol>
+</div></details>
+<h2 id="lecturas"><span class="n">§ 9</span>Lecturas</h2>
+<ul>
+<li><strong>pytest, «Get started»</strong> y <strong>«How to use fixtures»</strong> (<code>https://docs.pytest.org/</code>), en inglés.</li>
+<li><strong>Python Packaging User Guide, «Packaging Python Projects»</strong> (<code>https://packaging.python.org/en/latest/tutorials/packaging-projects/</code>), en inglés: <code>pyproject.toml</code> y el diseño <code>src/</code>.</li>
+<li><strong>Python, documentación de <code>cProfile</code> y <code>pstats</code></strong> (<code>https://docs.python.org/es/3/library/profile.html</code>), <strong>en español</strong>.</li>
+<li><strong>Software Carpentry, «Control de versiones con Git»</strong> (<code>https://swcarpentry.github.io/git-novice-es/</code>), en español: episodios 8-10.</li>
+<li><strong>Data Carpentry</strong>, episodio 7 («Flujos de trabajo y automatización»), en español.</li>
+</ul>
+
+</article>
+<nav class="pie" aria-label="Anterior y siguiente"><a class="ant" href="p03-pandas.html"><small>← Anterior</small><span>Datos reales: ecología y un comercio en línea</span></a><a class="sig" href="p04-paquete.html"><small>Siguiente →</small><span>De los ejercicios a un paquete con pruebas</span></a></nav>
+</main>
+</div>
+</body>
+</html>

@@ -1,0 +1,1848 @@
+{
+  "version": 1,
+  "fase": "mapa",
+  "resumen": "## Dónde estás: la corrección del diagnóstico\n\nRespondiste **8 de los 26 ejercicios** y dejaste el resto en blanco, con dos explicaciones honestas: te falta práctica con NumPy y necesitas reacostumbrarte a los ejercicios de cálculo. Lo agradezco: un «no sé» vale más que un intento copiado.\n\nLa regla del plan es que **lo no demostrado cuenta como no dominado**. Pero cada asignatura de repaso empieza con una **prueba de entrada**: si la resuelves, te saltas las conferencias correspondientes.\n\n| Área | Autoevaluación | Lo que mostraron los ejercicios | Ubicación |\n|---|---|---|---|\n| Python numérico | 2 | No resolviste ninguno (3/3 en blanco) | **A medias**: repaso acelerado |\n| Probabilidad | 1 | Bayes, mal: no reconocías $P(A\\mid B)$ | **No lo dominas**: asignatura completa |\n| Estadística | 1 | 0/3 respondidos | **No lo dominas**: asignatura completa |\n| Cálculo y optimización | 2 | 0/4 respondidos, pero lo estudiaste | **A medias (oxidado)**: repaso acelerado |\n| Álgebra lineal aplicada | 2 | 0/2 respondidos; aprobada en la carrera | **A medias**: repaso dentro del anterior |\n| ML clásico | 1 | 2 respuestas a medias y «no sé qué es validar un modelo» | **No lo dominas**: asignatura completa |\n| Aprendizaje profundo | 2 | Teoría de activaciones **bien**; PyTorch, no; estrategia con pocos datos, mal | **Intuición sí, práctica no**: asignatura completa con arranque rápido |\n| Transformers y LLM | 1 | 0/3 respondidos | **No lo dominas**: asignatura completa |\n| Despliegue | 1 | 0/1 respondido; Django en local | **A medias**: MLOps ligero |\n\n**La corrección de cada respuesta:**\n\n- **Detector de fraude (probabilidad).** Calculaste $(1-0{,}99)\\cdot0{,}99 = 0{,}0099$. Es $P(F\\cap +)$: **el numerador correcto de Bayes**, un buen instinto. Faltó dividir entre $P(+) = 0{,}0099 + 0{,}05\\cdot0{,}99 = 0{,}0594$. La respuesta es **≈ 16,7 %**: de 10.000 transacciones, 99 fraudes dan positivo y 495 legítimas también.\n\n  Tenías razón en que debí definir «sensibilidad» ($P(+\\mid F)$) y «especificidad» ($P(-\\mid\\neg F)$) en palabras. Pero no reconocer la notación es el hueco real. Lo cierra la meta «Paradoja de la tasa base».\n- **El 99 % de exactitud (ML).** Tu conclusión, que no es un buen modelo, es correcta. La razón no: reutilizaste el cálculo anterior, pero es otro problema. Lo esencial es que el modelo que **siempre** dice «no es fraude» también tiene un 99 %. Hay que mirar la matriz de confusión, la precisión, la exhaustividad, F1 y PR-AUC.\n- **Modelos A y B (ML).**\n  - A memoriza (alta varianza): **bien**.\n  - De B dijiste «faltan capas»: va en la dirección correcta (más capacidad), pero lo ataste a las redes, y faltó la pregunta clave: ¿el 24 % es el error mínimo alcanzable?\n\n  Medio punto.\n- **Validar series (ML).** «No sé qué es validación cruzada»: es una respuesta honesta y útil.\n- **Activaciones no lineales (DL).** **Correcto, y tu mejor respuesta.** La forma exacta: $W_2(W_1x+b_1)+b_2 = (W_2W_1)x + (W_2b_1+b_2)$; componer funciones afines da una afín, así que la profundidad no sirve sin no linealidades.\n- **300 fotos de hojas (DL).** Mal, con una buena sospecha. Entrenar desde cero con 300 imágenes sobreajusta, pero por falta de datos, no de GPU. Confundiste el aumento de datos (transformar tus imágenes) con el ajuste fino (adaptar una red preentrenada). La respuesta es el **aprendizaje por transferencia**.\n- **El bucle de PyTorch (DL).** No lo conoces, lo cual es esperable porque usaste Keras. El curso pasa a **PyTorch**, el estándar de la investigación y de Hugging Face.\n\n**Un contraste que comprobaremos:** te diste un 4 en autonomía («escribo yo casi todo»), pero en tu proyecto Economy trabajaste mucho con Claude Code. Cada asignatura tiene una prueba **sin asistente**: si tu 4 es real, avanzarás rápido.\n\n## Tu situación y lo que implica\n\n- **Unas 13 h/semana** (dijiste 11-15). El plan completo son unas **750 h**, es decir, **~14-15 meses** con dos líneas en paralelo: matemáticas y estadística (~5 h/semana) y práctica (~8 h/semana).\n- **Segundo año de cuatro.** En la carrera te tocarán Probabilidades y Estadística, Optimización y Aprendizaje Automático. Como tu prioridad es el empleo, el curso **las adelanta**, y cuando lleguen serán un repaso con ventaja. Este semestre cursas **Matemática Numérica**: el repaso de matemáticas se apoya en ella.\n- **GPU NVIDIA de 6 GB.** Basta para todo el plan: *boosting*, TabPFN en conjuntos pequeños, ajustar redes preentrenadas, codificadores en español, QLoRA de modelos de ~1-2 B y LLM cuantizados en local.\n- **Acceso:** sin VPN funcionan **GitHub y Hugging Face**; Kaggle, Colab y probablemente PyPI necesitan VPN. El plan es **local primero**:\n  - instalar una vez y guardar las dependencias;\n  - modelos de Hugging Face;\n  - demos en Hugging Face Spaces o en tu Django.\n- **10-50 GB/mes:** alcanzan para PyTorch (unos 3 GB, una vez) y para modelos de 0,5-5 GB. Cada asignatura indica su consumo.\n- **Prioridad, el empleo remoto.** Por eso los proyectos llegan pronto:\n  - Proyecto 1 hacia el mes 6;\n  - Proyecto 2 hacia el mes 10;\n  - Proyecto 3 hacia el mes 14.\n\n  La meta «Empleo remoto» empieza **antes** del Proyecto 1 con un experimento barato: preguntar a 10 empresas si pueden contratar y pagar a alguien en Cuba.\n\n> **Aviso sobre el idioma.** Elegiste solo el español, y el curso lo respeta: todo el material troncal está en español. Pero tu prioridad, el empleo remoto, choca con esa elección:\n> - casi toda la documentación técnica (PyTorch, scikit-learn, Hugging Face a partir del cap. 9) está en inglés;\n> - también lo están los artículos;\n> - y lo están la mayoría de las entrevistas remotas.\n>\n> Cuando quieras, pídeme que añada el inglés técnico como asignatura, o como segundo idioma del material.\n\n## El camino\n\nDiseñado hacia atrás desde la meta final: **recibir un problema real con pocos datos, plantearlo, elegir entre ML clásico, transferencia o LLM con RAG, evaluarlo sin engañarte y desplegarlo**.\n\n![Calendario orientativo](figuras/calendario-curso.png)\n\n1. **Meses 1-3. Fundamentos.** Python científico → repaso de matemáticas → ML I, con Probabilidad en paralelo. Metas: tasa base y gradientes desde cero.\n2. **Meses 3-7. ML con pocos datos.** Estadística en paralelo con ML II (árboles, *boosting*, TabPFN). Meta: comparar modelos con rigor → **Proyecto 1**.\n3. **Meses 6-11. Demanda y producción.** Series temporales → MLOps → **Proyecto 2** (demanda desplegada en Django, sin conexión). En paralelo, aprendizaje profundo con PyTorch y la meta de imágenes.\n4. **Meses 10-15. Lenguaje.** Transformers en español → meta de textos → Ingeniería de LLM → QLoRA → **Proyecto 3** (RAG sobre normativa cubana, evaluado).\n5. **Retos de nivel**, cuando estés listo: competición en el 10 % superior, IberLEF (2027 ambiciosa, 2028 recomendada), reproducir TabPFN y un modelo en producción real.\n\n## Qué cambió\n\nEs el primer mapa completo:\n\n- 11 asignaturas con su programa por conferencias;\n- 10 metas prácticas y 4 retos de nivel;\n- 3 libros descargados en español con licencia libre: probabilidad y estadística de la Universidad de Cádiz (GFDL) y las notas de Yohai (UBA).\n\n**Lo que no pude descargar:**\n\n- el libro de Rincón (UNAM): el servidor del autor no respondió;\n- los libros de pago de Raschka (Marcombo) y Géron (Anaya): se citan con la forma de conseguirlos.",
+  "diagnostico": {
+    "intro": "Son unas 45 preguntas: primero, tu situación, y después nueve áreas, cada una con una **autoevaluación** y varios **ejercicios cortos** de dificultad creciente. Calcula entre 1,5 y 2,5 horas. Puedes repartirlas en varios días.\n\n**Reglas para que el diagnóstico sirva:**\n\n- **Responde los ejercicios sin IA y sin buscar en internet.** Si usas Claude o Google, el plan empezará en un nivel que no es el tuyo y lo pagarás después. Lápiz y papel están bien.\n- **«No lo sé» es una respuesta excelente.** Vale más que un intento copiado, y se escribe en dos segundos. Si sabes una parte, escribe esa parte.\n- **No hace falta que sea bonito.** Bastan unas líneas, la idea o el código aproximado. Corrijo el razonamiento, no la sintaxis exacta.\n- **Si la autoevaluación y el ejercicio no coinciden, manda el ejercicio.** Es normal sobrestimarse (efecto Dunning-Kruger), y no pasa nada: para eso está el diagnóstico.\n\nLas primeras preguntas son de contexto. Una de ellas te pide **comprobar ahora** qué servicios funcionan desde tu conexión: son cinco minutos y cambian mucho el plan.",
+    "preguntas": [
+      {
+        "id": "ctx-horas",
+        "texto": "En tu perfil pone «Tiempo disponible: 3», sin unidad. ¿Cuántas horas **reales** por semana puedes dedicar a este curso de forma sostenida durante meses? Cuenta solo el estudio concentrado. Las clases de la carrera no cuentan, salvo que la asignatura sea de esto.",
+        "tipo": "opciones",
+        "opciones": [
+          "Menos de 3 h/semana",
+          "Unas 3 h/semana",
+          "4–6 h/semana",
+          "7–10 h/semana",
+          "11–15 h/semana",
+          "Unas 3 h/día (≈ 20 h/semana)",
+          "Más de 25 h/semana"
+        ]
+      },
+      {
+        "id": "ctx-carrera",
+        "texto": "¿Qué asignaturas de tu carrera tienes **ya aprobadas**? Marca solo las aprobadas, no las que estás cursando.",
+        "tipo": "multiple",
+        "opciones": [
+          "Probabilidades",
+          "Estadística",
+          "Matemática Numérica",
+          "Optimización / Investigación de Operaciones",
+          "Análisis Matemático de varias variables (si es una asignatura aparte de Análisis II)",
+          "Inteligencia Artificial",
+          "Aprendizaje Automático",
+          "Bases de Datos",
+          "Sistemas de Recuperación de Información",
+          "Ninguna de estas"
+        ]
+      },
+      {
+        "id": "ctx-curso",
+        "texto": "¿En qué año de la carrera estás, qué asignaturas cursas este semestre y cuáles de la lista anterior te tocan en los próximos semestres? Si tu trabajo de curso o tu tesis pueden ir de IA, dilo: el plan puede apoyarse en ellos en vez de competir con ellos.",
+        "tipo": "abierta"
+      },
+      {
+        "id": "ctx-equipo",
+        "texto": "¿Con qué ordenador vas a trabajar casi siempre?",
+        "tipo": "opciones",
+        "opciones": [
+          "Sin GPU dedicada y con 8 GB de RAM o menos",
+          "Sin GPU dedicada y con 16 GB de RAM o más",
+          "GPU NVIDIA con 6 GB de VRAM o menos",
+          "GPU NVIDIA con 8–12 GB de VRAM",
+          "GPU NVIDIA con 16 GB de VRAM o más",
+          "Mac con Apple Silicon (M1 o posterior)",
+          "No tengo ordenador propio fijo (compartido, laboratorio…)"
+        ]
+      },
+      {
+        "id": "ctx-acceso",
+        "texto": "Antes de responder, **compruébalo ahora** desde tu conexión habitual. Son unos 5 minutos. ¿Qué funciona **sin VPN**?",
+        "tipo": "multiple",
+        "opciones": [
+          "Kaggle: iniciar sesión y ejecutar un notebook",
+          "Kaggle: notebook con la GPU activada (pide verificar el teléfono)",
+          "Google Colab",
+          "Hugging Face: descargar un modelo (p. ej., `distilbert-base-uncased`)",
+          "`pip install` desde PyPI",
+          "GitHub: clonar y subir",
+          "Alguna API de LLM de pago (OpenAI, Anthropic, Google…)",
+          "Algunas de estas solo me funcionan con VPN",
+          "No lo he comprobado"
+        ]
+      },
+      {
+        "id": "ctx-datos",
+        "texto": "¿Cuántos datos puedes descargar al mes sin que el coste sea un problema? Como referencia, un modelo de lenguaje pequeño ocupa de 0,5 a 5 GB, y un conjunto de imágenes, de 0,1 a varios GB.",
+        "tipo": "opciones",
+        "opciones": [
+          "Menos de 2 GB",
+          "2–10 GB",
+          "10–50 GB",
+          "50–200 GB",
+          "Más de 200 GB o sin límite práctico"
+        ]
+      },
+      {
+        "id": "ctx-corriente",
+        "texto": "¿Cuántas horas al día tienes corriente fiable donde estudias?",
+        "tipo": "opciones",
+        "opciones": [
+          "Menos de 8 h",
+          "8–14 h",
+          "15–20 h",
+          "Casi siempre hay corriente",
+          "Tengo respaldo (batería, planta) suficiente para el ordenador"
+        ]
+      },
+      {
+        "id": "ctx-prioridad",
+        "texto": "De tus tres metas, ¿cuál debe mandar en **este** curso cuando haya que elegir? Por ejemplo, entre hacer otro proyecto de portafolio o estudiar un capítulo de teoría.",
+        "tipo": "opciones",
+        "opciones": [
+          "Conseguir empleo (remoto) lo antes posible",
+          "Preparar la base para investigar o hacer un posgrado en IA y neurociencia",
+          "Aplicarlo a un negocio propio (p. ej., Economy)",
+          "Un equilibrio entre empleo e investigación"
+        ]
+      },
+      {
+        "id": "ctx-experiencia",
+        "texto": "Describe lo más avanzado que has hecho con ML o IA:\n\n- qué problema resolvías;\n- qué datos usaste y cuántos ejemplos eran;\n- qué modelo usaste;\n- **cómo comprobaste que funcionaba**;\n- qué parte escribiste tú.\n\nSi no has hecho nada, escribe «nada»: es una respuesta útil.",
+        "tipo": "abierta"
+      },
+      {
+        "id": "ctx-herramientas",
+        "texto": "¿Qué herramientas has **usado en código propio**? No cuentan las que solo has visto en un vídeo.",
+        "tipo": "multiple",
+        "opciones": [
+          "NumPy",
+          "pandas",
+          "matplotlib o seaborn",
+          "Jupyter",
+          "scikit-learn",
+          "XGBoost, LightGBM o CatBoost",
+          "PyTorch",
+          "TensorFlow o Keras",
+          "Hugging Face `transformers`",
+          "La API de un LLM desde código",
+          "LangChain o LlamaIndex",
+          "Una base de datos vectorial (FAISS, Chroma, pgvector…)",
+          "Ollama o llama.cpp (modelos locales)",
+          "SQL",
+          "Docker",
+          "Git",
+          "La terminal de Linux con soltura",
+          "Ninguna de estas"
+        ]
+      },
+      {
+        "id": "ctx-autonomia",
+        "texto": "Cuando programas, ¿cuánto depende tu código de un asistente de IA (Claude Code, Copilot…)? Sé sincero: esto decide cuántos ejercicios del curso harás sin asistente.",
+        "tipo": "escala",
+        "niveles": [
+          "0: La IA escribe casi todo. Si me la quitan, no sabría reproducirlo ni explicar muchas partes",
+          "1: La IA escribe casi todo. Lo entiendo al leerlo, pero me costaría mucho escribirlo solo",
+          "2: Mitad y mitad. Lo esencial puedo escribirlo sin IA, aunque más despacio",
+          "3: Escribo yo la lógica y uso la IA para lo repetitivo y para consultar",
+          "4: Escribo yo casi todo. La IA es una ayuda ocasional"
+        ]
+      },
+      {
+        "id": "py-nivel",
+        "texto": "**Python numérico.** ¿Cuál describe mejor tu nivel?",
+        "tipo": "escala",
+        "niveles": [
+          "0: Sé Python de propósito general (funciones, clases, listas), pero no he usado NumPy ni pandas",
+          "1: He usado NumPy o pandas copiando ejemplos o siguiendo tutoriales",
+          "2: Manipulo tablas con pandas (filtrar, `groupby`, `merge`) y hago operaciones vectorizadas sencillas sin bucles",
+          "3: Escribo código numérico vectorizado con *broadcasting*, distingo vistas de copias y sé detectar cuándo un bucle es el cuello de botella",
+          "4: He escrito bibliotecas numéricas con pruebas, he perfilado y optimizado código y gestiono entornos reproducibles"
+        ]
+      },
+      {
+        "id": "py-1",
+        "tipo": "prueba",
+        "area": "Python numérico",
+        "texto": "`X` es un `np.ndarray` de forma `(n, d)`. Sin bucles y sin más bibliotecas que NumPy, escribe **una línea** que devuelva `Z`, la versión estandarizada por columnas: cada columna con media 0 y desviación típica 1."
+      },
+      {
+        "id": "py-2",
+        "tipo": "prueba",
+        "area": "Python numérico",
+        "texto": "Tienes un `DataFrame` de pandas, `ventas`, con las columnas `tienda`, `producto`, `fecha` y `unidades` (una fila por venta). Escribe el código, de 2 a 4 líneas, que dé para cada `tienda` el `producto` con más unidades vendidas en total."
+      },
+      {
+        "id": "py-3",
+        "tipo": "prueba",
+        "area": "Python numérico",
+        "texto": "`A` tiene forma `(n, d)` y `B`, forma `(m, d)`. Sin bucles, calcula la matriz `D`, de forma `(n, m)`, con $D_{ij} = \\lVert a_i - b_j \\rVert^2$. Pista: desarrolla el cuadrado.\n\n¿Por qué tu solución gasta mucha menos memoria que `((A[:, None, :] - B[None, :, :])**2).sum(-1)`?"
+      },
+      {
+        "id": "prob-nivel",
+        "texto": "**Probabilidad.** ¿Cuál describe mejor lo que has estudiado **y sabrías usar hoy**?",
+        "tipo": "escala",
+        "niveles": [
+          "0: Solo probabilidad de bachillerato (casos favorables entre casos posibles)",
+          "1: Combinatoria y probabilidad clásica, y probabilidad condicional en ejercicios sencillos",
+          "2: Variables aleatorias discretas y continuas, esperanza, varianza y las distribuciones habituales (binomial, Poisson, normal, exponencial)",
+          "3: Además, distribuciones conjuntas, independencia, covarianza y el teorema de Bayes. Sé enunciar y usar la ley de los grandes números y el teorema central del límite",
+          "4: Vectores aleatorios y normal multivariante, esperanza condicional y desigualdades de concentración (Markov, Chebyshev, Hoeffding)"
+        ]
+      },
+      {
+        "id": "prob-1",
+        "tipo": "prueba",
+        "area": "Probabilidad",
+        "texto": "Un detector de fraude tiene una sensibilidad del 99 % ($P(+ \\mid F) = 0{,}99$) y una especificidad del 95 % ($P(- \\mid \\neg F) = 0{,}95$). Solo el 1 % de las transacciones son fraude. Si una transacción da positivo, ¿qué probabilidad hay de que sea fraude? Da el planteamiento y el número."
+      },
+      {
+        "id": "prob-2",
+        "tipo": "prueba",
+        "area": "Probabilidad",
+        "texto": "$X_1$ y $X_2$ son independientes y uniformes en $[0, 1]$. Calcula $\\mathbb{E}[X_1]$, $\\operatorname{Var}(X_1)$ y $\\mathbb{E}[\\max(X_1, X_2)]$."
+      },
+      {
+        "id": "prob-3",
+        "tipo": "prueba",
+        "area": "Probabilidad",
+        "texto": "Promedias las predicciones de $n$ modelos. Cada predicción tiene varianza $\\sigma^2$ y cada par de modelos tiene correlación $\\rho$.\n\n1. Calcula la varianza del promedio.\n2. ¿Qué le pasa cuando $n \\to \\infty$?\n3. ¿Qué te dice eso sobre por qué un *random forest* intenta que sus árboles se parezcan poco entre sí?"
+      },
+      {
+        "id": "est-nivel",
+        "texto": "**Estadística.** ¿Cuál describe mejor lo que has estudiado **y sabrías usar hoy**?",
+        "tipo": "escala",
+        "niveles": [
+          "0: No he estudiado estadística",
+          "1: Estadística descriptiva: media, mediana, desviación típica, histogramas y correlación",
+          "2: Intervalos de confianza y contrastes de hipótesis (p. ej., la prueba t), aplicando recetas",
+          "3: Entiendo la máxima verosimilitud, el sesgo y la varianza de un estimador, y qué es (y qué no es) un p-valor. He usado *bootstrap*",
+          "4: Regresión lineal con inferencia, comparaciones múltiples, diseño de experimentos e inferencia bayesiana"
+        ]
+      },
+      {
+        "id": "est-1",
+        "tipo": "prueba",
+        "area": "Estadística",
+        "texto": "Alguien afirma: «Obtuve $p = 0{,}03$, así que hay un 3 % de probabilidad de que la hipótesis nula sea cierta». ¿Es correcto? Si no lo es, explica qué significa realmente ese $p$-valor."
+      },
+      {
+        "id": "est-2",
+        "tipo": "prueba",
+        "area": "Estadística",
+        "texto": "Observas los tiempos entre averías $x_1, \\dots, x_n$ y supones que siguen una distribución exponencial de densidad $f(x) = \\lambda e^{-\\lambda x}$, con $x \\ge 0$. Obtén el estimador de máxima verosimilitud de $\\lambda$."
+      },
+      {
+        "id": "est-3",
+        "tipo": "prueba",
+        "area": "Estadística",
+        "texto": "Sobre el **mismo** conjunto de prueba de 200 ejemplos, el modelo A acierta el 85 % y el B, el 87 %. ¿Puedes concluir que B es mejor?\n\n- Estima a ojo el error típico de la exactitud.\n- Di qué prueba usarías para compararlos bien.\n- Explica por qué importa que el conjunto de prueba sea el mismo."
+      },
+      {
+        "id": "calc-nivel",
+        "texto": "**Cálculo en varias variables y optimización.** ¿Cuál describe mejor lo que sabrías hacer hoy?",
+        "tipo": "escala",
+        "niveles": [
+          "0: No he trabajado con derivadas parciales",
+          "1: Calculo derivadas parciales y el gradiente de funciones concretas",
+          "2: Uso la regla de la cadena en varias variables, el jacobiano, el hessiano y el desarrollo de Taylor de segundo orden",
+          "3: Derivo expresiones matriciales (p. ej., $\\nabla_w \\lVert Xw - y \\rVert^2$), reconozco funciones convexas y uso multiplicadores de Lagrange",
+          "4: Analizo la convergencia del descenso de gradiente (condicionamiento, tamaño de paso) y conozco los métodos estocásticos y sus variantes (momento, Adam)"
+        ]
+      },
+      {
+        "id": "calc-1",
+        "tipo": "prueba",
+        "area": "Cálculo y optimización",
+        "texto": "Sea $f(w) = \\lVert Xw - y \\rVert^2$, con $X \\in \\mathbb{R}^{n \\times d}$, $w \\in \\mathbb{R}^d$ e $y \\in \\mathbb{R}^n$. Calcula $\\nabla_w f$ y deduce la ecuación que cumple el mínimo."
+      },
+      {
+        "id": "calc-2",
+        "tipo": "prueba",
+        "area": "Cálculo y optimización",
+        "texto": "Sea $\\sigma(z) = 1/(1 + e^{-z})$.\n\n1. Demuestra que $\\sigma'(z) = \\sigma(z)\\,(1 - \\sigma(z))$.\n2. Calcula el gradiente respecto de $w$ de la pérdida logística $L(w) = -\\big[\\, y \\log \\sigma(w^\\top x) + (1 - y) \\log\\big(1 - \\sigma(w^\\top x)\\big) \\big]$, con $y \\in \\{0, 1\\}$."
+      },
+      {
+        "id": "calc-3",
+        "tipo": "prueba",
+        "area": "Cálculo y optimización",
+        "texto": "Aplicas descenso de gradiente a $f(x) = \\tfrac{a}{2} x^2$, con $a > 0$ y paso $\\eta > 0$.\n\n1. Escribe $x_{k+1}$ en función de $x_k$.\n2. ¿Para qué valores de $\\eta$ converge al mínimo?\n3. ¿Qué pasa exactamente si $\\eta = 2/a$?"
+      },
+      {
+        "id": "calc-4",
+        "tipo": "prueba",
+        "area": "Cálculo y optimización",
+        "texto": "Tienes una red de dos capas: $h = \\mathrm{ReLU}(W_1 x)$, $\\hat y = w_2^\\top h$ y $L = \\tfrac12 (\\hat y - y)^2$, con $x \\in \\mathbb{R}^d$, $W_1 \\in \\mathbb{R}^{k \\times d}$ y $w_2 \\in \\mathbb{R}^k$. Calcula $\\partial L / \\partial w_2$ y $\\partial L / \\partial W_1$ (esta última es una matriz $k \\times d$)."
+      },
+      {
+        "id": "al-nivel",
+        "texto": "**Álgebra lineal aplicada.** Ya aprobaste Álgebra Lineal y Bilineal. ¿Hasta dónde llegas **hoy** sin repasar?",
+        "tipo": "escala",
+        "niveles": [
+          "0: Sistemas de ecuaciones, matrices y determinantes",
+          "1: Autovalores y autovectores, diagonalización y formas bilineales y cuadráticas, a mano",
+          "2: Proyecciones ortogonales, mínimos cuadrados y el teorema espectral para matrices simétricas",
+          "3: Descomposición en valores singulares (SVD), rango y pseudoinversa, y sé cómo se usan en el análisis de componentes principales (PCA)",
+          "4: He usado SVD o PCA con datos reales y conozco las aproximaciones de rango bajo (Eckart–Young) y el condicionamiento numérico"
+        ]
+      },
+      {
+        "id": "al-1",
+        "tipo": "prueba",
+        "area": "Álgebra lineal aplicada",
+        "texto": "La matriz de covarianza de dos variables centradas es\n\n$$\\Sigma = \\begin{pmatrix} 3 & 1 \\\\ 1 & 3 \\end{pmatrix}.$$\n\n¿Cuál es la dirección de la primera componente principal y qué fracción de la varianza total explica?"
+      },
+      {
+        "id": "al-2",
+        "tipo": "prueba",
+        "area": "Álgebra lineal aplicada",
+        "texto": "Una matriz de pesos $W \\in \\mathbb{R}^{m \\times n}$ tiene valores singulares $\\sigma_1 \\ge \\sigma_2 \\ge \\dots \\ge \\sigma_r > 0$. ¿Cuál es la mejor aproximación de rango $k < r$ de $W$ en norma de Frobenius, y cuánto vale su error $\\lVert W - W_k \\rVert_F$? Esta idea está detrás de LoRA, que verás en el bloque de LLM."
+      },
+      {
+        "id": "ml-nivel",
+        "texto": "**Aprendizaje automático clásico.** ¿Cuál describe mejor tu nivel?",
+        "tipo": "escala",
+        "niveles": [
+          "0: Nunca he entrenado un modelo",
+          "1: He seguido tutoriales (`fit` y `predict`) sin entender bien cómo se valida un modelo",
+          "2: Separo entrenamiento y prueba, uso validación cruzada y elijo métricas adecuadas para clases desbalanceadas",
+          "3: Monto *pipelines* sin fuga de datos, ajusto hiperparámetros sin contaminar la prueba, uso *boosting* y sé interpretar lo que aprende el modelo",
+          "4: He llevado un modelo a producción o he quedado bien en una competición de Kaggle. Manejo la calibración y la deriva de los datos"
+        ]
+      },
+      {
+        "id": "ml-1",
+        "tipo": "prueba",
+        "area": "ML clásico",
+        "texto": "Un detector de fraude tiene una exactitud (*accuracy*) del 99 % en un conjunto donde el 1 % de los casos son fraudes. ¿Es un buen modelo? ¿Qué métricas mirarías y por qué?"
+      },
+      {
+        "id": "ml-2",
+        "tipo": "prueba",
+        "area": "ML clásico",
+        "texto": "Alguien hace lo siguiente:\n\n1. estandariza **todo** el conjunto de datos;\n2. selecciona las 20 variables más correlacionadas con la etiqueta usando **todos** los datos;\n3. hace validación cruzada con 5 particiones.\n\n¿Qué está mal en cada paso? ¿Cuál de los dos errores es más grave y por qué? ¿Cómo se arregla?"
+      },
+      {
+        "id": "ml-3",
+        "tipo": "prueba",
+        "area": "ML clásico",
+        "texto": "Tienes dos modelos para el mismo problema:\n\n- el A tiene un error del 2 % en entrenamiento y del 25 % en validación;\n- el B, un error del 24 % en entrenamiento y del 25 % en validación.\n\nDiagnostica cada uno y propón dos acciones concretas para cada caso."
+      },
+      {
+        "id": "ml-4",
+        "tipo": "prueba",
+        "area": "ML clásico",
+        "texto": "Tienes dos años de ventas diarias de 50 productos de una tienda y quieres predecir la demanda de la semana siguiente.\n\n- ¿Por qué no deberías usar validación cruzada con particiones aleatorias?\n- ¿Cómo validarías el modelo?\n- ¿Qué tipo de variables **no** puedes usar?"
+      },
+      {
+        "id": "dl-nivel",
+        "texto": "**Aprendizaje profundo.** ¿Cuál describe mejor tu nivel?",
+        "tipo": "escala",
+        "niveles": [
+          "0: No he trabajado con redes neuronales",
+          "1: Conozco los conceptos (neuronas, capas, retropropagación) por vídeos o clases, sin haber entrenado ninguna red",
+          "2: He entrenado una red en Keras o PyTorch siguiendo un tutorial",
+          "3: Escribo yo el bucle de entrenamiento en PyTorch, diagnostico el sobreajuste y he ajustado un modelo preentrenado a mis datos (transferencia)",
+          "4: Implemento arquitecturas desde cero (CNN, transformer) y entiendo la normalización, la inicialización y los calendarios de tasa de aprendizaje"
+        ]
+      },
+      {
+        "id": "dl-1",
+        "tipo": "prueba",
+        "area": "Aprendizaje profundo",
+        "texto": "¿Por qué una red de varias capas necesita funciones de activación no lineales? ¿En qué se convierte la red si las quitas?"
+      },
+      {
+        "id": "dl-2",
+        "tipo": "prueba",
+        "area": "Aprendizaje profundo",
+        "texto": "Sobre un bucle de entrenamiento en PyTorch:\n\n1. ¿En qué orden van `optimizer.zero_grad()`, `loss.backward()` y `optimizer.step()`?\n2. ¿Qué pasa si olvidas `zero_grad()`?\n3. ¿Qué hacen `model.eval()` y `torch.no_grad()` al validar, y por qué no son lo mismo?"
+      },
+      {
+        "id": "dl-3",
+        "tipo": "prueba",
+        "area": "Aprendizaje profundo",
+        "texto": "Tienes 300 fotos etiquetadas de hojas de una planta, con 3 enfermedades distintas, y un portátil sin GPU. En 5 a 8 líneas, describe tu estrategia:\n\n- qué modelo usas;\n- qué partes entrenas;\n- cómo aumentas los datos;\n- cómo sabrás si funciona."
+      },
+      {
+        "id": "llm-nivel",
+        "texto": "**Transformers y LLM.** ¿Cuál describe mejor tu nivel?",
+        "tipo": "escala",
+        "niveles": [
+          "0: Solo uso ChatGPT, Claude u otros como usuario",
+          "1: He llamado a la API de un LLM desde código y quizá he escrito *prompts* de sistema",
+          "2: He montado un RAG o un agente siguiendo un tutorial (LangChain, LlamaIndex…)",
+          "3: Entiendo la tokenización, los *embeddings* y la atención. He ajustado un modelo (p. ej., con LoRA) o he evaluado un RAG con métricas",
+          "4: He implementado un transformer pequeño desde cero y entiendo la caché KV, la cuantización y las estrategias de decodificación"
+        ]
+      },
+      {
+        "id": "llm-1",
+        "tipo": "prueba",
+        "area": "Transformers y LLM",
+        "texto": "Escribe la fórmula de la atención de producto escalar escalada, $\\mathrm{Attention}(Q, K, V)$, y explica por qué se divide entre $\\sqrt{d_k}$."
+      },
+      {
+        "id": "llm-2",
+        "tipo": "prueba",
+        "area": "Transformers y LLM",
+        "texto": "Una empresa tiene 2.000 PDF con su normativa interna en español y quiere un asistente que responda preguntas sobre ella. En 6 a 10 líneas, describe el sistema que montarías y, sobre todo, **cómo medirías si responde bien** antes de ponerlo en producción."
+      },
+      {
+        "id": "llm-3",
+        "tipo": "prueba",
+        "area": "Transformers y LLM",
+        "texto": "Una matriz de pesos de $4096 \\times 4096$ se ajusta con LoRA de rango $r = 8$, es decir, $W' = W + BA$ con $B \\in \\mathbb{R}^{4096 \\times 8}$ y $A \\in \\mathbb{R}^{8 \\times 4096}$.\n\n- ¿Cuántos parámetros se entrenan, frente a los del ajuste completo?\n- ¿Qué hipótesis sobre la actualización $\\Delta W$ justifica que funcione?"
+      },
+      {
+        "id": "ops-nivel",
+        "texto": "**Despliegue.** ¿Cuál describe mejor tu experiencia?",
+        "tipo": "escala",
+        "niveles": [
+          "0: Nunca he desplegado nada fuera de mi ordenador",
+          "1: Desarrollo aplicaciones web (p. ej., con Django) en local",
+          "2: He desplegado una aplicación web en un servicio (Render, Vercel, un VPS…)",
+          "3: Uso Docker, variables de entorno, registros (*logs*) e integración continua",
+          "4: He servido un modelo de ML con una API y he monitorizado su latencia o la deriva de los datos en producción"
+        ]
+      },
+      {
+        "id": "ops-1",
+        "tipo": "prueba",
+        "area": "Despliegue",
+        "texto": "Un modelo tarda 3 s en cargarse en memoria y 40 ms en cada predicción, y quieres servirlo desde tu proyecto Django. ¿Dónde y cuándo lo cargas? ¿Qué problema tendrías si lo cargaras dentro de la vista?"
+      },
+      {
+        "id": "idiomas",
+        "tipo": "multiple",
+        "texto": "¿En qué idiomas quieres los documentos del curso? Puedes marcar varios: todo el material estará solo en ellos y las conferencias se escribirán en el primero que marques.",
+        "opciones": [
+          "Español",
+          "English",
+          "Français",
+          "Deutsch",
+          "Português",
+          "Italiano",
+          "Русский",
+          "中文",
+          "日本語"
+        ]
+      }
+    ]
+  },
+  "nodos": [
+    {
+      "id": "python-cientifico",
+      "tipo": "estudio",
+      "titulo": "Python científico y entorno de trabajo (repaso acelerado)",
+      "resumen": "NumPy vectorizado, pandas y un entorno local con PyTorch y CUDA que funcione desde Cuba.",
+      "documento": "nodos/python-cientifico.md",
+      "depende": [],
+      "recursos": [
+        "r-cdd-ml",
+        "r-unam-aa",
+        "r-raschka-es"
+      ],
+      "duracion": "≈25 h (2-3 semanas)",
+      "plan": [
+        {
+          "titulo": "Un entorno que funcione desde Cuba",
+          "objetivos": [
+            "Instalar PyTorch con CUDA y verificar torch.cuda.is_available()",
+            "Guardar las dependencias para reinstalar sin conexión",
+            "Estimar el consumo de datos de la instalación"
+          ]
+        },
+        {
+          "titulo": "NumPy I: el ndarray",
+          "objetivos": [
+            "Predecir la forma y el dtype de una operación",
+            "Distinguir vistas de copias",
+            "Usar indexado avanzado y booleano"
+          ]
+        },
+        {
+          "titulo": "NumPy II: pensar en vectores",
+          "objetivos": [
+            "Vectorizar reducciones por eje y la estandarización",
+            "Aplicar las reglas del broadcasting",
+            "Calcular distancias por pares en memoria O(nm)"
+          ]
+        },
+        {
+          "titulo": "Aleatoriedad reproducible",
+          "objetivos": [
+            "Generar muestras con default_rng y semilla",
+            "Implementar un Monte Carlo sencillo",
+            "Crear particiones aleatorias reproducibles"
+          ]
+        },
+        {
+          "titulo": "pandas I: datos sucios",
+          "objetivos": [
+            "Leer CSV y Excel con los tipos correctos",
+            "Tratar fechas, faltantes y duplicados",
+            "Detectar valores anómalos"
+          ]
+        },
+        {
+          "titulo": "pandas II: agregar y reorganizar",
+          "objetivos": [
+            "Usar groupby con agg y transform",
+            "Hacer merge sin multiplicar filas",
+            "Aplicar resample y rolling a series"
+          ]
+        },
+        {
+          "titulo": "Visualización y análisis exploratorio",
+          "objetivos": [
+            "Elegir el gráfico según la pregunta",
+            "Encontrar problemas en los datos antes de modelar"
+          ]
+        },
+        {
+          "titulo": "Código de proyecto, no de cuaderno",
+          "objetivos": [
+            "Estructurar un repositorio reproducible",
+            "Escribir pruebas con pytest",
+            "Perfilar código lento"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mates-ml",
+      "tipo": "estudio",
+      "titulo": "Repaso acelerado: las matemáticas del aprendizaje automático",
+      "resumen": "Cálculo matricial, retropropagación, descenso de gradiente, SVD y PCA, traducidos al lenguaje del ML.",
+      "documento": "nodos/mates-ml.md",
+      "depende": [
+        "python-cientifico"
+      ],
+      "recursos": [
+        "r-ucm-mates-ia",
+        "r-cdd-pca",
+        "r-jacar-retro"
+      ],
+      "duracion": "≈40 h (4-5 semanas)",
+      "plan": [
+        {
+          "titulo": "Geometría de los datos",
+          "objetivos": [
+            "Calcular normas y similitud del coseno",
+            "Interpretar un conjunto de datos como matriz"
+          ]
+        },
+        {
+          "titulo": "Mínimos cuadrados como proyección",
+          "objetivos": [
+            "Deducir las ecuaciones normales",
+            "Diagnosticar el mal condicionamiento",
+            "Resolver con QR o lstsq en vez de invertir"
+          ]
+        },
+        {
+          "titulo": "Teorema espectral y covarianza",
+          "objetivos": [
+            "Diagonalizar una matriz de covarianza",
+            "Interpretar sus autovectores como direcciones de varianza"
+          ]
+        },
+        {
+          "titulo": "SVD, rango bajo y PCA",
+          "objetivos": [
+            "Calcular la mejor aproximación de rango k y su error",
+            "Aplicar PCA a datos reales",
+            "Relacionar el rango bajo con LoRA"
+          ]
+        },
+        {
+          "titulo": "Gradientes de funciones matriciales",
+          "objetivos": [
+            "Derivar gradientes de expresiones con vectores y matrices",
+            "Verificarlos con diferencias finitas"
+          ]
+        },
+        {
+          "titulo": "La regla de la cadena como grafo computacional",
+          "objetivos": [
+            "Derivar a mano la retropropagación de dos capas",
+            "Calcular el gradiente de la pérdida logística"
+          ]
+        },
+        {
+          "titulo": "Convexidad y regularización",
+          "objetivos": [
+            "Reconocer funciones convexas con el hessiano",
+            "Explicar Ridge como mejora del condicionamiento"
+          ]
+        },
+        {
+          "titulo": "Descenso de gradiente",
+          "objetivos": [
+            "Determinar el rango de pasos que converge",
+            "Relacionar la velocidad con el número de condición"
+          ]
+        },
+        {
+          "titulo": "Optimización estocástica y diferenciación automática",
+          "objetivos": [
+            "Explicar SGD, momento y Adam",
+            "Describir qué guarda autograd y cuánta memoria cuesta"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "probabilidad",
+      "tipo": "estudio",
+      "titulo": "Probabilidad para aprendizaje automático",
+      "resumen": "Tu hueco principal: condicional y Bayes, variables aleatorias, esperanza, covarianza, TCL y entropía cruzada.",
+      "documento": "nodos/probabilidad.md",
+      "depende": [
+        "python-cientifico"
+      ],
+      "recursos": [
+        "r-yohai",
+        "r-uca-edyp",
+        "r-rincon"
+      ],
+      "duracion": "≈60 h (12 semanas en paralelo, ~5 h/semana)",
+      "plan": [
+        {
+          "titulo": "El lenguaje de la probabilidad",
+          "objetivos": [
+            "Leer y escribir P(A|B)",
+            "Aplicar la regla del producto"
+          ]
+        },
+        {
+          "titulo": "Probabilidad total y Bayes: la paradoja de la tasa base",
+          "objetivos": [
+            "Resolver problemas de tasa base",
+            "Explicarlos con frecuencias naturales",
+            "Calcular el valor predictivo positivo"
+          ]
+        },
+        {
+          "titulo": "Independencia e independencia condicional",
+          "objetivos": [
+            "Distinguir independencia de independencia condicional",
+            "Explicar por qué naive Bayes funciona"
+          ]
+        },
+        {
+          "titulo": "Variables aleatorias discretas",
+          "objetivos": [
+            "Usar Bernoulli, binomial, geométrica y Poisson",
+            "Simularlas y comparar con la teoría"
+          ]
+        },
+        {
+          "titulo": "Variables aleatorias continuas",
+          "objetivos": [
+            "Trabajar con densidades y cuantiles",
+            "Generar distribuciones por transformada inversa"
+          ]
+        },
+        {
+          "titulo": "Esperanza y varianza",
+          "objetivos": [
+            "Aplicar la linealidad de la esperanza",
+            "Calcular la esperanza del máximo de uniformes"
+          ]
+        },
+        {
+          "titulo": "Vectores aleatorios y covarianza",
+          "objetivos": [
+            "Calcular la varianza de sumas correlacionadas",
+            "Explicar por qué los ensembles quieren modelos poco correlacionados"
+          ]
+        },
+        {
+          "titulo": "La normal multivariante",
+          "objetivos": [
+            "Transformar normales con AX+b",
+            "Relacionar sus elipses con la PCA"
+          ]
+        },
+        {
+          "titulo": "Esperanza condicional y predicción",
+          "objetivos": [
+            "Demostrar que E[Y|X] minimiza el error cuadrático",
+            "Aplicar la ley de la varianza total"
+          ]
+        },
+        {
+          "titulo": "Grandes números, TCL y concentración",
+          "objetivos": [
+            "Estimar el error típico de una métrica",
+            "Aplicar Chebyshev y Hoeffding",
+            "Usar Monte Carlo como método de cálculo"
+          ]
+        },
+        {
+          "titulo": "Entropía, entropía cruzada y KL",
+          "objetivos": [
+            "Interpretar la entropía cruzada como pérdida",
+            "Relacionarla con la máxima verosimilitud"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "estadistica",
+      "tipo": "estudio",
+      "titulo": "Estadística e inferencia para evaluar modelos",
+      "resumen": "Máxima verosimilitud, intervalos, bootstrap, p-valores bien entendidos y comparaciones pareadas entre modelos.",
+      "documento": "nodos/estadistica.md",
+      "depende": [
+        "probabilidad"
+      ],
+      "recursos": [
+        "r-uca-inferencia",
+        "r-yohai",
+        "r-irizarry"
+      ],
+      "duracion": "≈50 h (10 semanas en paralelo, ~5 h/semana)",
+      "plan": [
+        {
+          "titulo": "De la población a la muestra",
+          "objetivos": [
+            "Definir sesgo, varianza y ECM de un estimador",
+            "Descomponer el ECM"
+          ]
+        },
+        {
+          "titulo": "Máxima verosimilitud",
+          "objetivos": [
+            "Derivar estimadores de MV",
+            "Relacionar la MV con la entropía cruzada y el ECM"
+          ]
+        },
+        {
+          "titulo": "Intervalos de confianza",
+          "objetivos": [
+            "Construir intervalos por pivote y por TCL",
+            "Calcular el error típico de una exactitud"
+          ]
+        },
+        {
+          "titulo": "Bootstrap",
+          "objetivos": [
+            "Construir intervalos bootstrap para cualquier métrica",
+            "Aplicar el bootstrap pareado",
+            "Usar bloques en datos dependientes"
+          ]
+        },
+        {
+          "titulo": "Contrastes de hipótesis",
+          "objetivos": [
+            "Interpretar correctamente un p-valor",
+            "Distinguir significación de relevancia"
+          ]
+        },
+        {
+          "titulo": "Comparar dos modelos sobre los mismos datos",
+          "objetivos": [
+            "Aplicar la prueba de McNemar",
+            "Explicar por qué falla la prueba t ingenua sobre la validación cruzada"
+          ]
+        },
+        {
+          "titulo": "Comparaciones múltiples",
+          "objetivos": [
+            "Detectar el sobreajuste al conjunto de validación",
+            "Aplicar Holm y Bonferroni"
+          ]
+        },
+        {
+          "titulo": "La regresión lineal como modelo estadístico",
+          "objetivos": [
+            "Diagnosticar residuos y multicolinealidad",
+            "Interpretar los errores típicos de los coeficientes"
+          ]
+        },
+        {
+          "titulo": "Inferencia bayesiana para pocos datos",
+          "objetivos": [
+            "Calcular la posterior beta-binomial",
+            "Suavizar tasas con pocos datos"
+          ]
+        },
+        {
+          "titulo": "Experimentos con usuarios reales",
+          "objetivos": [
+            "Calcular el tamaño de muestra de una prueba A/B",
+            "Diseñar la validación de un modelo en una tienda"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ml-fundamentos",
+      "tipo": "estudio",
+      "titulo": "Aprendizaje automático I: fundamentos, validación y modelos lineales",
+      "resumen": "Plantear problemas, validar sin fugas, elegir métricas y diagnosticar sesgo y varianza con scikit-learn.",
+      "documento": "nodos/ml-fundamentos.md",
+      "depende": [
+        "python-cientifico",
+        "mates-ml"
+      ],
+      "recursos": [
+        "r-mlcc",
+        "r-cdd-ml",
+        "r-unam-aa",
+        "r-raschka-es",
+        "r-geron-es"
+      ],
+      "duracion": "≈75 h (10 semanas, ~8 h/semana; en paralelo con Probabilidad)",
+      "plan": [
+        {
+          "titulo": "Qué es aprender de datos",
+          "objetivos": [
+            "Plantear un problema con tarea, métrica y línea base",
+            "Distinguir los tipos de aprendizaje"
+          ]
+        },
+        {
+          "titulo": "Generalización",
+          "objetivos": [
+            "Separar entrenamiento, validación y prueba",
+            "Explicar por qué el error de entrenamiento engaña"
+          ]
+        },
+        {
+          "titulo": "Regresión lineal en la práctica",
+          "objetivos": [
+            "Entrenar y evaluar con scikit-learn",
+            "Elegir entre MAE, RMSE y R²"
+          ]
+        },
+        {
+          "titulo": "Regresión logística y clasificación",
+          "objetivos": [
+            "Interpretar probabilidades",
+            "Elegir un umbral de decisión"
+          ]
+        },
+        {
+          "titulo": "Métricas de clasificación",
+          "objetivos": [
+            "Calcular precisión, exhaustividad, F1, ROC-AUC y PR-AUC",
+            "Elegir la métrica con clases desbalanceadas y costes"
+          ]
+        },
+        {
+          "titulo": "Validación cruzada",
+          "objetivos": [
+            "Elegir entre k-fold, estratificada, por grupos y repetida",
+            "Reportar la media y su variabilidad"
+          ]
+        },
+        {
+          "titulo": "Fugas de datos",
+          "objetivos": [
+            "Identificar las fugas más comunes",
+            "Evitarlas con Pipeline y ColumnTransformer"
+          ]
+        },
+        {
+          "titulo": "Sesgo, varianza y curvas",
+          "objetivos": [
+            "Diagnosticar con curvas de aprendizaje",
+            "Elegir la acción adecuada para cada diagnóstico"
+          ]
+        },
+        {
+          "titulo": "Regularización",
+          "objetivos": [
+            "Aplicar Ridge, Lasso y Elastic Net",
+            "Seleccionar variables dentro de la validación"
+          ]
+        },
+        {
+          "titulo": "Preprocesamiento e ingeniería de variables",
+          "objetivos": [
+            "Codificar categóricas sin fugas",
+            "Imputar y crear variables de fecha"
+          ]
+        },
+        {
+          "titulo": "Búsqueda de hiperparámetros",
+          "objetivos": [
+            "Aplicar validación anidada",
+            "Usar búsqueda aleatoria y Optuna sin contaminar la prueba"
+          ]
+        },
+        {
+          "titulo": "Otros modelos base y plantilla de proyecto",
+          "objetivos": [
+            "Usar k vecinos, naive Bayes y SVM como líneas base",
+            "Estructurar un proyecto completo de ML"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ml-tabular",
+      "tipo": "estudio",
+      "titulo": "Aprendizaje automático II: árboles, boosting y datos tabulares pequeños",
+      "resumen": "Árboles, bosques, LightGBM, XGBoost y CatBoost, TabPFN, interpretabilidad, calibración y cuantiles.",
+      "documento": "nodos/ml-tabular.md",
+      "depende": [
+        "ml-fundamentos"
+      ],
+      "recursos": [
+        "r-cdd-boosting",
+        "r-cdd-boosting-prob",
+        "r-unam-aa",
+        "r-raschka-es"
+      ],
+      "duracion": "≈55 h (7 semanas)",
+      "plan": [
+        {
+          "titulo": "Árboles de decisión",
+          "objetivos": [
+            "Explicar los criterios de partición",
+            "Controlar el sobreajuste de un árbol"
+          ]
+        },
+        {
+          "titulo": "Bagging y bosques aleatorios",
+          "objetivos": [
+            "Justificar la reducción de varianza",
+            "Usar el error out-of-bag"
+          ]
+        },
+        {
+          "titulo": "Gradient boosting",
+          "objetivos": [
+            "Describir el boosting como descenso de gradiente en funciones",
+            "Ajustar la tasa de aprendizaje y el número de árboles"
+          ]
+        },
+        {
+          "titulo": "Boosting en la práctica",
+          "objetivos": [
+            "Ajustar LightGBM, XGBoost y CatBoost con parada temprana",
+            "Tratar categóricas y faltantes"
+          ]
+        },
+        {
+          "titulo": "Estrategias para pocos datos",
+          "objetivos": [
+            "Elegir modelos y regularización para pocos datos",
+            "Reconocer cuándo no hay señal suficiente"
+          ]
+        },
+        {
+          "titulo": "Modelos fundacionales tabulares: TabPFN",
+          "objetivos": [
+            "Explicar el aprendizaje en contexto como inferencia bayesiana",
+            "Decidir cuándo usar TabPFN y comprobar su licencia"
+          ]
+        },
+        {
+          "titulo": "Interpretabilidad",
+          "objetivos": [
+            "Aplicar la importancia por permutación y SHAP",
+            "Reconocer sus trampas"
+          ]
+        },
+        {
+          "titulo": "Calibración y decisiones",
+          "objetivos": [
+            "Calibrar probabilidades",
+            "Elegir el umbral por coste"
+          ]
+        },
+        {
+          "titulo": "Desbalance y anomalías",
+          "objetivos": [
+            "Tratar el desbalance sin falsear la evaluación",
+            "Detectar anomalías con Isolation Forest"
+          ]
+        },
+        {
+          "titulo": "Boosting probabilístico",
+          "objetivos": [
+            "Predecir cuantiles con la pérdida pinball",
+            "Medir la cobertura de los intervalos"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "series-temporales",
+      "tipo": "estudio",
+      "titulo": "Series temporales y predicción de demanda",
+      "resumen": "Backtesting sin fugas, líneas base, skforecast con LightGBM, demanda intermitente y cuantiles para el inventario.",
+      "documento": "nodos/series-temporales.md",
+      "depende": [
+        "ml-tabular",
+        "estadistica"
+      ],
+      "recursos": [
+        "r-cdd-forecasting",
+        "r-cdd-intermitente",
+        "r-cdd-boosting-prob"
+      ],
+      "duracion": "≈35 h (7 semanas en paralelo, ~5 h/semana)",
+      "plan": [
+        {
+          "titulo": "Anatomía de una serie",
+          "objetivos": [
+            "Identificar tendencia, estacionalidad y autocorrelación",
+            "Descomponer con STL"
+          ]
+        },
+        {
+          "titulo": "Líneas base y métricas",
+          "objetivos": [
+            "Construir las líneas base ingenua y estacional",
+            "Elegir entre MAE, WAPE, MASE y pinball"
+          ]
+        },
+        {
+          "titulo": "Validar en el tiempo",
+          "objetivos": [
+            "Diseñar un backtesting de origen móvil",
+            "Identificar variables prohibidas"
+          ]
+        },
+        {
+          "titulo": "Modelos estadísticos clásicos",
+          "objetivos": [
+            "Ajustar ETS y ARIMA",
+            "Decidir cuándo bastan"
+          ]
+        },
+        {
+          "titulo": "Pronóstico con ML",
+          "objetivos": [
+            "Convertir una serie en tabla con rezagos",
+            "Comparar las estrategias recursiva y directa con skforecast"
+          ]
+        },
+        {
+          "titulo": "Muchas series a la vez",
+          "objetivos": [
+            "Entrenar un modelo global",
+            "Respetar jerarquías tienda/producto"
+          ]
+        },
+        {
+          "titulo": "Demanda intermitente",
+          "objetivos": [
+            "Aplicar Croston y modelos de dos partes",
+            "Reconocer la censura por ruptura de inventario"
+          ]
+        },
+        {
+          "titulo": "De la predicción a la decisión",
+          "objetivos": [
+            "Calcular el punto de pedido para un nivel de servicio",
+            "Comunicar la incertidumbre"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "deep-learning",
+      "tipo": "estudio",
+      "titulo": "Aprendizaje profundo práctico con PyTorch",
+      "resumen": "El bucle de entrenamiento escrito a mano, CNN, aprendizaje por transferencia y cómo entrenar en 6 GB de VRAM.",
+      "documento": "nodos/deep-learning.md",
+      "depende": [
+        "ml-fundamentos",
+        "meta-gradientes"
+      ],
+      "recursos": [
+        "r-unam-ap",
+        "r-ucm-mates-ia",
+        "r-raschka-es"
+      ],
+      "duracion": "≈80 h (10 semanas)",
+      "plan": [
+        {
+          "titulo": "De Keras a PyTorch",
+          "objetivos": [
+            "Manipular tensores en CPU y GPU",
+            "Explicar autograd y el grafo dinámico"
+          ]
+        },
+        {
+          "titulo": "El bucle de entrenamiento",
+          "objetivos": [
+            "Escribir el bucle de memoria",
+            "Explicar zero_grad, backward, step, eval y no_grad"
+          ]
+        },
+        {
+          "titulo": "Perceptrón multicapa",
+          "objetivos": [
+            "Implementar un MLP con nn.Module",
+            "Elegir la inicialización y la activación"
+          ]
+        },
+        {
+          "titulo": "Datos en PyTorch",
+          "objetivos": [
+            "Construir Dataset y DataLoader",
+            "Garantizar la reproducibilidad"
+          ]
+        },
+        {
+          "titulo": "Diagnosticar y regularizar",
+          "objetivos": [
+            "Leer curvas de pérdida",
+            "Aplicar dropout, weight decay y parada temprana"
+          ]
+        },
+        {
+          "titulo": "Redes convolucionales",
+          "objetivos": [
+            "Explicar la convolución y las conexiones residuales"
+          ]
+        },
+        {
+          "titulo": "Aprendizaje por transferencia",
+          "objetivos": [
+            "Ajustar un modelo preentrenado congelando y descongelando capas"
+          ]
+        },
+        {
+          "titulo": "Pocos ejemplos en imagen",
+          "objetivos": [
+            "Aplicar aumento de datos",
+            "Validar por grupos y detectar sesgos del conjunto"
+          ]
+        },
+        {
+          "titulo": "Entrenar en 6 GB",
+          "objetivos": [
+            "Usar precisión mixta y acumulación de gradientes",
+            "Medir la memoria de la GPU"
+          ]
+        },
+        {
+          "titulo": "Embeddings",
+          "objetivos": [
+            "Extraer representaciones",
+            "Combinarlas con modelos clásicos"
+          ]
+        },
+        {
+          "titulo": "Secuencias y atención",
+          "objetivos": [
+            "Explicar los límites de las RNN",
+            "Describir la atención como búsqueda ponderada"
+          ]
+        },
+        {
+          "titulo": "Del modelo al artefacto",
+          "objetivos": [
+            "Guardar y exportar modelos",
+            "Cuantizar para inferir en CPU"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transformers-nlp",
+      "tipo": "estudio",
+      "titulo": "Transformers y procesamiento del lenguaje en español",
+      "resumen": "Tokenización, atención, BETO y RoBERTa-BNE, ajuste fino, SetFit y LLM abiertos en local, con foco en el español.",
+      "documento": "nodos/transformers-nlp.md",
+      "depende": [
+        "deep-learning",
+        "mates-ml"
+      ],
+      "recursos": [
+        "r-hf-curso",
+        "r-unam-ap",
+        "r-sepln",
+        "r-cdd-semantica"
+      ],
+      "duracion": "≈50 h (6 semanas)",
+      "plan": [
+        {
+          "titulo": "El texto como datos",
+          "objetivos": [
+            "Explicar la tokenización por subpalabras",
+            "Medir su efecto en español"
+          ]
+        },
+        {
+          "titulo": "Embeddings de palabras y oraciones",
+          "objetivos": [
+            "Construir una búsqueda semántica con embeddings multilingües"
+          ]
+        },
+        {
+          "titulo": "Atención y transformer",
+          "objetivos": [
+            "Escribir la atención escalada y justificar √d_k",
+            "Implementar un transformer pequeño"
+          ]
+        },
+        {
+          "titulo": "Codificadores preentrenados",
+          "objetivos": [
+            "Explicar el modelado enmascarado",
+            "Elegir entre modelos monolingües y multilingües para el español"
+          ]
+        },
+        {
+          "titulo": "Ajuste fino para clasificación",
+          "objetivos": [
+            "Ajustar un codificador con transformers en 6 GB",
+            "Evaluarlo con intervalos"
+          ]
+        },
+        {
+          "titulo": "Pocos ejemplos",
+          "objetivos": [
+            "Comparar SetFit, zero-shot y embeddings + regresión logística"
+          ]
+        },
+        {
+          "titulo": "Extracción de información",
+          "objetivos": [
+            "Entrenar un reconocedor de entidades"
+          ]
+        },
+        {
+          "titulo": "Decodificadores",
+          "objetivos": [
+            "Explicar la generación autorregresiva",
+            "Controlar la decodificación"
+          ]
+        },
+        {
+          "titulo": "Modelos abiertos pequeños en local",
+          "objetivos": [
+            "Elegir un modelo por tamaño, licencia y calidad",
+            "Ejecutarlo cuantizado"
+          ]
+        },
+        {
+          "titulo": "Evaluar modelos de lenguaje",
+          "objetivos": [
+            "Detectar la contaminación",
+            "Diseñar una evaluación humana"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ingenieria-llm",
+      "tipo": "estudio",
+      "titulo": "Ingeniería de LLM: RAG, ajuste fino y evaluación",
+      "resumen": "LLM locales, RAG con búsqueda híbrida, evaluación rigurosa, LoRA y QLoRA en 6 GB, agentes y seguridad.",
+      "documento": "nodos/ingenieria-llm.md",
+      "depende": [
+        "transformers-nlp",
+        "estadistica"
+      ],
+      "recursos": [
+        "r-hf-curso",
+        "r-cdd-semantica",
+        "r-sepln"
+      ],
+      "duracion": "≈70 h (9 semanas)",
+      "plan": [
+        {
+          "titulo": "El LLM como componente",
+          "objetivos": [
+            "Diseñar prompts y salidas JSON validadas",
+            "Reconocer lo que un LLM no hace bien"
+          ]
+        },
+        {
+          "titulo": "Servir un LLM en tu máquina",
+          "objetivos": [
+            "Ejecutar modelos cuantizados",
+            "Estimar la memoria de los pesos y la caché KV"
+          ]
+        },
+        {
+          "titulo": "RAG I: ingesta",
+          "objetivos": [
+            "Extraer y fragmentar documentos PDF con metadatos"
+          ]
+        },
+        {
+          "titulo": "RAG II: recuperación",
+          "objetivos": [
+            "Construir índices vectoriales y búsqueda híbrida con BM25"
+          ]
+        },
+        {
+          "titulo": "RAG III: reordenación y generación",
+          "objetivos": [
+            "Aplicar reordenadores",
+            "Generar con citas verificables y abstención"
+          ]
+        },
+        {
+          "titulo": "Evaluación I: recuperación",
+          "objetivos": [
+            "Construir un conjunto de prueba",
+            "Medir recall@k y MRR"
+          ]
+        },
+        {
+          "titulo": "Evaluación II: respuestas",
+          "objetivos": [
+            "Medir corrección y fidelidad",
+            "Validar un LLM-juez contra anotación humana"
+          ]
+        },
+        {
+          "titulo": "Ajuste fino eficiente",
+          "objetivos": [
+            "Calcular los parámetros de LoRA",
+            "Decidir entre prompt, RAG y ajuste"
+          ]
+        },
+        {
+          "titulo": "Práctica de QLoRA en 6 GB",
+          "objetivos": [
+            "Ajustar un modelo pequeño con PEFT",
+            "Medir la mejora y el olvido"
+          ]
+        },
+        {
+          "titulo": "Agentes y herramientas",
+          "objetivos": [
+            "Diseñar un agente con llamadas a funciones",
+            "Identificar sus modos de fallo"
+          ]
+        },
+        {
+          "titulo": "Seguridad y robustez",
+          "objetivos": [
+            "Defender un sistema frente a la inyección de prompts"
+          ]
+        },
+        {
+          "titulo": "Del cuaderno al producto",
+          "objetivos": [
+            "Cachear, registrar y monitorizar la calidad"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mlops",
+      "tipo": "estudio",
+      "titulo": "Llevar modelos a producción (MLOps ligero)",
+      "resumen": "Proyectos reproducibles, servir modelos desde Django, Docker, pruebas, deriva y despliegue sin conexión.",
+      "documento": "nodos/mlops.md",
+      "depende": [
+        "ml-fundamentos"
+      ],
+      "recursos": [
+        "r-mlcc",
+        "r-cdd-forecasting"
+      ],
+      "duracion": "≈35 h (7 semanas en paralelo, ~5 h/semana)",
+      "plan": [
+        {
+          "titulo": "Del cuaderno al paquete",
+          "objetivos": [
+            "Estructurar un proyecto con un comando único"
+          ]
+        },
+        {
+          "titulo": "Experimentos y datos",
+          "objetivos": [
+            "Registrar experimentos con MLflow",
+            "Versionar datos con DVC"
+          ]
+        },
+        {
+          "titulo": "Servir un modelo",
+          "objetivos": [
+            "Cargar el modelo una vez por proceso",
+            "Medir la latencia p50 y p95"
+          ]
+        },
+        {
+          "titulo": "Docker",
+          "objetivos": [
+            "Construir imágenes reproducibles con y sin GPU"
+          ]
+        },
+        {
+          "titulo": "Pruebas e integración continua",
+          "objetivos": [
+            "Escribir pruebas de datos, modelo y API",
+            "Automatizarlas con GitHub Actions"
+          ]
+        },
+        {
+          "titulo": "Monitorización",
+          "objetivos": [
+            "Detectar la deriva con PSI y KS",
+            "Definir una política de reentrenamiento"
+          ]
+        },
+        {
+          "titulo": "Demos y documentación",
+          "objetivos": [
+            "Publicar una demo en Hugging Face Spaces",
+            "Escribir una tarjeta de modelo"
+          ]
+        },
+        {
+          "titulo": "Despliegue con restricciones",
+          "objetivos": [
+            "Desplegar en CPU y sin conexión",
+            "Exportar a ONNX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "meta-tasa-base",
+      "tipo": "incognita",
+      "titulo": "La paradoja de la tasa base, calculada y simulada",
+      "resumen": "El ejercicio de Bayes que falló en el diagnóstico: fórmula, simulación y su conexión con la precisión.",
+      "documento": "nodos/meta-tasa-base.md",
+      "depende": [
+        "probabilidad"
+      ],
+      "recursos": [
+        "r-yohai",
+        "r-uca-edyp"
+      ],
+      "abierto": false,
+      "dificultad": "baja"
+    },
+    {
+      "id": "meta-gradientes",
+      "tipo": "incognita",
+      "titulo": "Gradientes desde cero, derivados y verificados",
+      "resumen": "La regresión logística y una red de dos capas en NumPy con comprobación numérica y verificación contra PyTorch.",
+      "documento": "nodos/meta-gradientes.md",
+      "depende": [
+        "mates-ml"
+      ],
+      "recursos": [
+        "r-ucm-mates-ia",
+        "r-jacar-retro"
+      ],
+      "abierto": false,
+      "dificultad": "media"
+    },
+    {
+      "id": "meta-comparar-modelos",
+      "tipo": "incognita",
+      "titulo": "¿La diferencia es real? Comparar dos modelos con rigor",
+      "resumen": "Bootstrap, McNemar y la prueba t corregida, con un estudio de simulación de falsos positivos y potencia.",
+      "documento": "nodos/meta-comparar-modelos.md",
+      "depende": [
+        "estadistica",
+        "ml-fundamentos"
+      ],
+      "recursos": [
+        "r-uca-inferencia",
+        "r-irizarry"
+      ],
+      "abierto": false,
+      "dificultad": "media"
+    },
+    {
+      "id": "proyecto-tabular",
+      "tipo": "incognita",
+      "titulo": "Proyecto 1: un modelo tabular con pocos datos, evaluado con honestidad",
+      "resumen": "Problema real de 200 a 5.000 filas: regresión logística, LightGBM y TabPFN, curva de aprendizaje, sin fugas y con intervalos.",
+      "documento": "nodos/proyecto-tabular.md",
+      "depende": [
+        "ml-tabular",
+        "meta-comparar-modelos"
+      ],
+      "recursos": [
+        "r-cdd-ml",
+        "r-cdd-boosting",
+        "r-uca-inferencia"
+      ],
+      "abierto": false,
+      "dificultad": "media-alta"
+    },
+    {
+      "id": "meta-imagenes",
+      "tipo": "incognita",
+      "titulo": "Un clasificador de imágenes con 300 ejemplos",
+      "resumen": "Desde cero, extracción de características y ajuste fino comparados, midiendo la caída por cambio de dominio.",
+      "documento": "nodos/meta-imagenes.md",
+      "depende": [
+        "deep-learning"
+      ],
+      "recursos": [
+        "r-unam-ap"
+      ],
+      "abierto": false,
+      "dificultad": "media"
+    },
+    {
+      "id": "meta-textos",
+      "tipo": "incognita",
+      "titulo": "Clasificar textos en español con menos de 500 ejemplos",
+      "resumen": "Curva de aprendizaje de cinco métodos, de TF-IDF a LLM local, con intervalos y costes.",
+      "documento": "nodos/meta-textos.md",
+      "depende": [
+        "transformers-nlp",
+        "meta-comparar-modelos"
+      ],
+      "recursos": [
+        "r-hf-curso",
+        "r-sepln"
+      ],
+      "abierto": false,
+      "dificultad": "media-alta"
+    },
+    {
+      "id": "meta-qlora",
+      "tipo": "incognita",
+      "titulo": "Ajustar con QLoRA un LLM pequeño en 6 GB",
+      "resumen": "Extracción estructurada de textos legales: instrucciones frente a QLoRA, midiendo la mejora y el olvido.",
+      "documento": "nodos/meta-qlora.md",
+      "depende": [
+        "ingenieria-llm"
+      ],
+      "recursos": [
+        "r-hf-curso"
+      ],
+      "abierto": false,
+      "dificultad": "alta"
+    },
+    {
+      "id": "proyecto-demanda",
+      "tipo": "incognita",
+      "titulo": "Proyecto 2: predicción de demanda para un pequeño comercio, desplegada",
+      "resumen": "Un modelo global que bata a la estacional ingenua, con cuantiles y punto de pedido, en Django y sin conexión.",
+      "documento": "nodos/proyecto-demanda.md",
+      "depende": [
+        "series-temporales",
+        "mlops"
+      ],
+      "recursos": [
+        "r-cdd-forecasting",
+        "r-cdd-intermitente"
+      ],
+      "abierto": false,
+      "dificultad": "alta"
+    },
+    {
+      "id": "proyecto-rag",
+      "tipo": "incognita",
+      "titulo": "Proyecto 3: un asistente RAG sobre la normativa cubana para mipymes, evaluado",
+      "resumen": "Recuperación híbrida, LLM local, citas obligatorias y evaluación ciega con intervalos.",
+      "documento": "nodos/proyecto-rag.md",
+      "depende": [
+        "ingenieria-llm",
+        "mlops"
+      ],
+      "recursos": [
+        "r-hf-curso",
+        "r-sepln"
+      ],
+      "abierto": false,
+      "dificultad": "alta"
+    },
+    {
+      "id": "meta-empleo-remoto",
+      "tipo": "incognita",
+      "titulo": "Una vía de contratación y cobro remotos desde Cuba",
+      "resumen": "Hipótesis comprobable: 3 entrevistas en 60 días y un canal de pago legal confirmado, con un experimento barato previo.",
+      "documento": "nodos/meta-empleo-remoto.md",
+      "depende": [
+        "ml-fundamentos"
+      ],
+      "recursos": [],
+      "abierto": false,
+      "dificultad": "alta"
+    },
+    {
+      "id": "reto-competicion",
+      "tipo": "incognita",
+      "titulo": "Quedar en el 10 % superior de una competición pública de ML",
+      "resumen": "En solitario y con tu GPU, en una competición tabular, de series o de texto en español.",
+      "documento": "nodos/reto-competicion.md",
+      "depende": [
+        "proyecto-tabular",
+        "series-temporales"
+      ],
+      "recursos": [
+        "r-cdd-boosting",
+        "r-cdd-forecasting"
+      ],
+      "abierto": true,
+      "dificultad": "alta"
+    },
+    {
+      "id": "reto-iberlef",
+      "tipo": "incognita",
+      "titulo": "Participar en una tarea de IberLEF y publicar el artículo del sistema",
+      "resumen": "Tu primera publicación revisada, en el foro de PLN en español: 2027 ambiciosa, 2028 recomendada.",
+      "documento": "nodos/reto-iberlef.md",
+      "depende": [
+        "meta-textos",
+        "ingenieria-llm"
+      ],
+      "recursos": [
+        "r-sepln",
+        "r-hf-curso"
+      ],
+      "abierto": true,
+      "dificultad": "muy alta"
+    },
+    {
+      "id": "reto-reproducir",
+      "tipo": "incognita",
+      "titulo": "Reproducir y poner a prueba un resultado publicado sobre pocos datos",
+      "resumen": "TabPFN frente al boosting en 20 conjuntos y 3 reales, con pruebas estadísticas sobre muchos conjuntos.",
+      "documento": "nodos/reto-reproducir.md",
+      "depende": [
+        "proyecto-tabular",
+        "estadistica"
+      ],
+      "recursos": [
+        "r-uca-inferencia"
+      ],
+      "abierto": true,
+      "dificultad": "alta"
+    },
+    {
+      "id": "reto-produccion-real",
+      "tipo": "incognita",
+      "titulo": "Un modelo en producción con usuarios reales durante 3 meses",
+      "resumen": "El módulo de demanda en una mipyme real: error real, deriva, adopción e informe honesto.",
+      "documento": "nodos/reto-produccion-real.md",
+      "depende": [
+        "proyecto-demanda"
+      ],
+      "recursos": [
+        "r-cdd-forecasting"
+      ],
+      "abierto": true,
+      "dificultad": "muy alta"
+    }
+  ],
+  "recursos": [
+    {
+      "id": "r-yohai",
+      "tipo": "libro",
+      "titulo": "Notas de Probabilidades y Estadística (capítulos 1 al 12)",
+      "autores": "Víctor J. Yohai",
+      "anio": 2006,
+      "url": "https://mate.dm.uba.ar/~vyohai/Notas%20de%20Probabilidades.pdf",
+      "archivo": "recursos/yohai-notas-probabilidades.pdf",
+      "nota": "**Texto troncal de Probabilidad.** Es riguroso y está en español, publicado por el autor en su página de la UBA. Lee:\n\n- § 1.5-1.6 (condicional e independencia);\n- caps. 2-5 (variables y vectores aleatorios);\n- cap. 7 (esperanza, varianza, covarianza y normal bivariada);\n- cap. 8 (teoría de la predicción);\n- cap. 9 (esperanza condicional);\n- cap. 10 (leyes de los grandes números);\n- § 11.5-11.7 (TCL e intervalos asintóticos).\n\nSáltate las σ-álgebras (§ 1.2.1 y 1.3) en una primera lectura."
+    },
+    {
+      "id": "r-uca-edyp",
+      "tipo": "libro",
+      "titulo": "Estadística descriptiva y probabilidad (Teoría y problemas), 3.ª ed.",
+      "autores": "I. Espejo Miranda, F. Fernández Palacín, M. A. López Sánchez, M. Muñoz Márquez, A. M. Rodríguez Chía, A. Sánchez Navas y C. Valero Franco",
+      "anio": 2006,
+      "url": "https://knuth.uca.es/repos/l_edyp/l_edyp/lib_edyp.pdf.pdf",
+      "archivo": "recursos/uca-estadistica-descriptiva-probabilidad.pdf",
+      "nota": "Universidad de Cádiz, con **licencia GFDL** (libre). Es más elemental que Yohai y tiene **muchos problemas resueltos**: úsalo para practicar. Lee:\n\n- cap. 4, § 6-8 (condicionada, probabilidad total y Bayes, p. 131-136);\n- cap. 5 (variable aleatoria);\n- cap. 6 (modelos probabilísticos y TCL, p. 185-206)."
+    },
+    {
+      "id": "r-uca-inferencia",
+      "tipo": "libro",
+      "titulo": "Inferencia estadística (Teoría y problemas)",
+      "autores": "I. Espejo Miranda, F. Fernández Palacín, M. A. López Sánchez, M. Muñoz Márquez, A. M. Rodríguez Chía, A. Sánchez Navas y C. Valero Franco",
+      "anio": 2007,
+      "url": "https://knuth.uca.es/repos/l_inf_est/pdf/actual/lib_inf.pdf",
+      "archivo": "recursos/uca-inferencia-estadistica.pdf",
+      "nota": "**Texto troncal de Estadística** (Universidad de Cádiz, licencia GFDL). Lee:\n\n- cap. 2 (estimación puntual y verosimilitud, p. 11-30);\n- cap. 3 (intervalos, p. 41-75);\n- cap. 4 (contrastes, p. 81-102);\n- cap. 5 (no paramétricos, para el reto de reproducción);\n- cap. 6, § 3 (contrastes múltiples).\n\n**No trata el *bootstrap*:** lo cubre Irizarry."
+    },
+    {
+      "id": "r-rincon",
+      "tipo": "libro",
+      "titulo": "Introducción a la probabilidad",
+      "autores": "Luis Rincón",
+      "anio": 2014,
+      "url": "http://lya.fciencias.unam.mx/lars/indexL.html",
+      "archivo": null,
+      "nota": "Es de Las Prensas de Ciencias (UNAM), y el autor lo ofrece gratis en su página. Es una alternativa a Yohai con muchos ejercicios y un estilo muy didáctico. **No pude descargarlo:** el servidor no respondió desde aquí. Descárgalo directamente de la página del autor; no uses copias de terceros."
+    },
+    {
+      "id": "r-irizarry",
+      "tipo": "libro",
+      "titulo": "Introducción a la ciencia de datos: análisis de datos y algoritmos de predicción con R",
+      "autores": "Rafael A. Irizarry",
+      "anio": 2021,
+      "url": "https://rafalab.dfci.harvard.edu/dslibro",
+      "archivo": null,
+      "nota": "La traducción oficial al español, en línea y con licencia CC BY-NC-SA 4.0. Usa R, pero los conceptos no dependen del lenguaje. Lee los capítulos de **inferencia estadística**, los de ***bootstrap*** y los de **validación cruzada** de la parte de aprendizaje automático. Hay un PDF gratuito en Leanpub (precio mínimo 0), que requiere una cuenta."
+    },
+    {
+      "id": "r-ucm-mates-ia",
+      "tipo": "curso",
+      "titulo": "Las matemáticas de la inteligencia artificial",
+      "autores": "Iván Colmenarejo Allavena y Joaquín López Herraiz (Universidad Complutense de Madrid)",
+      "anio": 2024,
+      "url": "https://math.libretexts.org/Courses/Universidad_Complutense_de_Madrid/Las_matematicas_de_la_inteligencia_artificial",
+      "archivo": null,
+      "nota": "**Texto troncal del repaso de matemáticas**, en LibreTexts. Lee los caps. 3-6 (cálculo multivariante, regla de la cadena, aproximación lineal, gradiente descendiente) y 7-10 (redes neuronales, retropropagación, entrenamiento).\n\nLa página ofrece «Download Full Book (PDF)»: descárgalo para estudiar sin conexión. La licencia figura como «no declarada», así que úsalo para estudio personal. El año es aproximado."
+    },
+    {
+      "id": "r-mlcc",
+      "tipo": "curso",
+      "titulo": "Curso intensivo de aprendizaje automático (versión en español)",
+      "autores": "Google",
+      "anio": 2024,
+      "url": "https://developers.google.com/machine-learning/crash-course?hl=es-419",
+      "archivo": null,
+      "nota": "Es interactivo y gratuito, en español latinoamericano, en su versión actualizada (con LLM y AutoML). Usa:\n\n- «Modelos de AA» y «Datos» para ML I;\n- «AA en el mundo real» para MLOps.\n\nEs un servicio de Google y **puede requerir VPN desde Cuba**. El año de la actualización es aproximado."
+    },
+    {
+      "id": "r-cdd-ml",
+      "tipo": "web",
+      "titulo": "Machine learning con Python y Scikit-learn",
+      "autores": "Joaquín Amat Rodrigo (cienciadedatos.net)",
+      "anio": 2024,
+      "url": "https://www.cienciadedatos.net/documentos/py06_machine_learning_python_scikitlearn",
+      "archivo": null,
+      "nota": "Es el tutorial más completo en español sobre `Pipeline`, preprocesamiento, validación cruzada y búsqueda de hiperparámetros. Es troncal para ML I y Python científico. El año es aproximado: el sitio se actualiza a menudo."
+    },
+    {
+      "id": "r-cdd-boosting",
+      "tipo": "web",
+      "titulo": "Gradient Boosting con Python y Scikit-learn",
+      "autores": "Joaquín Amat Rodrigo (cienciadedatos.net)",
+      "anio": 2024,
+      "url": "https://www.cienciadedatos.net/documentos/py09_gradient_boosting_python",
+      "archivo": null,
+      "nota": "Troncal para ML II, conferencias 3-4: de la teoría a XGBoost, LightGBM y CatBoost, con parada temprana."
+    },
+    {
+      "id": "r-cdd-boosting-prob",
+      "tipo": "web",
+      "titulo": "Gradient Boosting probabilístico con Python",
+      "autores": "Joaquín Amat Rodrigo (cienciadedatos.net)",
+      "anio": 2024,
+      "url": "https://www.cienciadedatos.net/documentos/py26-gradient-boosting-probabilistico-python",
+      "archivo": null,
+      "nota": "Para ML II (conferencia 10) y Series (conferencia 8): regresión por cuantiles e intervalos de predicción."
+    },
+    {
+      "id": "r-cdd-pca",
+      "tipo": "web",
+      "titulo": "Análisis de componentes principales (PCA) con Python",
+      "autores": "Joaquín Amat Rodrigo (cienciadedatos.net)",
+      "anio": 2024,
+      "url": "https://www.cienciadedatos.net/documentos/py19-pca-python",
+      "archivo": null,
+      "nota": "Para el repaso de matemáticas, conferencia 4: la PCA explicada y aplicada en Python."
+    },
+    {
+      "id": "r-cdd-forecasting",
+      "tipo": "web",
+      "titulo": "Skforecast: forecasting de series temporales con machine learning",
+      "autores": "Joaquín Amat Rodrigo y Javier Escobar Ortiz (cienciadedatos.net)",
+      "anio": 2024,
+      "url": "https://www.cienciadedatos.net/documentos/py27-forecasting-series-temporales-python-scikitlearn",
+      "archivo": null,
+      "nota": "**Texto troncal de Series temporales**, de los autores de skforecast. Complétalo con «Forecasting series temporales con gradient boosting» (py39), del mismo sitio."
+    },
+    {
+      "id": "r-cdd-intermitente",
+      "tipo": "web",
+      "titulo": "Forecasting de demanda intermitente con Python y Skforecast",
+      "autores": "Joaquín Amat Rodrigo y Javier Escobar Ortiz (cienciadedatos.net)",
+      "anio": 2024,
+      "url": "https://www.cienciadedatos.net/documentos/py48-forecasting-demanda-intermitente",
+      "archivo": null,
+      "nota": "Para Series temporales, conferencia 7, y el Proyecto 2: productos con muchos días sin ventas, típicos del comercio pequeño."
+    },
+    {
+      "id": "r-cdd-semantica",
+      "tipo": "web",
+      "titulo": "Sistema de recomendación de vinos con transfer learning y búsqueda semántica",
+      "autores": "Joaquín Amat Rodrigo (cienciadedatos.net)",
+      "anio": 2024,
+      "url": "https://www.cienciadedatos.net/documentos/py33-recomendaciones-busqueda-semantica",
+      "archivo": null,
+      "nota": "Un ejemplo completo en español de *embeddings* y búsqueda semántica: la antesala del RAG."
+    },
+    {
+      "id": "r-unam-aa",
+      "tipo": "curso",
+      "titulo": "Curso de aprendizaje automatizado (PCIC-UNAM, 2026-2)",
+      "autores": "Gibran Fuentes Pineda",
+      "anio": 2026,
+      "url": "https://github.com/gibranfp/CursoAprendizajeAutomatizado",
+      "archivo": null,
+      "nota": "Diapositivas, tareas y cuadernos en español de un curso de posgrado de la UNAM. GitHub te funciona sin VPN: **clónalo**. Temas útiles:\n\n- 1-3 (*naive Bayes*, métodos lineales, selección de modelos) para ML I;\n- 7 (ensambles) para ML II."
+    },
+    {
+      "id": "r-unam-ap",
+      "tipo": "curso",
+      "titulo": "Curso de aprendizaje profundo (PCIC-UNAM, 2027-1)",
+      "autores": "Gibran Fuentes Pineda",
+      "anio": 2026,
+      "url": "https://github.com/gibranfp/CursoAprendizajeProfundo",
+      "archivo": null,
+      "nota": "**Texto troncal de Aprendizaje profundo**: en español, con PyTorch 2.4, `timm` y `torchvision` (según su `environment.yml`). Unidades: redes densas, convolucionales, recurrentes, de atención y modelos generativos. Clónalo desde GitHub."
+    },
+    {
+      "id": "r-hf-curso",
+      "tipo": "curso",
+      "titulo": "Curso de LLM (antes «Curso de NLP»), versión en español",
+      "autores": "Hugging Face",
+      "anio": 2025,
+      "url": "https://huggingface.co/learn/llm-course/es/chapter1/1",
+      "archivo": null,
+      "nota": "**Troncal para Transformers y para LLM.** Usa los caps. 1-4 (Transformers, ajuste fino) y 5-8 (Datasets, Tokenizers, tareas de PLN).\n\n**Aviso:** los capítulos de ajuste fino de LLM (11 en adelante) **no están en español**; la página redirige a la versión inglesa, y el material de las conferencias los sustituye. Hugging Face te funciona sin VPN."
+    },
+    {
+      "id": "r-sepln",
+      "tipo": "web",
+      "titulo": "Revista Procesamiento del Lenguaje Natural (SEPLN)",
+      "autores": "Sociedad Española para el Procesamiento del Lenguaje Natural",
+      "anio": 2026,
+      "url": "http://journal.sepln.org/sepln/ojs/ojs/index.php/pln",
+      "archivo": null,
+      "nota": "Revista de acceso abierto con muchos artículos en español. Publica los **resúmenes de las tareas de IberLEF**: es la mejor preparación para el reto IberLEF y para elegir los datos de la meta de textos."
+    },
+    {
+      "id": "r-jacar-retro",
+      "tipo": "web",
+      "titulo": "Retropropagación, la derivación matemática paso a paso",
+      "autores": "Jacar.es",
+      "anio": 2025,
+      "url": "https://jacar.es/retropropagacion-derivacion-matematica-paso-a-paso/",
+      "archivo": null,
+      "nota": "Una segunda explicación de la retropropagación en notación matricial, para la conferencia 6 del repaso y la meta de gradientes. La ruta «Entrenamiento y retropropagación» del mismo sitio cubre también SGD y los jacobianos. El año es aproximado."
+    },
+    {
+      "id": "r-raschka-es",
+      "tipo": "libro",
+      "titulo": "Machine Learning con PyTorch y Scikit-Learn",
+      "autores": "Sebastian Raschka, Yuxi (Hayden) Liu y Vahid Mirjalili",
+      "anio": 2023,
+      "url": "https://www.goodreads.com/work/editions/144333904-machine-learning-con-pytorch-y-scikit-learn-spanish-edition",
+      "archivo": null,
+      "nota": "Traducción de Marcombo (ISBN 978-84-267-3573-7). **Es de pago**: está en Kindle y en papel. Es el libro único más alineado con este curso. Capítulos:\n\n- 2-6 para ML I;\n- 7 para ML II;\n- 12-15 para Aprendizaje profundo.\n\nSi no puedes comprarlo, el curso es autosuficiente sin él. Pregunta en la biblioteca de tu facultad."
+    },
+    {
+      "id": "r-geron-es",
+      "tipo": "libro",
+      "titulo": "Aprende Machine Learning con Scikit-Learn, Keras y TensorFlow, 3.ª ed.",
+      "autores": "Aurélien Géron",
+      "anio": 2023,
+      "url": "https://www.megabooks.cz/en/p/29137633/aprende-machine-learning-con-scikit-learn-keras-y-tensorflow-tercera-edicion",
+      "archivo": null,
+      "nota": "Traducción de Anaya Multimedia (ISBN 978-84-415-4804-6). **Es de pago.** Úsalo como alternativa para la parte clásica:\n\n- cap. 2 (proyecto de extremo a extremo, excelente);\n- caps. 3-4;\n- caps. 6-7 (árboles y ensambles).\n\nLa parte profunda usa Keras: aquí usamos PyTorch. **Evita los sitios de descarga gratuita que aparecen en los buscadores: son piratas.**"
+    }
+  ]
+}

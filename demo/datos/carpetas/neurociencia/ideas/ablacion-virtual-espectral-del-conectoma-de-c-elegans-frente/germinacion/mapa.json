@@ -1,0 +1,824 @@
+{
+  "version": 1,
+  "fase": "mapa",
+  "resumen": "## Qué cambió en esta revisión\n\nHe reescrito **solo los documentos de las 7 incógnitas** (i1–i7), como pediste. Ahora todos empiezan con tres secciones: **«Cómo se llegó a este problema»** (de dónde viene la pregunta: los trabajos de Varshney, Restrepo, Milanese, Fenyves, Yan o Randi, y qué observación del piloto la hizo urgente en esta idea), **«El problema»** (el planteamiento formal) y **«Qué representaría resolverlo»**. Detrás se conserva todo lo anterior (estado del arte, cifras del piloto, enfoque paso a paso y referencias), y los metadatos de cada incógnita han pasado a una sección final, «Ficha». Además, en i1 he explicitado como Proposición 1 un resultado demostrable (sin uniones gap, el ranking no depende de $g$), y en i7 he añadido un enfoque concreto para después de la entrega. **No cambian** los ids, los nodos de estudio, los recursos ni las dependencias.\n\nHas marcado e1 como pendiente: es el punto de entrada correcto. Empieza por los apuntes de Bindel y el ejemplo $2\\times2$ resuelto en su documento.\n\n## Lo primero: el plazo manda\n\nTus respuestas cambian el plan. **1,5 meses a menos de 5 horas semanales son unas 25–30 horas en total**, partiendo de 0 en sistemas dinámicos, redes, neurobiología y estadística, y de 0–1 en álgebra no simétrica y Python numérico. El proyecto del dictamen (3–6 meses, con validación frente a Randi, modelos nulos y análisis de pares L/R) **no cabe**. Lo que sí cabe, y encaja perfectamente con una asignatura de Matemática Numérica, es esto:\n\n> **Entrega propuesta.** *Sensibilidad de la abscisa espectral del jacobiano lineal con signos del conectoma de* C. elegans *a la ablación de neuronas: precisión de las estimaciones perturbativas e impacto de la incertidumbre de los signos.*\n\nEl núcleo es numérico: deducir las fórmulas, explicar por qué el primer orden se equivoca por un factor 2 y medir cuándo falla el estimador corregido. La biología queda en un apartado honesto: qué se puede concluir y qué no. **Habla esta semana con tu profesor** para cerrar el alcance con este enfoque; es justo su terreno.\n\n## Lo que ya sé gracias a un piloto\n\nHe hecho un piloto con datos reales (Cook 2019 + signos de Fenyves 2020, 282 neuronas, solo con `numpy`). **No te doy el código**: reproducirlo es parte de tu trabajo, y las cifras de control están en [e7](germinacion/nodos/e7-construir-jacobiano.md). Resultados:\n\n1. **El primer orden puro sobreestima el efecto ≈2 veces**, y el cociente de Rayleigh con vectores truncados lo arregla (error mediano del 0,2–16 % según los signos). El error crece con $\\kappa(\\lambda)$.\n2. **El ranking de neuronas depende casi por completo de los signos dudosos**: $\\tau$ de Kendall ≈ 0 entre escenarios. Solo unas pocas neuronas (RIM, AIB) destacan con frecuencia. Ese es el hallazgo principal y lo convierte en el centro de [i4](germinacion/nodos/i4-robustez-signos.md).\n3. **Corrijo mi dictamen:** predije que mandarían AVA, AVB, AVD y PVC. En este modelo no ocurre ni siquiera sin signos; mandan RIA, SMD y RMD.\n\n## Calendario (≈5 h por semana)\n\n| Semana | Qué | Nodos |\n|---|---|---|\n| 1 | Autovectores izquierdos y `scipy` | e1, e4 |\n| 2 | Perturbaciones y EDO lineales | e2, e3 |\n| 3 | Lo mínimo de redes y de biología; construir $J$ | e5, e6, e7 |\n| 4 | Régimen $(g,h)$, seguimiento del autovalor, ablaciones | i1, i2, i3 |\n| 5 | Precisión (cierre) y robustez a los signos | i3, i4, e8 |\n| 6 | Informe | — |\n\n**Esto suma ~30 horas: vas justo.** Si te retrasas, recorta en este orden: la figura de continuación de i2, la rejilla de i1 (quédate con $h\\in\\{0;0{,}5\\}$), i4 con solo 3 escenarios, i6 como un párrafo. **No recortes** e1, e2, e7 ni i3: son la columna vertebral.\n\n**Esquema de informe (8–10 páginas):** 1) introducción; 2) el modelo $J$ y sus supuestos; 3) teoría: deducción de (2)–(3) de e2 y el factor 2; 4) métodos numéricos y fiabilidad de `eig`; 5) resultados: precisión (i3) y robustez a los signos (i4); 6) limitaciones (lineal, signos predichos, sin neuropéptidos); 7) conclusiones.\n\n## Después de la entrega\n\nSi te ha gustado: e9 (pseudoespectros y subespacios) → i5 (pares L/R); e10 (estadística) → i7 (validación con el atlas funcional de Randi). Ese camino sí puede acabar en un artículo, pero son meses.",
+  "diagnostico": {
+    "intro": "Estas preguntas sirven para saber **de dónde partes** en cada cosa que exige el proyecto, y así no hacerte estudiar lo que ya sabes ni saltarme lo que te falta. Contesta con honestidad: un «0» no es un fallo, es información. Si dudas entre dos niveles, elige el más bajo. Cada nivel describe algo que **podrías hacer ahora mismo, sin consultar nada**.\n\nTres preguntas abiertas al final recogen tu contexto: carrera, tiempo disponible, tutor y plazo. Condicionan cuánto puede abarcar la ruta.",
+    "preguntas": [
+      {
+        "id": "p1",
+        "texto": "**Álgebra lineal de matrices no simétricas.** Sea\n\n$$A=\\begin{pmatrix}1 & 100\\\\ 0 & 2\\end{pmatrix}.$$\n\n¿Podrías calcular a mano los autovectores **izquierdo** y **derecho** de $\\lambda=1$, comprobar que $\\mathbf u^\\top\\mathbf v$ es pequeño comparado con $\\|\\mathbf u\\|\\|\\mathbf v\\|$ y explicar por qué eso hace que $\\lambda=1$ sea muy sensible a perturbaciones?",
+        "tipo": "escala",
+        "niveles": [
+          "0: Sé calcular autovalores de matrices pequeñas, pero no he trabajado con autovectores izquierdos ni con matrices no simétricas como caso aparte.",
+          "1: Sé que existen los autovectores izquierdos ($\\mathbf u^\\top A=\\lambda\\mathbf u^\\top$) y podría calcularlos con ayuda, pero no sabría decir qué significa que $\\mathbf u^\\top\\mathbf v$ sea pequeño.",
+          "2: Haría el cálculo sin problema y conozco la biortogonalidad $\\mathbf u_i^\\top\\mathbf v_j=0$ si $\\lambda_i\\neq\\lambda_j$, la diferencia entre matriz diagonalizable y defectiva y qué es una matriz normal. No sabría cuantificar la sensibilidad.",
+          "3: Además conozco el número de condición $\\kappa(\\lambda)=\\|\\mathbf u\\|\\|\\mathbf v\\|/|\\mathbf u^\\top\\mathbf v|$, el teorema de Bauer–Fike y por qué el condicionamiento de la base de autovectores importa en matrices no normales.",
+          "4: Manejo con soltura la descomposición de Schur, la forma de Jordan y su inestabilidad numérica, y he trabajado con pseudoespectros $\\Lambda_\\varepsilon(A)$ o el rango numérico."
+        ]
+      },
+      {
+        "id": "p2",
+        "texto": "**Teoría de perturbaciones de autovalores.** Sea $\\lambda$ un autovalor simple de $A$, con $A\\mathbf v=\\lambda\\mathbf v$ y $\\mathbf u^\\top A=\\lambda\\mathbf u^\\top$, y sea $A(\\varepsilon)=A+\\varepsilon E$. ¿Podrías **deducir**\n\n$$\\lambda'(0)=\\frac{\\mathbf u^\\top E\\,\\mathbf v}{\\mathbf u^\\top\\mathbf v},$$\n\nescribir el término de segundo orden y explicar qué cambia cuando $\\lambda$ es doble o casi doble?",
+        "tipo": "escala",
+        "niveles": [
+          "0: No he estudiado teoría de perturbaciones de autovalores.",
+          "1: He visto la fórmula de primer orden (quizá en física, como perturbaciones en mecánica cuántica) para el caso simétrico, pero no la sabría deducir para matrices no simétricas.",
+          "2: Deduciría el primer orden no simétrico derivando $A(\\varepsilon)\\mathbf v(\\varepsilon)=\\lambda(\\varepsilon)\\mathbf v(\\varepsilon)$ y multiplicando por $\\mathbf u^\\top$. El segundo orden y el caso degenerado no los domino.",
+          "3: Domino primer y segundo orden (con la resolvente reducida o la suma sobre los demás modos), sé que en el caso degenerado hay que diagonalizar la perturbación restringida al subespacio y conozco Davis–Kahan para matrices simétricas.",
+          "4: Además conozco la perturbación de subespacios invariantes no hermíticos (Stewart, $\\operatorname{sep}(T_{11},T_{22})$), las series de Puiseux en autovalores defectivos (Lidskii) y he leído algo de Kato o de Stewart y Sun."
+        ]
+      },
+      {
+        "id": "p3",
+        "texto": "**Sistemas dinámicos lineales y linealización.** Considera el modelo de tasas\n\n$$\\tau\\,\\dot{\\mathbf r}=-\\mathbf r+W\\phi(\\mathbf r)+\\mathbf I .$$\n\n¿Podrías encontrar su jacobiano en un punto fijo $\\mathbf r^*$, decir cuándo es estable y explicar por qué, aunque todos los autovalores de $J$ tengan parte real negativa, $\\|\\mathbf x(t)\\|$ puede **crecer mucho antes de decaer** en $\\dot{\\mathbf x}=J\\mathbf x$?",
+        "tipo": "escala",
+        "niveles": [
+          "0: Sé resolver EDOs escalares sencillas, pero no he estudiado sistemas de EDOs.",
+          "1: Sé resolver $\\dot{\\mathbf x}=J\\mathbf x$ con autovalores y sé que la estabilidad depende del signo de $\\operatorname{Re}\\lambda$, pero no he linealizado modelos no lineales.",
+          "2: Calcularía el jacobiano $J=\\tau^{-1}\\big(-I+W\\,\\operatorname{diag}(\\phi'(\\mathbf r^*))\\big)$ y clasificaría el punto fijo. No conozco el crecimiento transitorio.",
+          "3: Además sé que el crecimiento transitorio procede de la no normalidad, conozco la abscisa espectral $\\alpha(J)$ frente a la abscisa numérica y la relación $\\|e^{tJ}\\|\\le\\kappa(V)e^{t\\alpha(J)}$.",
+          "4: He trabajado con modelos de redes neuronales (redes de tasas, amplificación no normal, redes balanceadas excitación/inhibición) o con análisis de sensibilidad de jacobianos respecto a parámetros."
+        ]
+      },
+      {
+        "id": "p4",
+        "texto": "**Cálculo numérico en Python.** ¿Podrías, sin buscar en internet, escribir un script que cargue una matriz dirigida de unas 300 neuronas, obtenga sus autovalores y sus autovectores izquierdos y derechos **correctamente emparejados**, quite cada nodo, recalcule la abscisa espectral y guarde los resultados de forma reproducible? ¿Sabrías decir si los autovalores que devuelve `scipy.linalg.eig` son fiables cuando $\\kappa(\\lambda)\\sim10^{8}$?",
+        "tipo": "escala",
+        "niveles": [
+          "0: Apenas programo en Python, o solo en otros lenguajes.",
+          "1: Programo en Python con `numpy` y bucles y he usado `np.linalg.eig`, pero no sé cómo obtener y emparejar los autovectores izquierdos.",
+          "2: Escribiría el script entero con `scipy.linalg.eig(A, left=True)`, `pandas` y matplotlib, y lo versionaría con git. No sabría juzgar la precisión numérica del resultado.",
+          "3: Además entiendo el error hacia atrás de QR/Hessenberg, sé que el error en $\\lambda$ es del orden de $\\kappa(\\lambda)\\,\\varepsilon_{\\text{máq}}\\|A\\|$ y he usado `scipy.sparse.linalg.eigs` (ARPACK) o `condition_number` de LAPACK (`trevc`, `trsna`).",
+          "4: He programado métodos numéricos serios (Arnoldi, continuación, cálculo de pseudoespectros con EigTool o similar) o he trabajado con aritmética de precisión extendida (`mpmath`) para verificar resultados."
+        ]
+      },
+      {
+        "id": "p5",
+        "texto": "**Ciencia de redes.** Dada una red dirigida con pesos y signos, ¿sabrías (a) descomponerla en **componentes fuertemente conexas** y explicar por qué el espectro de su matriz es la unión de los espectros de los bloques diagonales, (b) enunciar Perron–Frobenius y decir qué deja de garantizar cuando hay pesos negativos y (c) generar un **modelo nulo** que conserve los grados de entrada y salida *y* la proporción de signos de cada neurona?",
+        "tipo": "escala",
+        "niveles": [
+          "0: Conozco la idea de grafo, pero no he estudiado ciencia de redes.",
+          "1: Conozco grado, caminos, componentes conexas y centralidades básicas, y he usado `networkx`, pero no he trabajado con redes dirigidas en serio.",
+          "2: Haría (a) y conozco el Laplaciano $L=D-A$ y su $\\lambda_2$. Perron–Frobenius lo conozco de oídas y (c) no sabría hacerlo bien.",
+          "3: Haría (a) y (b) y conozco los modelos de configuración y el recableado por intercambio de aristas (*edge swaps*) en grafos dirigidos, aunque no lo he hecho con signos.",
+          "4: Haría las tres cosas y he trabajado con redes con signo (balance estructural, Laplacianos con signo) o con modelos nulos de máxima entropía."
+        ]
+      },
+      {
+        "id": "p6",
+        "texto": "**Neurobiología de *C. elegans*.** Si te digo que *AVAL recibe sinapsis glutamatérgicas de ASH y de AIB, y que AVA expresa tanto el receptor excitador GLR-1 como el canal de cloruro inhibidor AVR-14*, ¿sabrías explicar qué significa eso para el **signo** de esas sinapsis, por qué Fenyves et al. (2020) predicen signos a partir de expresión génica en lugar de medirlos y qué papel tienen AVA, AVB, AVD y PVC en la locomoción?",
+        "tipo": "escala",
+        "niveles": [
+          "0: No sé casi nada de *C. elegans* ni de neurobiología celular más allá de lo general (neurona, sinapsis, potencial de acción).",
+          "1: Conozco la diferencia entre sinapsis química y unión gap y he leído divulgación sobre el conectoma, pero no la nomenclatura (AVAL, DD04…) ni la lógica de los neurotransmisores.",
+          "2: Conozco la nomenclatura (clases, pares L/R, motoneuronas DA/DB/VA/VB/DD/VD) y el circuito de mando de la locomoción hacia delante y hacia atrás, pero no sé cómo se decide si una sinapsis excita o inhibe.",
+          "3: Además entiendo que el signo depende del receptor postsináptico y no solo del transmisor (glutamato excitador vía GLR, inhibidor vía GluCl, etc.), y que *C. elegans* casi no dispara potenciales de acción (respuestas graduadas). He leído Varshney 2011 o Cook 2019.",
+          "4: He trabajado con datos de *C. elegans* (conectoma, imagen de calcio, WormBase) o he leído a fondo Fenyves 2020, Randi 2023 y la literatura sobre neuromodulación extrasináptica (Ripoll-Sánchez 2023)."
+        ]
+      },
+      {
+        "id": "p7",
+        "texto": "**Estadística para comparar rankings.** Tienes dos rankings de 279 neuronas: uno por importancia espectral y otro por grado ponderado, con una correlación de Spearman de $0{,}85$. ¿Sabrías decidir con rigor si el espectro aporta información **más allá del grado** para predecir una tercera variable medida (por ejemplo, la influencia funcional de Randi), teniendo en cuenta que las neuronas de un par L/R **no son independientes**?",
+        "tipo": "escala",
+        "niveles": [
+          "0: Solo conozco estadística descriptiva (media, desviación, correlación de Pearson).",
+          "1: Conozco las correlaciones de rangos (Spearman, Kendall) y los contrastes de hipótesis clásicos, pero no correlaciones parciales ni tests por permutación.",
+          "2: Usaría una correlación parcial o una regresión con el grado como covariable y miraría los residuos, aunque no sabría tratar la dependencia entre neuronas.",
+          "3: Además diseñaría un test por permutación contra un modelo nulo de la red, usaría *bootstrap* por clases (remuestreando pares L/R juntos) y corregiría por comparaciones múltiples.",
+          "4: He trabajado con modelos jerárquicos o de efectos mixtos, o con validación cruzada y preregistro de análisis, en datos reales."
+        ]
+      },
+      {
+        "id": "p8",
+        "texto": "**Formación.** ¿Qué estudias y en qué curso estás? Enumera las asignaturas relevantes que has aprobado (álgebra lineal, análisis numérico o álgebra lineal numérica, EDOs o sistemas dinámicos, probabilidad y estadística, teoría de grafos, biología…) y qué tal te fue en ellas. Dime también si lees artículos científicos en inglés con soltura.",
+        "tipo": "abierta"
+      },
+      {
+        "id": "p9",
+        "texto": "**Tiempo disponible.** ¿Cuántas horas a la semana podrás dedicarle al proyecto de forma sostenida durante los próximos meses?",
+        "tipo": "opciones",
+        "opciones": [
+          "Menos de 5 horas",
+          "Entre 5 y 10 horas",
+          "Entre 10 y 20 horas",
+          "Más de 20 horas (dedicación casi completa)"
+        ]
+      },
+      {
+        "id": "p10",
+        "texto": "**Marco y objetivo.** ¿Es un TFG, un TFM, un proyecto de asignatura o un proyecto personal? ¿Tienes tutor y de qué área (matemáticas, física, neurociencia…)? ¿Cuál es la **fecha límite** real? ¿Buscas sobre todo aprender, aprobar con buena nota o intentar publicar? Por último: ¿qué has leído ya de los artículos clave (Yan 2017, Varshney 2011, Fenyves 2020, Restrepo 2006, Milanese 2010, Randi 2023) y tienes ya algo de código o los datos de `cect` descargados?",
+        "tipo": "abierta"
+      }
+    ]
+  },
+  "nodos": [
+    {
+      "id": "e1-autovectores-izquierdos",
+      "tipo": "estudio",
+      "titulo": "Autovalores y autovectores izquierdos de matrices no simétricas",
+      "resumen": "Autovector izquierdo, biortogonalidad, número de condición κ(λ) y Bauer–Fike: el lenguaje de todo el proyecto.",
+      "documento": "nodos/e1-autovectores-izquierdos.md",
+      "depende": [],
+      "recursos": [
+        "r-bindel",
+        "r-saad-notas",
+        "r-saad-libro",
+        "r-golub-vanloan",
+        "r-pseudospectra-gateway"
+      ],
+      "duracion": "3 horas (semana 1)"
+    },
+    {
+      "id": "e2-perturbacion-autovalores",
+      "tipo": "estudio",
+      "titulo": "Perturbación de autovalores y ablación de un nodo",
+      "resumen": "Deducir el primer orden, aplicarlo a quitar una neurona y entender por qué el truncado corrige el factor 2.",
+      "documento": "nodos/e2-perturbacion-autovalores.md",
+      "depende": [
+        "e1-autovectores-izquierdos"
+      ],
+      "recursos": [
+        "r-bindel",
+        "r-saad-libro",
+        "r-restrepo-2006",
+        "r-milanese-2010",
+        "r-young-porter-2024"
+      ],
+      "duracion": "3–4 horas (semana 2)"
+    },
+    {
+      "id": "e3-edo-lineales-estabilidad",
+      "tipo": "estudio",
+      "titulo": "Sistemas lineales de EDO, estabilidad y el modelo de tasas",
+      "resumen": "Por qué la abscisa espectral del jacobiano es la cantidad que importa, y de dónde sale J = −I + gM − hL̂.",
+      "documento": "nodos/e3-edo-lineales-estabilidad.md",
+      "depende": [
+        "e2-perturbacion-autovalores"
+      ],
+      "recursos": [
+        "r-strogatz",
+        "r-varshney-2011",
+        "r-dayan-abbott",
+        "r-gerstner",
+        "r-murphy-miller-2009",
+        "r-jiang-lai-2019"
+      ],
+      "duracion": "3 horas (semana 2)"
+    },
+    {
+      "id": "e4-python-eig",
+      "tipo": "estudio",
+      "titulo": "Herramientas numéricas en Python: autovalores, autovectores izquierdos y fiabilidad",
+      "resumen": "scipy.linalg.eig con left=True, emparejamiento, residuos y por qué el error numérico es despreciable aquí.",
+      "documento": "nodos/e4-python-eig.md",
+      "depende": [
+        "e1-autovectores-izquierdos"
+      ],
+      "recursos": [
+        "r-scipy-eig",
+        "r-lapack-errores",
+        "r-saad-libro"
+      ],
+      "duracion": "2–3 horas (semanas 1–2)"
+    },
+    {
+      "id": "e5-redes-minimo",
+      "tipo": "estudio",
+      "titulo": "Lo mínimo de redes: grafos dirigidos, CFC y Laplaciano",
+      "resumen": "Cinco ideas: convenio de dirección, fuerzas, componentes fuertemente conexas, Laplaciano y Perron–Frobenius.",
+      "documento": "nodos/e5-redes-minimo.md",
+      "depende": [
+        "e4-python-eig"
+      ],
+      "recursos": [
+        "r-barabasi",
+        "r-varshney-2011",
+        "r-saad-libro",
+        "r-scipy-csgraph"
+      ],
+      "duracion": "1,5 horas (semana 3)"
+    },
+    {
+      "id": "e6-celegans-minimo",
+      "tipo": "estudio",
+      "titulo": "Lo mínimo de C. elegans: neuronas, sinapsis y de dónde sale el signo",
+      "resumen": "Nomenclatura, química frente a gap, por qué el signo depende del receptor y cómo lo predice Fenyves.",
+      "documento": "nodos/e6-celegans-minimo.md",
+      "depende": [
+        "e5-redes-minimo"
+      ],
+      "recursos": [
+        "r-wormatlas",
+        "r-fenyves-2020",
+        "r-gjorgjieva-2014",
+        "r-wang-2024",
+        "r-randi-2023",
+        "r-yan-2017"
+      ],
+      "duracion": "2–3 horas (semana 3)"
+    },
+    {
+      "id": "e7-construir-jacobiano",
+      "tipo": "estudio",
+      "titulo": "Práctica guiada: cargar los datos y construir el jacobiano con signos",
+      "resumen": "La receta exacta (Fenyves S1 Data + cect) con las cifras de control del piloto.",
+      "documento": "nodos/e7-construir-jacobiano.md",
+      "depende": [
+        "e3-edo-lineales-estabilidad",
+        "e4-python-eig",
+        "e5-redes-minimo",
+        "e6-celegans-minimo"
+      ],
+      "recursos": [
+        "r-fenyves-s1-data",
+        "r-cect",
+        "r-cect-datos",
+        "r-varshney-2011"
+      ],
+      "duracion": "3 horas (semana 3)"
+    },
+    {
+      "id": "e8-comparar-rankings",
+      "tipo": "estudio",
+      "titulo": "Comparar rankings: Spearman, Kendall y top-k",
+      "resumen": "Lo justo para medir si dos ordenaciones de neuronas se parecen, sin caer en la trampa de los empates.",
+      "documento": "nodos/e8-comparar-rankings.md",
+      "depende": [
+        "e6-celegans-minimo"
+      ],
+      "recursos": [
+        "r-scipy-stats"
+      ],
+      "duracion": "1 hora (semana 5)"
+    },
+    {
+      "id": "e9-pseudoespectros-subespacios",
+      "tipo": "estudio",
+      "titulo": "Pseudoespectros y perturbación de subespacios (tras la entrega)",
+      "resumen": "Davis–Kahan, Stewart y pseudoespectros: la teoría para autovalores casi degenerados.",
+      "documento": "nodos/e9-pseudoespectros-subespacios.md",
+      "depende": [
+        "e2-perturbacion-autovalores",
+        "e3-edo-lineales-estabilidad"
+      ],
+      "recursos": [
+        "r-saad-libro",
+        "r-trefethen-embree",
+        "r-pseudospectra-gateway",
+        "r-stewart-sun"
+      ],
+      "duracion": "2–3 semanas (después de la entrega)"
+    },
+    {
+      "id": "e10-estadistica-validacion",
+      "tipo": "estudio",
+      "titulo": "Estadística para validar contra datos medidos (tras la entrega)",
+      "resumen": "Correlación parcial, tests por permutación con recableado y bootstrap por pares L/R.",
+      "documento": "nodos/e10-estadistica-validacion.md",
+      "depende": [
+        "e7-construir-jacobiano",
+        "e8-comparar-rankings"
+      ],
+      "recursos": [
+        "r-openintro",
+        "r-good-permutation",
+        "r-szilagyi-2026"
+      ],
+      "duracion": "2–3 semanas (después de la entrega)"
+    },
+    {
+      "id": "i1-regimen-acoplamiento",
+      "tipo": "incognita",
+      "titulo": "¿En qué régimen (g, h) trabajar, y dependen de él las conclusiones?",
+      "resumen": "Ningún dato fija g ni h: hay que medir si el ranking cambia con ellos.",
+      "documento": "nodos/i1-regimen-acoplamiento.md",
+      "depende": [
+        "e3-edo-lineales-estabilidad",
+        "e7-construir-jacobiano"
+      ],
+      "recursos": [
+        "r-varshney-2011",
+        "r-kunert-2014",
+        "r-randi-2023"
+      ],
+      "abierto": false,
+      "dificultad": "media"
+    },
+    {
+      "id": "i2-seguir-autovalor",
+      "tipo": "incognita",
+      "titulo": "¿Qué autovalor seguir cuando el dominante cambia de identidad o es complejo?",
+      "resumen": "Separar la aproximación de un modo de la reorganización de qué modo domina.",
+      "documento": "nodos/i2-seguir-autovalor.md",
+      "depende": [
+        "e2-perturbacion-autovalores",
+        "e4-python-eig",
+        "e7-construir-jacobiano"
+      ],
+      "recursos": [
+        "r-luo-zhou-2026",
+        "r-saad-libro"
+      ],
+      "abierto": false,
+      "dificultad": "media"
+    },
+    {
+      "id": "i3-precision-perturbativa",
+      "tipo": "incognita",
+      "titulo": "¿Cuándo y por qué falla la estimación perturbativa en el jacobiano con signos?",
+      "resumen": "La pregunta numérica central: el error frente a κ, la brecha, la localización y el peso de la neurona en el modo.",
+      "documento": "nodos/i3-precision-perturbativa.md",
+      "depende": [
+        "e2-perturbacion-autovalores",
+        "e7-construir-jacobiano",
+        "i1-regimen-acoplamiento",
+        "i2-seguir-autovalor"
+      ],
+      "recursos": [
+        "r-restrepo-2006",
+        "r-milanese-2010",
+        "r-young-porter-2024",
+        "r-luo-zhou-2026",
+        "r-trefethen-embree"
+      ],
+      "abierto": true,
+      "dificultad": "media-alta"
+    },
+    {
+      "id": "i4-robustez-signos",
+      "tipo": "incognita",
+      "titulo": "¿Sobrevive el ranking de neuronas a la incertidumbre de los signos?",
+      "resumen": "El piloto dice que casi no; qué es robusto y qué sinapsis conviene medir primero.",
+      "documento": "nodos/i4-robustez-signos.md",
+      "depende": [
+        "i3-precision-perturbativa",
+        "e8-comparar-rankings"
+      ],
+      "recursos": [
+        "r-fenyves-2020",
+        "r-szilagyi-2026",
+        "r-wang-2024"
+      ],
+      "abierto": true,
+      "dificultad": "alta"
+    },
+    {
+      "id": "i5-localizacion-pares-lr",
+      "tipo": "incognita",
+      "titulo": "Localización, pares izquierda/derecha y casi degeneración",
+      "resumen": "Por qué RMDDR importa 100 veces más que RMDDL: ¿artefacto o asimetría real?",
+      "documento": "nodos/i5-localizacion-pares-lr.md",
+      "depende": [
+        "i3-precision-perturbativa"
+      ],
+      "recursos": [
+        "r-cect-simetria",
+        "r-witvliet-2021",
+        "r-varshney-2011"
+      ],
+      "abierto": true,
+      "dificultad": "alta"
+    },
+    {
+      "id": "i6-comparacion-biologia",
+      "tipo": "incognita",
+      "titulo": "¿Se parece el ranking a las ablaciones reales y al control de Yan?",
+      "resumen": "Replantear la comparación con Yan: otra pregunta, otra red y un ranking que depende de los signos.",
+      "documento": "nodos/i6-comparacion-biologia.md",
+      "depende": [
+        "i4-robustez-signos",
+        "e6-celegans-minimo"
+      ],
+      "recursos": [
+        "r-yan-2017",
+        "r-jiang-lai-2019",
+        "r-kim-2016",
+        "r-bacik-2016",
+        "r-wormatlas"
+      ],
+      "abierto": true,
+      "dificultad": "alta"
+    },
+    {
+      "id": "i7-validacion-randi",
+      "tipo": "incognita",
+      "titulo": "¿Predice el jacobiano con signos la propagación medida por Randi et al. (2023)?",
+      "resumen": "Usar el atlas funcional para elegir entre asignaciones de signos y validar la importancia espectral.",
+      "documento": "nodos/i7-validacion-randi.md",
+      "depende": [
+        "i6-comparacion-biologia",
+        "e10-estadistica-validacion"
+      ],
+      "recursos": [
+        "r-randi-2023",
+        "r-ripoll-2023",
+        "r-cect"
+      ],
+      "abierto": true,
+      "dificultad": "muy alta"
+    }
+  ],
+  "recursos": [
+    {
+      "id": "r-bindel",
+      "tipo": "otro",
+      "titulo": "CS 6210 Matrix Computations, lecture notes (lec24)",
+      "autores": "David Bindel",
+      "anio": 2009,
+      "url": "https://www.cs.cornell.edu/~bindel/class/cs6210-f09/lec24.pdf",
+      "archivo": "recursos/bindel-2009-lec24.pdf",
+      "nota": "Apuntes breves y directos: deducción del primer orden con autovectores izquierdo y derecho, y qué pasa con la multiplicidad. **Léelos enteros** (e1, e2)."
+    },
+    {
+      "id": "r-saad-notas",
+      "tipo": "otro",
+      "titulo": "CSCI 5304 lecture notes: Eigenvalue problems (LecN12)",
+      "autores": "Yousef Saad",
+      "anio": 2024,
+      "url": "https://www-users.cse.umn.edu/~saad/csci5304_F24/FILES/LecN12.pdf",
+      "archivo": "recursos/saad-csci5304-lecn12.pdf",
+      "nota": "Definición del número de condición de un autovalor y un ejemplo 3×3 resuelto (cond ≈ 603,64) para rehacer con `numpy` (e1)."
+    },
+    {
+      "id": "r-saad-libro",
+      "tipo": "libro",
+      "titulo": "Numerical Methods for Large Eigenvalue Problems (2.ª ed.)",
+      "autores": "Yousef Saad",
+      "anio": 2011,
+      "url": "https://www-users.cse.umn.edu/~saad/eig_book_2ndEd.pdf",
+      "archivo": "recursos/saad-2011-eig-book.pdf",
+      "nota": "Versión en línea que el autor publica en su web (lo dice el prefacio de la edición Classics de SIAM). Lee **§1.8–1.10** (Jordan, Schur, normales, no negativas), **§3.1.5** (perturbaciones lineales), **§3.3** (condicionamiento) y, más adelante, **§3.5** (pseudoautovalores) y **§10.5** (estabilidad de sistemas dinámicos)."
+    },
+    {
+      "id": "r-golub-vanloan",
+      "tipo": "libro",
+      "titulo": "Matrix Computations (4.ª ed.)",
+      "autores": "Gene H. Golub, Charles F. Van Loan",
+      "anio": 2013,
+      "url": "https://www.press.jhu.edu/books/title/10678/matrix-computations",
+      "archivo": null,
+      "nota": "Referencia estándar; **§7.2** (teoría de perturbaciones del problema no simétrico). No es libre: búscalo en la biblioteca de tu facultad. Opcional."
+    },
+    {
+      "id": "r-trefethen-embree",
+      "tipo": "libro",
+      "titulo": "Spectra and Pseudospectra: The Behavior of Nonnormal Matrices and Operators",
+      "autores": "Lloyd N. Trefethen, Mark Embree",
+      "anio": 2005,
+      "url": "https://press.princeton.edu/books/hardcover/9780691119465/spectra-and-pseudospectra",
+      "archivo": null,
+      "nota": "El libro sobre matrices no normales. Caps. 1–2 y la parte de transitorios. No es libre: biblioteca. Solo después de la entrega (e9)."
+    },
+    {
+      "id": "r-pseudospectra-gateway",
+      "tipo": "web",
+      "titulo": "Pseudospectra Gateway",
+      "autores": "Mark Embree, Lloyd N. Trefethen",
+      "anio": 2002,
+      "url": "https://www.cs.ox.ac.uk/pseudospectra/",
+      "archivo": null,
+      "nota": "Web gratuita con galería de pseudoespectros, historia y la herramienta EigTool. Sirve para hacerse una intuición visual."
+    },
+    {
+      "id": "r-stewart-sun",
+      "tipo": "libro",
+      "titulo": "Matrix Perturbation Theory",
+      "autores": "G. W. Stewart, Ji-guang Sun",
+      "anio": 1990,
+      "url": "https://shop.elsevier.com/books/matrix-perturbation-theory/stewart/978-0-08-091689-8",
+      "archivo": null,
+      "nota": "Referencia definitiva de perturbación de subespacios (cap. V). Biblioteca; solo si la necesitas en e9."
+    },
+    {
+      "id": "r-restrepo-2006",
+      "tipo": "articulo",
+      "titulo": "Characterizing the dynamical importance of network nodes and links",
+      "autores": "Juan G. Restrepo, Edward Ott, Brian R. Hunt",
+      "anio": 2006,
+      "url": "https://arxiv.org/abs/cond-mat/0606122",
+      "archivo": "recursos/restrepo-ott-hunt-2006.pdf",
+      "nota": "Origen de la «importancia dinámica» y del estimador truncado para nodos en redes dirigidas. 4 páginas: léelo entero (e2, i3)."
+    },
+    {
+      "id": "r-milanese-2010",
+      "tipo": "articulo",
+      "titulo": "Approximating spectral impact of structural perturbations in large networks",
+      "autores": "Attilio Milanese, Jie Sun, Takashi Nishikawa",
+      "anio": 2010,
+      "url": "https://arxiv.org/abs/1001.1431",
+      "archivo": "recursos/milanese-sun-nishikawa-2010.pdf",
+      "nota": "Primer y segundo orden frente al exacto, quitando nodos en redes reales sin signo. Es tu antecedente más directo: lee la sección de nodos y la tabla de precisión (e2, i3)."
+    },
+    {
+      "id": "r-young-porter-2024",
+      "tipo": "articulo",
+      "titulo": "Dynamical importance and network perturbations",
+      "autores": "Ethan Young, Mason A. Porter",
+      "anio": 2024,
+      "url": "https://arxiv.org/abs/2403.14584",
+      "archivo": "recursos/young-porter-2024.pdf",
+      "nota": "Estado del arte para **aristas** en grafos sintéticos. Lee la introducción y la conclusión, donde dejan pendientes los nodos y las redes dirigidas y ponderadas (e2, i3)."
+    },
+    {
+      "id": "r-luo-zhou-2026",
+      "tipo": "articulo",
+      "titulo": "Functional dismantling of network relaxation through slow-branch susceptibility",
+      "autores": "Kaiming Luo, Huiying Zhou",
+      "anio": 2026,
+      "url": "https://arxiv.org/abs/2604.24279",
+      "archivo": "recursos/luo-zhou-2026.pdf",
+      "nota": "Preprint (v2, octubre de 2026): susceptibilidad modal de primer orden para quitar nodos en Laplacianos no hermíticos, con seguimiento de rama. **Supone pesos no negativos**, así que no cubre tu caso con signos, pero es el trabajo más cercano: secciones II–III (i2, i3)."
+    },
+    {
+      "id": "r-varshney-2011",
+      "tipo": "articulo",
+      "titulo": "Structural properties of the Caenorhabditis elegans neuronal network",
+      "autores": "Lav R. Varshney, Beth L. Chen, Eric Paniagua, David H. Hall, Dmitri B. Chklovskii",
+      "anio": 2011,
+      "url": "https://arxiv.org/abs/0907.2373",
+      "archivo": "recursos/varshney-2011.pdf",
+      "nota": "Componentes conexas del conectoma (e5) y la sección de **sistemas lineales** con $\\Phi=-L_{gap}+A^\\top_{chem}$, antecedente directo de tu $J$ (e3)."
+    },
+    {
+      "id": "r-fenyves-2020",
+      "tipo": "articulo",
+      "titulo": "Synaptic polarity and sign-balance prediction using gene expression data in the C. elegans chemical synapse neuronal connectome network",
+      "autores": "Bánk G. Fenyves, Gábor S. Szilágyi, Zsolt Vassy, Csaba Sőti, Péter Csermely",
+      "anio": 2020,
+      "url": "https://doi.org/10.1371/journal.pcbi.1007974",
+      "archivo": "recursos/fenyves-2020.pdf",
+      "nota": "De dónde salen tus signos. Lee la introducción, la figura 1 y los resultados globales (73 % predichos, E:I ≈ 3,5:1) (e6, i4). La *S4 Table* compara con resultados experimentales: útil para i4."
+    },
+    {
+      "id": "r-fenyves-s1-data",
+      "tipo": "otro",
+      "titulo": "Fenyves et al. 2020, S1 Data (predicciones de signo NT+R, XLSX)",
+      "autores": "Bánk G. Fenyves et al.",
+      "anio": 2020,
+      "url": "https://journals.plos.org/ploscompbiol/article/file?type=supplementary&id=10.1371/journal.pcbi.1007974.s003",
+      "archivo": null,
+      "nota": "**Tus datos de signos y pesos químicos.** Hoja `5. Sign prediction`: columna 0 origen, 3 destino, 4 peso, 16 polaridad. Instrucciones en e7."
+    },
+    {
+      "id": "r-cect",
+      "tipo": "web",
+      "titulo": "C. elegans Connectome Toolbox (cect)",
+      "autores": "OpenWorm",
+      "anio": 2025,
+      "url": "https://openworm.org/ConnectomeToolbox/",
+      "archivo": null,
+      "nota": "Paquete de Python (`pip install cect`) con Cook 2019, Witvliet 2021, Varshney 2011, el atlas funcional de Randi 2023 y los conectomas de neuropéptidos. Mira el cuaderno «Using the cect Python API» (e7, i7)."
+    },
+    {
+      "id": "r-cect-datos",
+      "tipo": "otro",
+      "titulo": "herm_full_edgelist.csv (Cook 2019, hermafrodita)",
+      "autores": "OpenWorm / Cook et al.",
+      "anio": 2019,
+      "url": "https://raw.githubusercontent.com/openworm/ConnectomeToolbox/main/cect/data/herm_full_edgelist.csv",
+      "archivo": null,
+      "nota": "Lista de aristas con `Source, Target, Weight, Type`. Usa `Type == electrical` para las uniones gap y haz `strip()` a los nombres (e7)."
+    },
+    {
+      "id": "r-cect-simetria",
+      "tipo": "web",
+      "titulo": "Investigating bilateral symmetry (cuaderno de cect)",
+      "autores": "OpenWorm",
+      "anio": 2025,
+      "url": "https://openworm.org/ConnectomeToolbox/notebooks/BilateralSymmetry/",
+      "archivo": null,
+      "nota": "Mide la simetría izquierda/derecha de cada conectoma: punto de partida para i5."
+    },
+    {
+      "id": "r-wang-2024",
+      "tipo": "articulo",
+      "titulo": "A neurotransmitter atlas of C. elegans males and hermaphrodites",
+      "autores": "Chen Wang, Oliver Hobert et al.",
+      "anio": 2024,
+      "url": "https://elifesciences.org/articles/95402",
+      "archivo": "recursos/wang-2024-elife.pdf",
+      "nota": "Mapa revisado de neurotransmisores con reporteros génicos más fiables. Basta el resumen y la discusión; es la razón para no tomar los signos de 2020 como definitivos (e6, i4)."
+    },
+    {
+      "id": "r-randi-2023",
+      "tipo": "articulo",
+      "titulo": "Neural signal propagation atlas of Caenorhabditis elegans",
+      "autores": "Francesco Randi, Anuj K. Sharma, Sophie Dvali, Andrew M. Leifer",
+      "anio": 2023,
+      "url": "https://arxiv.org/abs/2208.04790",
+      "archivo": "recursos/randi-2023.pdf",
+      "nota": "Preprint en arXiv (v3) de la versión de *Nature* 623, 406–414. Para la entrega, solo el resumen y la figura 1 (e6). Es la base de i7, para después."
+    },
+    {
+      "id": "r-gjorgjieva-2014",
+      "tipo": "articulo",
+      "titulo": "Neurobiology of Caenorhabditis elegans locomotion: where do we stand?",
+      "autores": "Julijana Gjorgjieva, David Biron, Gal Haspel",
+      "anio": 2014,
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4776678/",
+      "archivo": null,
+      "nota": "Revisión en acceso abierto del circuito de locomoción e interneuronas de mando. No pude descargar el PDF automáticamente (PMC devuelve una página de verificación): ábrelo en el navegador. Primeras secciones (e6)."
+    },
+    {
+      "id": "r-szilagyi-2026",
+      "tipo": "articulo",
+      "titulo": "Signed motif analysis of the Caenorhabditis elegans neuronal network reveals positive feedforward and negative feedback loops",
+      "autores": "Gábor S. Szilágyi, Attila Gulyás, Zsolt Vassy, Péter Csermely, Bánk G. Fenyves",
+      "anio": 2026,
+      "url": "https://doi.org/10.1186/s12915-026-02641-4",
+      "archivo": "recursos/szilagyi-2026-signed-motifs.pdf",
+      "nota": "*BMC Biology* 24:167, descargado de la web del grupo. Lo más reciente sobre el conectoma con signo (motivos de 3 nodos y modelos nulos con signo). Útil para i4 y e10."
+    },
+    {
+      "id": "r-jiang-lai-2019",
+      "tipo": "articulo",
+      "titulo": "Irrelevance of linear controllability to nonlinear dynamical networks",
+      "autores": "Junjie Jiang, Ying-Cheng Lai",
+      "anio": 2019,
+      "url": "https://arxiv.org/abs/1909.01288",
+      "archivo": "recursos/jiang-lai-2019.pdf",
+      "nota": "La crítica principal a los análisis lineales del conectoma (incluido Yan 2017). Lee el resumen y la sección sobre *C. elegans* para escribir el apartado de limitaciones (e3, i6)."
+    },
+    {
+      "id": "r-yan-2017",
+      "tipo": "articulo",
+      "titulo": "Network control principles predict neuron function in the Caenorhabditis elegans connectome",
+      "autores": "Gang Yan, Petra E. Vértes, Emma K. Towlson, Yee Lian Chew, Denise S. Walker, William R. Schafer, Albert-László Barabási",
+      "anio": 2017,
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5710776/",
+      "archivo": null,
+      "nota": "Manuscrito de autor en PMC (abre en el navegador). Las 12 clases: DA, DB, DD, VA, VB, VD, AS, AVA, PDB (músculos) + AVB, AVD, PVC. Resumen, figura 1 y la validación de PDB (i6)."
+    },
+    {
+      "id": "r-kim-2016",
+      "tipo": "articulo",
+      "titulo": "Vulnerability-based critical neurons, synapses, and pathways in the Caenorhabditis elegans connectome",
+      "autores": "Seongkyun Kim, Hyoungkyu Kim, Jerald D. Kralik, Jaeseung Jeong",
+      "anio": 2016,
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4991803/",
+      "archivo": null,
+      "nota": "Ablación virtual con medidas de grafo y 12 neuronas críticas. Otro ranking computacional con el que comparar el tuyo (i6)."
+    },
+    {
+      "id": "r-bacik-2016",
+      "tipo": "articulo",
+      "titulo": "Flow-based network analysis of the Caenorhabditis elegans connectome",
+      "autores": "Karol A. Bacik, Michael T. Schaub, Mariano Beguerisse-Díaz, Yazan N. Billeh, Mauricio Barahona",
+      "anio": 2016,
+      "url": "https://arxiv.org/abs/1511.00673",
+      "archivo": null,
+      "nota": "Ablaciones simples y dobles según la estructura de flujo. Referencia para i6 y para ablaciones combinadas en el futuro."
+    },
+    {
+      "id": "r-witvliet-2021",
+      "tipo": "articulo",
+      "titulo": "Connectomes across development reveal principles of brain maturation",
+      "autores": "Daniel Witvliet et al.",
+      "anio": 2021,
+      "url": "https://doi.org/10.1038/s41586-021-03778-8",
+      "archivo": null,
+      "nota": "Ocho conectomas a lo largo del desarrollo (disponibles en cect). Sirven para comprobar si una asimetría L/R se repite en individuos distintos (i5)."
+    },
+    {
+      "id": "r-kunert-2014",
+      "tipo": "articulo",
+      "titulo": "Low-dimensional functionality of complex network dynamics: neurosensory integration in the Caenorhabditis elegans connectome",
+      "autores": "James Kunert, Eli Shlizerman, J. Nathan Kutz",
+      "anio": 2014,
+      "url": "https://doi.org/10.1103/PhysRevE.89.052805",
+      "archivo": null,
+      "nota": "Modelo biofísico del gusano completo sobre el conectoma: contexto de cómo se fijan los parámetros en modelos más realistas (i1). Lectura opcional."
+    },
+    {
+      "id": "r-ripoll-2023",
+      "tipo": "articulo",
+      "titulo": "The neuropeptidergic connectome of C. elegans",
+      "autores": "Lidia Ripoll-Sánchez et al.",
+      "anio": 2023,
+      "url": "https://doi.org/10.1016/j.neuron.2023.09.043",
+      "archivo": null,
+      "nota": "La señalización extrasináptica que tu modelo ignora. Para i7 y para el apartado de limitaciones."
+    },
+    {
+      "id": "r-wormatlas",
+      "tipo": "web",
+      "titulo": "WormAtlas: Nervous system, general description y fichas de neuronas",
+      "autores": "Zeynep F. Altun, David H. Hall",
+      "anio": 2011,
+      "url": "https://www.wormatlas.org/hermaphrodite/nervous/Neuroframeset.html",
+      "archivo": null,
+      "nota": "La introducción gratuita y de referencia a la anatomía neuronal del gusano. Las fichas «Individual neurons» te dicen qué hace cada neurona que salga en tus resultados (e6, i6)."
+    },
+    {
+      "id": "r-barabasi",
+      "tipo": "libro",
+      "titulo": "Network Science, cap. 2: Graph theory",
+      "autores": "Albert-László Barabási",
+      "anio": 2016,
+      "url": "https://networksciencebook.com/chapter/2",
+      "archivo": null,
+      "nota": "Libro gratuito en línea. El capítulo 2 basta: grafos dirigidos y ponderados, matriz de adyacencia, caminos y componentes (e5)."
+    },
+    {
+      "id": "r-strogatz",
+      "tipo": "libro",
+      "titulo": "Nonlinear Dynamics and Chaos (2.ª ed.)",
+      "autores": "Steven H. Strogatz",
+      "anio": 2015,
+      "url": "https://www.routledge.com/Nonlinear-Dynamics-and-Chaos-With-Applications-to-Physics-Biology-Chemistry-and-Engineering/Strogatz/p/book/9780813349107",
+      "archivo": null,
+      "nota": "**Cap. 5** (sistemas lineales) y **§6.3** (linealización). En la biblioteca. Si tu curso de EDO ya lo cubre, sáltalo (e3)."
+    },
+    {
+      "id": "r-dayan-abbott",
+      "tipo": "libro",
+      "titulo": "Theoretical Neuroscience",
+      "autores": "Peter Dayan, L. F. Abbott",
+      "anio": 2001,
+      "url": "https://mitpress.mit.edu/9780262541855/theoretical-neuroscience/",
+      "archivo": null,
+      "nota": "**§7.4**: redes recurrentes lineales y su descomposición en modos, con la notación de tu modelo. Biblioteca; opcional (e3)."
+    },
+    {
+      "id": "r-gerstner",
+      "tipo": "libro",
+      "titulo": "Neuronal Dynamics",
+      "autores": "Wulfram Gerstner, Werner M. Kistler, Richard Naud, Liam Paninski",
+      "anio": 2014,
+      "url": "https://neuronaldynamics.epfl.ch/online/",
+      "archivo": null,
+      "nota": "Versión en línea gratuita publicada por los autores. Cap. 15 (modelos de tasas) como alternativa libre a Dayan y Abbott (e3)."
+    },
+    {
+      "id": "r-murphy-miller-2009",
+      "tipo": "articulo",
+      "titulo": "Balanced amplification: a new mechanism of selective amplification of neural activity patterns",
+      "autores": "Brendan K. Murphy, Kenneth D. Miller",
+      "anio": 2009,
+      "url": "https://doi.org/10.1016/j.neuron.2009.02.005",
+      "archivo": null,
+      "nota": "La amplificación no normal en redes neuronales. Solo si te interesa el crecimiento transitorio; no hace falta para la entrega (e3)."
+    },
+    {
+      "id": "r-scipy-eig",
+      "tipo": "web",
+      "titulo": "scipy.linalg.eig (documentación)",
+      "autores": "SciPy developers",
+      "anio": 2026,
+      "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.eig.html",
+      "archivo": null,
+      "nota": "El convenio exacto de `vl` y `vr`. Léelo antes de escribir una sola línea (e4)."
+    },
+    {
+      "id": "r-scipy-csgraph",
+      "tipo": "web",
+      "titulo": "scipy.sparse.csgraph.connected_components (documentación)",
+      "autores": "SciPy developers",
+      "anio": 2026,
+      "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csgraph.connected_components.html",
+      "archivo": null,
+      "nota": "Componentes fuertemente conexas con `connection='strong'` (e5)."
+    },
+    {
+      "id": "r-scipy-stats",
+      "tipo": "web",
+      "titulo": "scipy.stats.kendalltau y scipy.stats.spearmanr (documentación)",
+      "autores": "SciPy developers",
+      "anio": 2026,
+      "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kendalltau.html",
+      "archivo": null,
+      "nota": "Definiciones, empates y valores p. Ojo: los valores p suponen independencia, que tus neuronas no cumplen (e8)."
+    },
+    {
+      "id": "r-lapack-errores",
+      "tipo": "web",
+      "titulo": "LAPACK Users' Guide: Error bounds for the nonsymmetric eigenproblem",
+      "autores": "E. Anderson et al.",
+      "anio": 1999,
+      "url": "https://www.netlib.org/lapack/lug/node91.html",
+      "archivo": null,
+      "nota": "Las cotas de error de `geev`, que es lo que llama `scipy.linalg.eig`. Para el párrafo de fiabilidad del informe (e4)."
+    },
+    {
+      "id": "r-openintro",
+      "tipo": "libro",
+      "titulo": "OpenIntro Statistics (4.ª ed.)",
+      "autores": "David Diez, Mine Çetinkaya-Rundel, Christopher Barr",
+      "anio": 2019,
+      "url": "https://www.openintro.org/book/os/",
+      "archivo": null,
+      "nota": "Libro gratuito. Regresión múltiple e inferencia, como repaso para e10."
+    },
+    {
+      "id": "r-good-permutation",
+      "tipo": "libro",
+      "titulo": "Permutation, Parametric and Bootstrap Tests of Hypotheses (3.ª ed.)",
+      "autores": "Phillip I. Good",
+      "anio": 2005,
+      "url": "https://link.springer.com/book/10.1007/b138696",
+      "archivo": null,
+      "nota": "Tests por permutación y bootstrap. Biblioteca; solo después de la entrega (e10)."
+    }
+  ]
+}

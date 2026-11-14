@@ -1,0 +1,16 @@
+{
+  "id": "x-mvwvs3jj-0fda7c",
+  "nodo": "e1-autovectores-izquierdos",
+  "dificultad": "experto",
+  "estado": "error",
+  "creado": "2026-10-31T20:55:59.222Z",
+  "instrucciones": "",
+  "preguntas": [],
+  "respuestas": {},
+  "inicio": null,
+  "limite": null,
+  "entregado": null,
+  "automatico": false,
+  "correccion": null,
+  "error": "API Error: Can't reach the API server — check your internet or DNS (EAI_AGAIN)"
+}

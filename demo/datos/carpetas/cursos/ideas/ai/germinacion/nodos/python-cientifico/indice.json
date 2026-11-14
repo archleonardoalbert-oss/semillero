@@ -1,0 +1,345 @@
+{
+  "version": 2,
+  "conferencias": [
+    {
+      "id": "c01-entorno",
+      "titulo": "Un entorno que funcione desde Cuba",
+      "resumen": "PyTorch con CUDA en tu GPU, descargado una vez, verificado de verdad y reinstalable sin conexión.",
+      "objetivos": [
+        "Instalar PyTorch con CUDA y verificar torch.cuda.is_available()",
+        "Guardar las dependencias para reinstalar sin conexión",
+        "Estimar el consumo de datos de la instalación"
+      ],
+      "pagina": "c01-entorno.html"
+    },
+    {
+      "id": "c02-ndarray",
+      "titulo": "NumPy I: el ndarray",
+      "resumen": "Búfer, dtype, forma y pasos: el modelo que permite predecir formas, tipos, vistas y copias antes de ejecutar.",
+      "objetivos": [
+        "Predecir la forma y el dtype de una operación",
+        "Distinguir vistas de copias",
+        "Usar indexado avanzado y booleano"
+      ],
+      "pagina": "c02-ndarray.html"
+    },
+    {
+      "id": "c03-vectores",
+      "titulo": "NumPy II: pensar en vectores",
+      "resumen": "Reducciones por eje, broadcasting y la cuenta de bytes: estandarizar y calcular distancias por pares en una línea y en memoria O(nm).",
+      "objetivos": [
+        "Vectorizar reducciones por eje y la estandarización",
+        "Aplicar las reglas del broadcasting",
+        "Calcular distancias por pares en memoria O(nm)"
+      ],
+      "pagina": "c03-vectores.html"
+    },
+    {
+      "id": "c04-aleatoriedad",
+      "titulo": "Aleatoriedad reproducible",
+      "resumen": "Generadores con semilla, Monte Carlo con su error típico (incluido el detector de fraude del diagnóstico) y particiones que no engañan.",
+      "objetivos": [
+        "Generar muestras con default_rng y semilla",
+        "Implementar un Monte Carlo sencillo",
+        "Crear particiones aleatorias reproducibles"
+      ],
+      "pagina": "c04-aleatoriedad.html"
+    },
+    {
+      "id": "c05-datos-sucios",
+      "titulo": "pandas I: datos sucios",
+      "resumen": "Leer CSV y Excel con los tipos correctos, tratar fechas, faltantes, centinelas y duplicados, y detectar anómalos sin borrar lo importante, en pandas 3.",
+      "objetivos": [
+        "Leer CSV y Excel con los tipos correctos",
+        "Tratar fechas, faltantes y duplicados",
+        "Detectar valores anómalos"
+      ],
+      "pagina": "c05-datos-sucios.html"
+    },
+    {
+      "id": "c06-agregar",
+      "titulo": "pandas II: agregar y reorganizar",
+      "resumen": "groupby con agg y transform, merge sin multiplicar filas, formatos largo y ancho, y resample y rolling sin fugas.",
+      "objetivos": [
+        "Usar groupby con agg y transform",
+        "Hacer merge sin multiplicar filas",
+        "Aplicar resample y rolling a series"
+      ],
+      "pagina": "c06-agregar.html"
+    },
+    {
+      "id": "c07-visualizacion",
+      "titulo": "Visualización y análisis exploratorio",
+      "resumen": "Elegir el gráfico por la pregunta y hacer un análisis exploratorio con método que encuentre los problemas antes de modelar.",
+      "objetivos": [
+        "Elegir el gráfico según la pregunta",
+        "Encontrar problemas en los datos antes de modelar"
+      ],
+      "pagina": "c07-visualizacion.html"
+    },
+    {
+      "id": "c08-proyecto",
+      "titulo": "Código de proyecto, no de cuaderno",
+      "resumen": "Repositorio reproducible, funciones puras, pruebas con pytest y perfilar antes de optimizar.",
+      "objetivos": [
+        "Estructurar un repositorio reproducible",
+        "Escribir pruebas con pytest",
+        "Perfilar código lento"
+      ],
+      "pagina": "c08-proyecto.html"
+    }
+  ],
+  "practicas": [
+    {
+      "id": "p01-entorno",
+      "titulo": "Clase práctica 1: tu entorno, verificado y reproducible",
+      "pagina": "p01-entorno.html",
+      "conferencias": [
+        "c01-entorno"
+      ]
+    },
+    {
+      "id": "p02-vectorizar",
+      "titulo": "Clase práctica 2: pensar en vectores (NumPy y aleatoriedad)",
+      "pagina": "p02-vectorizar.html",
+      "conferencias": [
+        "c02-ndarray",
+        "c03-vectores",
+        "c04-aleatoriedad"
+      ]
+    },
+    {
+      "id": "p03-pandas",
+      "titulo": "Clase práctica 3: datos reales, ecología y un comercio en línea",
+      "pagina": "p03-pandas.html",
+      "conferencias": [
+        "c05-datos-sucios",
+        "c06-agregar",
+        "c07-visualizacion",
+        "c03-vectores",
+        "c04-aleatoriedad"
+      ]
+    },
+    {
+      "id": "p04-paquete",
+      "titulo": "Clase práctica 4: de los ejercicios a un paquete con pruebas",
+      "pagina": "p04-paquete.html",
+      "conferencias": [
+        "c08-proyecto",
+        "c04-aleatoriedad"
+      ]
+    }
+  ],
+  "valientes": [
+    {
+      "id": "v01-einsum",
+      "titulo": "einsum: qué calcula y por qué es el idioma de los transformers",
+      "pagina": "v01-einsum.html"
+    },
+    {
+      "id": "v02-memoria-distancias",
+      "titulo": "La memoria de las distancias por pares, en bytes",
+      "pagina": "v02-memoria-distancias.html"
+    },
+    {
+      "id": "v03-reshape-vista",
+      "titulo": "Cuándo aplanar un arreglo es una vista",
+      "pagina": "v03-reshape-vista.html"
+    }
+  ],
+  "recursos": [
+    {
+      "id": "r-dc-surveys",
+      "tipo": "otro",
+      "titulo": "Portal Project Teaching Database: capturas (surveys.csv)",
+      "autores": "Data Carpentry / Portal Project",
+      "anio": 2017,
+      "url": "https://datacarpentry.github.io/python-ecology-lesson-es/",
+      "archivo": "recursos/python-cientifico/dc-surveys.csv",
+      "idioma": "Español",
+      "nota": "35 549 capturas (1977-2002) con faltantes reales y 136 fechas imposibles. Datos de las prácticas 3 y de la lección de Data Carpentry en español. Licencia CC0.",
+      "conferencias": [
+        "c05-datos-sucios",
+        "c06-agregar",
+        "c07-visualizacion"
+      ]
+    },
+    {
+      "id": "r-dc-species",
+      "tipo": "otro",
+      "titulo": "Portal Project Teaching Database: especies (species.csv)",
+      "autores": "Data Carpentry / Portal Project",
+      "anio": 2017,
+      "url": "https://datacarpentry.github.io/python-ecology-lesson-es/",
+      "archivo": "recursos/python-cientifico/dc-species.csv",
+      "idioma": "Español",
+      "nota": "54 especies; se une a las capturas por species_id (práctica 3, ejercicio 3).",
+      "conferencias": [
+        "c06-agregar"
+      ]
+    },
+    {
+      "id": "r-dc-plots",
+      "tipo": "otro",
+      "titulo": "Portal Project Teaching Database: parcelas (plots.csv)",
+      "autores": "Data Carpentry / Portal Project",
+      "anio": 2017,
+      "url": "https://datacarpentry.github.io/python-ecology-lesson-es/",
+      "archivo": "recursos/python-cientifico/dc-plots.csv",
+      "idioma": "Español",
+      "nota": "24 parcelas con su tipo de exclusión experimental (práctica 3, ejercicios 3 y 4).",
+      "conferencias": [
+        "c06-agregar"
+      ]
+    },
+    {
+      "id": "r-online-retail-ii",
+      "tipo": "otro",
+      "titulo": "Online Retail II",
+      "autores": "Daqing Chen (UCI Machine Learning Repository)",
+      "anio": 2019,
+      "url": "https://archive.ics.uci.edu/dataset/502/online+retail+ii",
+      "archivo": "recursos/python-cientifico/online-retail-ii.zip",
+      "idioma": "Español",
+      "nota": "Excel de dos hojas con 1 067 371 líneas de factura (2009-2011), CC BY 4.0, DOI 10.24432/C5CG6D. Las hojas se solapan del 1 al 9 de diciembre de 2010 (22 523 filas repetidas): lo trabaja la práctica 3. Columnas en inglés; el material que lo explica, en español.",
+      "conferencias": [
+        "c05-datos-sucios",
+        "c06-agregar",
+        "c08-proyecto"
+      ]
+    },
+    {
+      "id": "r-dc-python-es",
+      "tipo": "curso",
+      "titulo": "Análisis y visualización de datos usando Python",
+      "autores": "Data Carpentry",
+      "anio": 2024,
+      "url": "https://datacarpentry.github.io/python-ecology-lesson-es/",
+      "archivo": null,
+      "idioma": "Español",
+      "nota": "CC BY 4.0. Episodio 2 para C2; 3, 4 y 5 para C5; 6 para C6; 7 para C8; 9 para C7.",
+      "conferencias": [
+        "c02-ndarray",
+        "c05-datos-sucios",
+        "c06-agregar",
+        "c07-visualizacion",
+        "c08-proyecto"
+      ]
+    },
+    {
+      "id": "r-swc-shell-es",
+      "tipo": "curso",
+      "titulo": "La Terminal de Unix",
+      "autores": "Software Carpentry",
+      "anio": 2024,
+      "url": "https://swcarpentry.github.io/shell-novice-es/",
+      "archivo": null,
+      "idioma": "Español",
+      "nota": "CC BY 4.0. Episodios 1-3 si te falta soltura con la terminal antes de C1.",
+      "conferencias": [
+        "c01-entorno"
+      ]
+    },
+    {
+      "id": "r-swc-git-es",
+      "tipo": "curso",
+      "titulo": "Control de versiones con Git",
+      "autores": "Software Carpentry",
+      "anio": 2024,
+      "url": "https://swcarpentry.github.io/git-novice-es/",
+      "archivo": null,
+      "idioma": "Español",
+      "nota": "CC BY 4.0. Episodios 1-7 para C1 (repositorio y GitHub) y 8-10 para C8 (colaboración y ciencia abierta).",
+      "conferencias": [
+        "c01-entorno",
+        "c08-proyecto"
+      ]
+    },
+    {
+      "id": "r-python-profile-es",
+      "tipo": "web",
+      "titulo": "Los perfiladores de Python (cProfile y pstats)",
+      "autores": "Python Software Foundation",
+      "anio": 2026,
+      "url": "https://docs.python.org/es/3/library/profile.html",
+      "archivo": null,
+      "idioma": "Español",
+      "nota": "Documentación oficial traducida: cómo leer ncalls, tottime y cumtime (C8, P4).",
+      "conferencias": [
+        "c08-proyecto"
+      ]
+    },
+    {
+      "id": "r-cdd-anomalias",
+      "tipo": "web",
+      "titulo": "Detección de anomalías con Isolation Forest y Python",
+      "autores": "Joaquín Amat Rodrigo (cienciadedatos.net)",
+      "anio": 2024,
+      "url": "https://www.cienciadedatos.net/documentos/py22-deteccion-anomalias-isolation-forest-python",
+      "archivo": null,
+      "idioma": "Español",
+      "nota": "Para cuando las reglas univariantes de C5 no basten; lo retomará ML II.",
+      "conferencias": [
+        "c05-datos-sucios"
+      ]
+    },
+    {
+      "id": "r-cdd-forecasting",
+      "tipo": "web",
+      "titulo": "Forecasting series temporales con Python y Scikit-learn",
+      "autores": "Joaquín Amat Rodrigo (cienciadedatos.net)",
+      "anio": 2024,
+      "url": "https://www.cienciadedatos.net/documentos/py27-forecasting-series-temporales-python-scikitlearn",
+      "archivo": null,
+      "idioma": "Español",
+      "nota": "Rezagos y ventanas para predecir: el paso siguiente a resample y rolling de C6.",
+      "conferencias": [
+        "c06-agregar"
+      ]
+    },
+    {
+      "id": "r-unam-aa",
+      "tipo": "curso",
+      "titulo": "Curso de aprendizaje automatizado (PCIC-UNAM, 2026-2)",
+      "autores": "Gibran Fuentes Pineda",
+      "anio": 2026,
+      "url": "https://github.com/gibranfp/CursoAprendizajeAutomatizado",
+      "archivo": null,
+      "idioma": "Español",
+      "nota": "Cuadernos en español; clónalo (GitHub funciona sin VPN). Los de k vecinos y regresión lineal aplican los patrones vectorizados de C3.",
+      "conferencias": [
+        "c03-vectores"
+      ]
+    },
+    {
+      "id": "r-mckinney-es",
+      "tipo": "libro",
+      "titulo": "Python para análisis de datos, 3.ª ed.",
+      "autores": "Wes McKinney (trad. Virginia Aranda González)",
+      "anio": 2023,
+      "url": "https://www.casadellibro.com.co/libro-python-para-analisis-de-datos-titulos-especiales/9788441546837/13475479",
+      "archivo": null,
+      "idioma": "Español",
+      "nota": "Anaya Multimedia, ISBN 978-84-415-4683-7. De pago y opcional; escrito por el creador de pandas (cubre pandas 1.4: lee C5 para los cambios de pandas 3). Evita las descargas gratuitas, que son piratas.",
+      "conferencias": [
+        "c05-datos-sucios",
+        "c06-agregar"
+      ]
+    },
+    {
+      "id": "r-raschka-es",
+      "tipo": "libro",
+      "titulo": "Machine Learning con PyTorch y Scikit-Learn",
+      "autores": "Sebastian Raschka, Yuxi (Hayden) Liu y Vahid Mirjalili",
+      "anio": 2023,
+      "url": "https://www.goodreads.com/work/editions/144333904-machine-learning-con-pytorch-y-scikit-learn-spanish-edition",
+      "archivo": null,
+      "idioma": "Español",
+      "nota": "Marcombo, ISBN 978-84-267-3573-7. De pago y opcional: cap. 2 (perceptrón con NumPy vectorizado) para C2-C3; la instalación de PyTorch del cap. 12 está desfasada, usa C1.",
+      "conferencias": [
+        "c02-ndarray",
+        "c03-vectores"
+      ]
+    }
+  ]
+}

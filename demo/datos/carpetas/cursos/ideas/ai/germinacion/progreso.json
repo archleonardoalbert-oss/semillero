@@ -1,0 +1,113 @@
+{
+  "respuestas": {
+    "ctx-horas": "11–15 h/semana",
+    "ctx-carrera": [
+      "Análisis Matemático de varias variables (si es una asignatura aparte de Análisis II)"
+    ],
+    "ctx-curso": "Estoy en segundo anio, la carrera dura 4 anios, en este semestre estoy cursando EDO, Matematica Numerica, Teoria de Numeros (Discreta), Arquitectura de computadoras. En los proximos anios dare Probabilidades y Estadistica, Optimizacion, Aprendizaje Automatico, Bases de Datos y no se si alguna otra de arriba\n",
+    "ctx-equipo": "GPU NVIDIA con 6 GB de VRAM o menos",
+    "ctx-acceso": [
+      "GitHub: clonar y subir",
+      "Hugging Face: descargar un modelo (p. ej., `distilbert-base-uncased`)",
+      "Algunas de estas solo me funcionan con VPN"
+    ],
+    "ctx-datos": "10–50 GB",
+    "ctx-corriente": "Casi siempre hay corriente",
+    "ctx-prioridad": "Conseguir empleo (remoto) lo antes posible",
+    "ctx-experiencia": "Lo mas avanzado que he construido es una pequenia red neuronal capaz de identificar el numero que escribiste en Power Point\n",
+    "ctx-herramientas": [
+      "NumPy",
+      "pandas",
+      "matplotlib o seaborn",
+      "TensorFlow o Keras",
+      "Git"
+    ],
+    "ctx-autonomia": "4: 4: Escribo yo casi todo. La IA es una ayuda ocasional",
+    "py-nivel": "2: 2: Manipulo tablas con pandas (filtrar, `groupby`, `merge`) y hago operaciones vectorizadas sencillas sin bucles",
+    "py-1": "Lo siento, la verdad me falta practica, he trabajado con num.py pero no demaciado y fue hace un tiempo\n",
+    "prob-nivel": "1: 1: Combinatoria y probabilidad clásica, y probabilidad condicional en ejercicios sencillos",
+    "prob-1": "No entiendo la notacion de P(+|F) y P(-|~F) y sensibilidad y especificidad son un poco ambiguas en este contexto, deberias especificar mejor que significan, pero con lo que asumo: \\\n1\\) El 1% de las transacciones son fraudulentas\\\n2) El detector acierta en el 99% de los casos \\\n3) Una transaccion dio positivo (Dio fraudulenta) \\\n4\\) No voy a tocar especificidad porque no entendi a que te refieres con eso\n\nTendiendo en cuenta eso la probabilidad de que sea faudulenta realmente es de un (1 - 0.99)(0.99)\n",
+    "est-nivel": "1: 1: Estadística descriptiva: media, mediana, desviación típica, histogramas y correlación",
+    "calc-nivel": "2: 2: Uso la regla de la cadena en varias variables, el jacobiano, el hessiano y el desarrollo de Taylor de segundo orden",
+    "calc-1": "Arribz te marque todo lo que he estudiado del Calculo en varias variables y es real, pero realmente necesito un tiempo para acostumbrarme a los ejecicios nuevamente, asi que probablemente no responda ninguno mas \n",
+    "al-nivel": "2: 2: Proyecciones ortogonales, mínimos cuadrados y el teorema espectral para matrices simétricas",
+    "ml-nivel": "1: 1: He seguido tutoriales (`fit` y `predict`) sin entender bien cómo se valida un modelo",
+    "ml-1": "No, no es realmente un buen modelo, como dije arriba la probabilidad de que este en un resultado erroneo al detectar un fraude es de (0.01)(0.99) lo cual no es nada bajo\n",
+    "ml-3": "El A puede haber tendido a memorizacion y el B puede que le falten capas o una correcta distribucion de funciones de activacion\n",
+    "ml-4": "No se que es validacion crusada ni validar un modelo\n",
+    "dl-nivel": "2: 2: He entrenado una red en Keras o PyTorch siguiendo un tutorial",
+    "dl-1": "Porque eso rompe la linealidad del modelo, se puede imaginar como que la red neuronal busca \"adaptarse\" a la forma suabe y curva (generalmente) del conjunto de datos, si no tuviera funciones de activacion la red neuronal tendria un comportamiento lineal (solo podria ser un hiperplano) en cambio las funciones de activacion rompen esta linealidad para permitir una mayor adaptacion\n",
+    "dl-2": "La verdad no se que son niguno de esos metodos, algunos me suenan pero nada mas\n",
+    "dl-3": "Okay, utilizaria tensorflow con keras, entrenaria mi propia red neuronal y el aumento de datos creo que lo podria conseguir con un fineturing (tengo una sospecha que lo de entrenar mi propio modelo sin GPU no saldria muy bien pero no se me ocurre mas nada)\n",
+    "llm-nivel": "1: 1: He llamado a la API de un LLM desde código y quizá he escrito *prompts* de sistema",
+    "ops-nivel": "1: 1: Desarrollo aplicaciones web (p. ej., con Django) en local",
+    "idiomas": [
+      "Español"
+    ]
+  },
+  "nodos": {},
+  "enviado": {
+    "respuestas": {
+      "ctx-horas": "11–15 h/semana",
+      "ctx-carrera": [
+        "Análisis Matemático de varias variables (si es una asignatura aparte de Análisis II)"
+      ],
+      "ctx-curso": "Estoy en segundo anio, la carrera dura 4 anios, en este semestre estoy cursando EDO, Matematica Numerica, Teoria de Numeros (Discreta), Arquitectura de computadoras. En los proximos anios dare Probabilidades y Estadistica, Optimizacion, Aprendizaje Automatico, Bases de Datos y no se si alguna otra de arriba\n",
+      "ctx-equipo": "GPU NVIDIA con 6 GB de VRAM o menos",
+      "ctx-acceso": [
+        "GitHub: clonar y subir",
+        "Hugging Face: descargar un modelo (p. ej., `distilbert-base-uncased`)",
+        "Algunas de estas solo me funcionan con VPN"
+      ],
+      "ctx-datos": "10–50 GB",
+      "ctx-corriente": "Casi siempre hay corriente",
+      "ctx-prioridad": "Conseguir empleo (remoto) lo antes posible",
+      "ctx-experiencia": "Lo mas avanzado que he construido es una pequenia red neuronal capaz de identificar el numero que escribiste en Power Point\n",
+      "ctx-herramientas": [
+        "NumPy",
+        "pandas",
+        "matplotlib o seaborn",
+        "TensorFlow o Keras",
+        "Git"
+      ],
+      "ctx-autonomia": "4: 4: Escribo yo casi todo. La IA es una ayuda ocasional",
+      "py-nivel": "2: 2: Manipulo tablas con pandas (filtrar, `groupby`, `merge`) y hago operaciones vectorizadas sencillas sin bucles",
+      "py-1": "Lo siento, la verdad me falta practica, he trabajado con num.py pero no demaciado y fue hace un tiempo\n",
+      "prob-nivel": "1: 1: Combinatoria y probabilidad clásica, y probabilidad condicional en ejercicios sencillos",
+      "prob-1": "No entiendo la notacion de P(+|F) y P(-|~F) y sensibilidad y especificidad son un poco ambiguas en este contexto, deberias especificar mejor que significan, pero con lo que asumo: \\\n1\\) El 1% de las transacciones son fraudulentas\\\n2) El detector acierta en el 99% de los casos \\\n3) Una transaccion dio positivo (Dio fraudulenta) \\\n4\\) No voy a tocar especificidad porque no entendi a que te refieres con eso\n\nTendiendo en cuenta eso la probabilidad de que sea faudulenta realmente es de un (1 - 0.99)(0.99)\n",
+      "est-nivel": "1: 1: Estadística descriptiva: media, mediana, desviación típica, histogramas y correlación",
+      "calc-nivel": "2: 2: Uso la regla de la cadena en varias variables, el jacobiano, el hessiano y el desarrollo de Taylor de segundo orden",
+      "calc-1": "Arribz te marque todo lo que he estudiado del Calculo en varias variables y es real, pero realmente necesito un tiempo para acostumbrarme a los ejecicios nuevamente, asi que probablemente no responda ninguno mas \n",
+      "al-nivel": "2: 2: Proyecciones ortogonales, mínimos cuadrados y el teorema espectral para matrices simétricas",
+      "ml-nivel": "1: 1: He seguido tutoriales (`fit` y `predict`) sin entender bien cómo se valida un modelo",
+      "ml-1": "No, no es realmente un buen modelo, como dije arriba la probabilidad de que este en un resultado erroneo al detectar un fraude es de (0.01)(0.99) lo cual no es nada bajo\n",
+      "ml-3": "El A puede haber tendido a memorizacion y el B puede que le falten capas o una correcta distribucion de funciones de activacion\n",
+      "ml-4": "No se que es validacion crusada ni validar un modelo\n",
+      "dl-nivel": "2: 2: He entrenado una red en Keras o PyTorch siguiendo un tutorial",
+      "dl-1": "Porque eso rompe la linealidad del modelo, se puede imaginar como que la red neuronal busca \"adaptarse\" a la forma suabe y curva (generalmente) del conjunto de datos, si no tuviera funciones de activacion la red neuronal tendria un comportamiento lineal (solo podria ser un hiperplano) en cambio las funciones de activacion rompen esta linealidad para permitir una mayor adaptacion\n",
+      "dl-2": "La verdad no se que son niguno de esos metodos, algunos me suenan pero nada mas\n",
+      "dl-3": "Okay, utilizaria tensorflow con keras, entrenaria mi propia red neuronal y el aumento de datos creo que lo podria conseguir con un fineturing (tengo una sospecha que lo de entrenar mi propio modelo sin GPU no saldria muy bien pero no se me ocurre mas nada)\n",
+      "llm-nivel": "1: 1: He llamado a la API de un LLM desde código y quizá he escrito *prompts* de sistema",
+      "ops-nivel": "1: 1: Desarrollo aplicaciones web (p. ej., con Django) en local",
+      "idiomas": [
+        "Español"
+      ]
+    },
+    "nodos": {}
+  },
+  "peticiones": [
+    {
+      "texto": "El usuario decide germinar esta idea aunque tu último veredicto fue «Cambio sugerido» (Sí, pero acotado y con proyectos). Elige el camino «ML aplicado con pocos datos + LLM». Toma esta como la versión aceptada de la idea y germínala.\n\nEl usuario había dejado esta réplica sin enviar; tenla en cuenta:\n\n**Elijo el camino «ML aplicado con pocos datos + LLM»**, la variación que propusiste en tu dictamen.",
+      "fecha": "2026-10-26T04:10:53.172Z"
+    },
+    {
+      "texto": "El usuario había dejado esta réplica sin enviar; tenla en cuenta:\n\n**Elijo el camino «ML aplicado con pocos datos + LLM»**, la variación que propusiste en tu dictamen.",
+      "fecha": "2026-10-26T04:48:49.582Z"
+    },
+    {
+      "texto": "El usuario había dejado esta réplica sin enviar; tenla en cuenta:\n\n**Elijo el camino «ML aplicado con pocos datos + LLM»**, la variación que propusiste en tu dictamen.",
+      "fecha": "2026-10-26T06:11:04.078Z"
+    }
+  ],
+  "pendiente": null
+}

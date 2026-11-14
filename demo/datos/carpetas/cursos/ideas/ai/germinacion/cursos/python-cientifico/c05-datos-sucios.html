@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.dataset.tema = new URLSearchParams(location.search).get('tema') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro')</script>
+<script>document.documentElement.classList.add('js')</script>
+<title>pandas I: datos sucios · Python científico</title>
+<meta name="description" content="Los datos de una mipyme no vienen limpios, y un análisis sobre datos sucios da un número falso sin ningún error. Leer con los tipos correctos, tratar fechas, faltantes, duplicados y centinelas, y detectar anómalos sin borrar lo importante.">
+<meta name="theme-color" content="#f3efe4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0f15" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3.5' fill='%231b1e25'/%3E%3Crect x='2.5' y='2.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='6.5' y='2.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='10.5' y='2.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='2.5' y='6.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='6.5' y='6.5' width='3' height='3' rx='.6' fill='%23e69f00'/%3E%3Crect x='10.5' y='6.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='2.5' y='10.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='6.5' y='10.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='10.5' y='10.5' width='3' height='3' rx='.6' fill='%23cc79a7'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="lib/katex/katex.min.css">
+<link rel="stylesheet" href="css/curso.css">
+<script type="module" src="/semillero-puente.js"></script>
+<script type="module" src="motores/sitio.js"></script>
+</head>
+<body data-pieza="c05-datos-sucios">
+<canvas id="fondo" aria-hidden="true"></canvas>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="barra"><a class="marca" href="index.html"><span class="chip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>Python científico</a><nav class="tira" aria-label="Programa de la asignatura"><span class="grupo"><a class="byte " href="index.html" data-pieza="index" title="Python científico y entorno de trabajo" aria-label="Python científico y entorno de trabajo">⌂</a></span><span class="grupo"><a class="byte c" href="c01-entorno.html" data-pieza="c01-entorno" title="Un entorno que funcione desde Cuba" aria-label="Un entorno que funcione desde Cuba">c1</a><a class="byte c" href="c02-ndarray.html" data-pieza="c02-ndarray" title="NumPy I: el ndarray" aria-label="NumPy I: el ndarray">c2</a><a class="byte c" href="c03-vectores.html" data-pieza="c03-vectores" title="NumPy II: pensar en vectores" aria-label="NumPy II: pensar en vectores">c3</a><a class="byte c" href="c04-aleatoriedad.html" data-pieza="c04-aleatoriedad" title="Aleatoriedad reproducible" aria-label="Aleatoriedad reproducible">c4</a><a class="byte c actual" href="c05-datos-sucios.html" data-pieza="c05-datos-sucios" title="pandas I: datos sucios" aria-label="pandas I: datos sucios" aria-current="page">c5</a><a class="byte c" href="c06-agregar.html" data-pieza="c06-agregar" title="pandas II: agregar y reorganizar" aria-label="pandas II: agregar y reorganizar">c6</a><a class="byte c" href="c07-visualizacion.html" data-pieza="c07-visualizacion" title="Visualización y análisis exploratorio" aria-label="Visualización y análisis exploratorio">c7</a><a class="byte c" href="c08-proyecto.html" data-pieza="c08-proyecto" title="Código de proyecto, no de cuaderno" aria-label="Código de proyecto, no de cuaderno">c8</a></span><span class="grupo"><a class="byte p" href="p01-entorno.html" data-pieza="p01-entorno" title="Tu entorno, verificado y reproducible" aria-label="Tu entorno, verificado y reproducible">p1</a><a class="byte p" href="p02-vectorizar.html" data-pieza="p02-vectorizar" title="Pensar en vectores: NumPy y aleatoriedad" aria-label="Pensar en vectores: NumPy y aleatoriedad">p2</a><a class="byte p" href="p03-pandas.html" data-pieza="p03-pandas" title="Datos reales: ecología y un comercio en línea" aria-label="Datos reales: ecología y un comercio en línea">p3</a><a class="byte p" href="p04-paquete.html" data-pieza="p04-paquete" title="De los ejercicios a un paquete con pruebas" aria-label="De los ejercicios a un paquete con pruebas">p4</a></span><span class="grupo"><a class="byte v" href="v01-einsum.html" data-pieza="v01-einsum" title="einsum: qué calcula y por qué es el idioma de los transformers" aria-label="einsum: qué calcula y por qué es el idioma de los transformers">v1</a><a class="byte v" href="v02-memoria-distancias.html" data-pieza="v02-memoria-distancias" title="La memoria de las distancias por pares, en bytes" aria-label="La memoria de las distancias por pares, en bytes">v2</a><a class="byte v" href="v03-reshape-vista.html" data-pieza="v03-reshape-vista" title="Cuándo aplanar un arreglo es una vista" aria-label="Cuándo aplanar un arreglo es una vista">v3</a></span></nav><button type="button" class="interruptor" aria-label="Cambiar de tema"><svg class="sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg></button><span class="progreso" aria-hidden="true"></span></header>
+<div class="pagina">
+<aside class="rail" aria-label="En esta página"><h2>En esta página</h2><ol><li><a href="#un-numero-falso-sin-ningun-error" data-seccion="un-numero-falso-sin-ningun-error">Un número falso sin ningún error</a></li><li><a href="#el-modelo-de-pandas-en-un-minuto" data-seccion="el-modelo-de-pandas-en-un-minuto">El modelo de pandas en un minuto</a></li><li><a href="#leer-bien-desde-el-principio" data-seccion="leer-bien-desde-el-principio">Leer bien desde el principio</a></li><li><a href="#inspeccion-en-cinco-minutos" data-seccion="inspeccion-en-cinco-minutos">Inspección en cinco minutos</a></li><li><a href="#tipos-convertir-sin-perder-datos-en-silencio" data-seccion="tipos-convertir-sin-perder-datos-en-silencio">Tipos: convertir sin perder datos en silencio</a></li><li><a href="#faltantes-y-centinelas" data-seccion="faltantes-y-centinelas">Faltantes y centinelas</a></li><li><a href="#duplicados-y-texto" data-seccion="duplicados-y-texto">Duplicados y texto</a></li><li><a href="#detectar-valores-anomalos" data-seccion="detectar-valores-anomalos">Detectar valores anómalos</a></li><li><a href="#modificar-un-dataframe-en-pandas-3-copia-al-escribir" data-seccion="modificar-un-dataframe-en-pandas-3-copia-al-escribir">Modificar un DataFrame en pandas 3: copia al escribir</a></li><li><a href="#errores-tipicos" data-seccion="errores-tipicos">Errores típicos</a></li><li><a href="#preguntas-de-recuperacion" data-seccion="preguntas-de-recuperacion">Preguntas de recuperación</a></li><li><a href="#lecturas" data-seccion="lecturas">Lecturas</a></li></ol><a class="volver" href="index.html">← Programa de la asignatura</a></aside>
+<main id="contenido">
+
+<header class="cabeza"><div class="tipo"><span class="num">05</span><span>Conferencia</span></div><h1>pandas I: datos sucios</h1><p class="resumen">Los datos de una mipyme no vienen limpios, y un análisis sobre datos sucios da un número falso sin ningún error. Leer con los tipos correctos, tratar fechas, faltantes, duplicados y centinelas, y detectar anómalos sin borrar lo importante.</p><div class="metas"><span>≈ 4 h de estudio</span><span>2 motores interactivos</span><span>escrito para pandas 3.0</span></div></header>
+<article class="texto">
+<div class="caja objetivos"><p><strong>Objetivos.</strong> Al terminar serás capaz de:</p>
+<ol>
+<li><strong>Leer</strong> CSV y Excel con formato español o cubano (separador <code>;</code>, coma decimal, fechas <code>dd/mm/aaaa</code>, varias hojas) y <strong>obtener</strong> los tipos correctos desde la lectura.</li>
+<li><strong>Inspeccionar</strong> una tabla nueva en cinco minutos con una lista fija de comprobaciones.</li>
+<li><strong>Convertir</strong> tipos sin perder datos en silencio y <strong>extraer</strong> componentes de fechas.</li>
+<li><strong>Tratar</strong> faltantes, centinelas, duplicados y texto inconsistente, <strong>justificando</strong> cada decisión.</li>
+<li><strong>Detectar</strong> anómalos con reglas de negocio, con el rango intercuartílico y con la mediana y la MAD, y <strong>decidir</strong> qué hacer con cada uno.</li>
+<li><strong>Modificar</strong> un <code>DataFrame</code> correctamente con la copia al escribir de pandas 3.</li>
+</ol>
+</div>
+<div class="caja prereq"><p><strong>Prerrequisitos.</strong> NumPy: <code>dtype</code>, máscaras y reducciones (<a href="c02-ndarray.html">conferencias 2</a> y <a href="c03-vectores.html">3</a>). Dijiste que ya filtras y agrupas con pandas: esta conferencia empieza en lo que hace que un análisis real salga mal.</p>
+</div>
+<div class="caja nota"><p><strong>Versión.</strong> Todo sigue <strong>pandas 3.0</strong> (enero de 2026), que cambió tres cosas que verás en tutoriales antiguos: el texto tiene su propio tipo <code>str</code>, las fechas se guardan por defecto en microsegundos y la <em>copia al escribir</em> es obligatoria. Si un tutorial de 2022 no te funciona, casi siempre es por esto.</p>
+</div>
+<h2 id="un-numero-falso-sin-ningun-error"><span class="n">§ 1</span>Un número falso sin ningún error</h2>
+<p>Una mipyme de La Habana te pasa las ventas de su contabilidad: un CSV exportado de Excel con <code>;</code> como separador y coma decimal, fechas <code>03/01/2026</code> (¿3 de enero o 1 de marzo?), la misma tienda escrita como <code>Centro</code> y <code>centro </code>, <code>-</code> cuando no se sabe, <code>9999</code> cuando falta el precio, y filas repetidas porque alguien exportó dos veces. Si lo cargas con <code>pd.read_csv(&quot;ventas.csv&quot;)</code> y calculas el total por tienda, obtendrás <strong>un número</strong>. Será falso, y nada te avisará.</p>
+<div class="caja reto"><p><strong>Problema para pensar (10 minutos).</strong> Antes de tocar el motor, lee el archivo de la izquierda y haz una lista de <strong>todo</strong> lo que saldría mal con <code>pd.read_csv</code> sin opciones al calcular el total (unidades × precio) por tienda. Apunta al menos seis problemas. Después, en el motor, ve activando parámetros hasta que no quede ninguno, y compara con tu lista.</p>
+</div>
+<figure class="widget" data-widget="lector" data-opciones="{}"><div class="w-cab"><span class="w-tit">Leer bien un CSV «a la cubana»</span><span class="w-tipo">motor interactivo</span></div><div class="w-cuerpo"><p class="sin-js">Esta visualización necesita JavaScript.</p></div><figcaption>Cada botón añade una línea a tu código. Fíjate en la tabla final: con el centinela sin tratar, Cerro «vendió» 49 995 CUP; con el texto sin normalizar hay cuatro tiendas; y una tienda sin ningún dato válido suma 0, no «no sé».</figcaption></figure>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">La lista completa de problemas</span></summary><div class="dentro"><ol>
+<li><strong>Separador:</strong> sin <code>sep=&quot;;&quot;</code>, una sola columna (o un error de análisis).</li>
+<li><strong>Coma decimal:</strong> <code>250,00</code> queda como texto.</li>
+<li><strong>Punto de miles:</strong> <code>1.200,00</code> es 1200; sin <code>thousands=&quot;.&quot;</code> es texto.</li>
+<li><strong>Fechas:</strong> sin formato explícito quedan como texto, o al revés (<code>03/01</code> como 1 de marzo).</li>
+<li><strong><code>-</code> como faltante:</strong> convierte toda la columna <code>unidades</code> en texto.</li>
+<li><strong>Mayúsculas y espacios:</strong> <code>Centro</code> y <code>centro </code> son dos tiendas.</li>
+<li><strong>Duplicado:</strong> las dos filas del aceite son idénticas: ¿venta repetida o exportación doble?</li>
+<li><strong>Centinela:</strong> <code>9999</code> no es el precio del pollo.</li>
+</ol>
+<p>Y la más sutil: aunque lo arregles todo, las unidades del aceite son desconocidas, así que su total es desconocido, no 0.</p>
+</div></details>
+<h2 id="el-modelo-de-pandas-en-un-minuto"><span class="n">§ 2</span>El modelo de pandas en un minuto</h2>
+<div class="caja def"><p><strong>Definición 1 (<code>Series</code>, <code>DataFrame</code>, <code>Index</code>).</strong> Una <strong><code>Series</code></strong> es un arreglo 1D con un <code>dtype</code> <strong>más</strong> un índice de etiquetas. Un <strong><code>DataFrame</code></strong> es una colección de <code>Series</code> que <strong>comparten el índice</strong>, una por columna, cada una con su <code>dtype</code>. Las operaciones entre <code>Series</code> <strong>se alinean por etiqueta, no por posición</strong>.</p>
+</div>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>a = <span class="tk-b">pd</span>.Series([<span class="tk-n">1</span>, <span class="tk-n">2</span>, <span class="tk-n">3</span>], index=[&quot;x<span class="tk-s">&quot;, &quot;</span>y<span class="tk-s">&quot;, &quot;</span>z&quot;])
+b = <span class="tk-b">pd</span>.Series([<span class="tk-n">10</span>, <span class="tk-n">20</span>, <span class="tk-n">30</span>], index=[&quot;y<span class="tk-s">&quot;, &quot;</span>z<span class="tk-s">&quot;, &quot;</span>w&quot;])
+a + b          <span class="tk-c"># w NaN · x NaN · y 12.0 · z 23.0</span></code></pre></div>
+<p><code>a + b</code> suma <code>y</code> con <code>y</code>, y donde una etiqueta falta en uno de los dos, pone <code>NaN</code>. Por eso, tras filtrar filas, el índice queda con huecos (<code>0, 2, 5…</code>): <code>df.reset_index(drop=True)</code> lo renumera.</p>
+<div class="tabla"><table>
+<thead>
+<tr>
+<th>Forma</th>
+<th>Selecciona por</th>
+<th>Ejemplo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>df[&quot;col&quot;]</code>, <code>df[[&quot;a&quot;, &quot;b&quot;]]</code></td>
+<td>nombre de columna</td>
+<td>una <code>Series</code>; un <code>DataFrame</code></td>
+</tr>
+<tr>
+<td><code>df.loc[filas, columnas]</code></td>
+<td><strong>etiquetas</strong> y máscaras</td>
+<td><code>df.loc[df[&quot;unidades&quot;] &gt; 0, [&quot;fecha&quot;, &quot;unidades&quot;]]</code></td>
+</tr>
+<tr>
+<td><code>df.iloc[filas, columnas]</code></td>
+<td><strong>posiciones</strong></td>
+<td><code>df.iloc[:5, 0]</code></td>
+</tr>
+<tr>
+<td><code>df.query(&quot;...&quot;)</code></td>
+<td>una expresión en texto</td>
+<td><code>df.query(&quot;unidades &gt; 0 and tienda == 'Centro'&quot;)</code></td>
+</tr>
+</tbody></table></div>
+<p>Con <code>loc</code>, las rebanadas de etiquetas <strong>incluyen</strong> el final (<code>df.loc[&quot;2026-01-01&quot;:&quot;2026-01-31&quot;]</code> incluye el 31); con <code>iloc</code>, como en Python, no.</p>
+<h2 id="leer-bien-desde-el-principio"><span class="n">§ 3</span>Leer bien desde el principio</h2>
+<p>La regla de oro: <strong>cuantos más problemas se resuelvan en la lectura, menos código de limpieza y menos errores colados.</strong></p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>df = <span class="tk-b">pd</span>.read_csv(
+    &quot;datos/raw/ventas.csv&quot;,
+    sep=&quot;;&quot;,                     <span class="tk-c"># separador de campos</span>
+    decimal=&quot;,&quot;,                 <span class="tk-c"># coma decimal</span>
+    thousands=&quot;.&quot;,               <span class="tk-c"># punto de miles</span>
+    na_values=[&quot;-&quot;, &quot;s/d<span class="tk-s">&quot;, &quot;</span>N/D&quot;],   <span class="tk-c"># además de las celdas vacías</span>
+    parse_dates=[&quot;fecha&quot;],
+    date_format=&quot;%d/%m/%Y&quot;,      <span class="tk-c"># formato EXPLÍCITO: día/mes/año</span>
+    dtype={&quot;codigo<span class="tk-s">&quot;: &quot;</span><span class="tk-b">str</span>&quot;},     <span class="tk-c"># los identificadores son texto</span>
+    encoding=&quot;utf-<span class="tk-n">8</span>&quot;,
+)
+df.dtypes      <span class="tk-c"># fecha datetime64[us] · tienda str · producto str · unidades float64 · precio float64</span></code></pre></div>
+<ul>
+<li><strong><code>sep</code>, <code>decimal</code>, <code>thousands</code></strong> resuelven el formato numérico español. Un CSV de un Excel en español usa <code>;</code> porque la coma ya es el separador decimal.</li>
+<li><strong><code>na_values</code></strong> declara los centinelas <strong>de texto</strong>. El <code>9999</code> <strong>no</strong> lo pongas ahí a ciegas: podría ser una cantidad real en otra columna. Se trata aparte (sección 6).</li>
+<li><strong><code>date_format</code></strong> fija el formato. Sin él, pandas adivina, y la adivinanza puede salir al revés. Con formato explícito, lo que no encaja <strong>falla</strong>: es lo que quieres.</li>
+<li><strong><code>dtype={&quot;codigo&quot;: &quot;str&quot;}</code></strong>: si no, <code>00731</code> se lee como el entero 731. Los identificadores son texto aunque parezcan números.</li>
+<li><strong><code>encoding</code></strong>: si ves <code>CafÃ©</code>, el archivo estaba en otra codificación; los Excel antiguos de Windows suelen ir en <code>cp1252</code>.</li>
+</ul>
+<p><strong>Excel.</strong> <code>pd.read_excel(&quot;ventas.xlsx&quot;, sheet_name=None)</code> lee <strong>todas</strong> las hojas en un diccionario, y <code>pd.concat(hojas.values(), ignore_index=True)</code> las junta (necesita <code>openpyxl</code>). Las hojas «para personas» traen títulos y totales: usa <code>skiprows=</code>, <code>header=</code> y quita las filas de totales. Una fecha de Excel a veces llega como número de serie: <code>pd.to_datetime(s, unit=&quot;D&quot;, origin=&quot;1899-12-30&quot;)</code>.</p>
+<p><strong>Parquet</strong>, para tus propios datos. CSV y Excel son formatos de intercambio, no de trabajo: una vez limpia la tabla, <code>df.to_parquet(...)</code> conserva los tipos, comprime y se lee decenas de veces más rápido.</p>
+<h2 id="inspeccion-en-cinco-minutos"><span class="n">§ 4</span>Inspección en cinco minutos</h2>
+<p>Ante una tabla nueva, <strong>antes de calcular nada</strong>, la misma lista siempre:</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>df.shape                                  <span class="tk-c"># 1. ¿cuántas filas y columnas? ¿cuadra?</span>
+df.sample(<span class="tk-n">5</span>, random_state=<span class="tk-n">0</span>)              <span class="tk-c"># 2. filas reales, no solo las primeras</span>
+df.dtypes                                 <span class="tk-c"># 3. ¿cada columna tiene el tipo que debe?</span>
+df.isna().mean().<span class="tk-b">round</span>(<span class="tk-n">3</span>)                 <span class="tk-c"># 4. proporción de faltantes por columna</span>
+df.duplicated().<span class="tk-b">sum</span>()                     <span class="tk-c"># 5. filas duplicadas exactas</span>
+df.nunique()                              <span class="tk-c"># 6. valores distintos (¿3 tiendas o 7?)</span>
+df.describe()                             <span class="tk-c"># 7. mínimos, máximos, cuartiles</span>
+df[&quot;tienda&quot;].value_counts(dropna=<span class="tk-k">False</span>)   <span class="tk-c"># 8. frecuencias, también de los faltantes</span></code></pre></div>
+<p>Qué buscar: columnas numéricas que salieron <code>str</code> (hay un texto escondido); mínimos negativos imposibles, máximos absurdos (<code>9999</code>) o una media muy lejos de la mediana; más categorías de las que existen.</p>
+<h2 id="tipos-convertir-sin-perder-datos-en-silencio"><span class="n">§ 5</span>Tipos: convertir sin perder datos en silencio</h2>
+<p><strong>Números escondidos en texto.</strong> Encuentra el culpable antes de forzar la conversión:</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>s = <span class="tk-b">pd</span>.Series([&quot;<span class="tk-n">12</span><span class="tk-s">&quot;, &quot;</span><span class="tk-n">3</span><span class="tk-s">&quot;, &quot;</span>-&quot;, &quot;<span class="tk-n">5</span><span class="tk-s">&quot;, &quot;</span>doce&quot;])
+c = <span class="tk-b">pd</span>.to_numeric(s, errors=&quot;coerce&quot;)     <span class="tk-c"># lo que no se entiende → NaN</span>
+s[c.isna() &amp; s.notna()]                   <span class="tk-c"># ¿qué falló?  →  &quot;-&quot;, &quot;doce&quot;</span></code></pre></div>
+<aside class="caja refuta"><p><strong>Error típico: «<code>errors=&quot;coerce&quot;</code> y listo»</strong></p><p><strong>Por qué es tentador:</strong> la columna pasa a ser numérica y el código sigue. <strong>Por qué es peligroso:</strong> convierte en <code>NaN</code> <strong>cualquier</strong> cosa que no entiende, también un <code>&quot;1.200&quot;</code> mal formateado o una unidad escrita con letras, sin avisar. Puedes perder la mitad de la columna. <strong>Lo correcto:</strong> después de cada conversión forzada, muestra lo que falló (segunda línea del bloque) y cuéntalo.</p>
+</aside>
+<p><strong>Enteros con faltantes.</strong> Un entero de NumPy no puede ser <code>NaN</code>, así que una columna de enteros con un faltante pasa a <code>float64</code>. Para conservar enteros: <code>df[&quot;unidades&quot;].astype(&quot;Int64&quot;)</code> (con mayúscula: entero anulable con <code>pd.NA</code>).</p>
+<p><strong>Categorías.</strong> Pocos valores repetidos (tienda, país) → <code>astype(&quot;category&quot;)</code>: gasta mucha menos memoria y fija los valores válidos.</p>
+<p><strong>Fechas.</strong></p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>f = <span class="tk-b">pd</span>.to_datetime(df[&quot;fecha_texto<span class="tk-s">&quot;], format=&quot;</span>%d/%m/%Y<span class="tk-s">&quot;, errors=&quot;</span>coerce&quot;)
+f.isna().<span class="tk-b">sum</span>()                       <span class="tk-c"># ¿cuántas no encajaron?</span>
+df[&quot;dia_semana&quot;] = f.dt.dayofweek    <span class="tk-c"># 0 = lunes … 6 = domingo</span>
+df[&quot;mes&quot;] = f.dt.month
+df[&quot;es_fin_de_semana&quot;] = f.dt.dayofweek &gt;= <span class="tk-n">5</span></code></pre></div>
+<div class="predice" data-correcta="1"><span class="etq">Predice antes de seguir</span><p class="q"><code>pd.to_datetime([&quot;01/02/2026&quot;, &quot;13/02/2026&quot;], format=&quot;%m/%d/%Y&quot;, errors=&quot;coerce&quot;)</code>. ¿Qué devuelve?</p><ol class="opciones"><li><button type="button" data-i="0"><span class="letra">A</span><span>1 de febrero y 13 de febrero</span></button></li><li><button type="button" data-i="1"><span class="letra">B</span><span>2 de enero y <code>NaT</code></span></button></li><li><button type="button" data-i="2"><span class="letra">C</span><span>Un error: el segundo no encaja</span></button></li></ol><details class="revela"><summary>Comprométete con una opción y después mira la explicación</summary><div class="dentro"><p><code>2026-01-02</code> y <code>NaT</code> (el faltante de las fechas): no existe el mes 13. Eso te dice que el archivo está en formato <strong>día/mes</strong> y que el formato elegido es incorrecto. Una fracción alta de <code>NaT</code> tras convertir delata un formato equivocado. En pandas 3, convertir texto da <code>datetime64[us]</code>; si alguna vez conviertes fechas a enteros, obtendrás <strong>microsegundos</strong> desde 1970, no nanosegundos como antes: para números, usa <code>(f - f.min()).dt.days</code>.</p>
+</div></details></div>
+<h2 id="faltantes-y-centinelas"><span class="n">§ 6</span>Faltantes y centinelas</h2>
+<p>Antes de rellenar o borrar, pregunta <strong>por qué falta</strong> el dato:</p>
+<div class="tabla"><table>
+<thead>
+<tr>
+<th>Causa</th>
+<th>Ejemplo</th>
+<th>Tratamiento razonable</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>no se registró, al azar</td>
+<td>el cajero olvidó apuntar unas unidades</td>
+<td>imputar o descartar, <strong>documentándolo</strong></td>
+</tr>
+<tr>
+<td>no aplica</td>
+<td>«fecha de devolución» de una venta no devuelta</td>
+<td>dejarlo: no es un error</td>
+</tr>
+<tr>
+<td>depende del propio valor</td>
+<td>los días sin venta <strong>no tienen fila</strong></td>
+<td>crear las filas con 0 (<a href="c06-agregar.html">conferencia 6</a>)</td>
+</tr>
+<tr>
+<td>fallo del sistema</td>
+<td>13 días sin datos por un apagón</td>
+<td>marcar el periodo; no imputarlo como normal</td>
+</tr>
+</tbody></table></div>
+<p>El tercer caso es el más traicionero: un día sin ventas ni siquiera es un <code>NaN</code>, y la media diaria sobre las filas existentes sale <strong>inflada</strong>.</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>df.dropna(subset=[&quot;unidades&quot;])                          <span class="tk-c"># descartar si falta en ESA columna</span>
+df[&quot;unidades&quot;].fillna(<span class="tk-n">0</span>)                                <span class="tk-c"># solo si 0 es la verdad</span>
+df.groupby(&quot;producto<span class="tk-s">&quot;)[&quot;</span>precio<span class="tk-s">&quot;].transform(&quot;</span>median&quot;)    <span class="tk-c"># la mediana de su producto (conferencia 6)</span>
+df[&quot;precio&quot;].ffill()                                    <span class="tk-c"># repetir el último valor (series)</span></code></pre></div>
+<p>Un <strong>centinela</strong> (<code>9999</code>, <code>-1</code>, un 0 imposible) es un faltante disfrazado. Se detecta con <code>describe</code> y <code>value_counts</code> y se convierte con una regla explícita y contada:</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>centinela = df[&quot;precio&quot;] == <span class="tk-n">9999</span>
+<span class="tk-b">print</span>(centinela.<span class="tk-b">sum</span>(), &quot;precios centinela&quot;)
+df.loc[centinela, &quot;precio<span class="tk-s">&quot;] = float(&quot;</span>nan&quot;)</code></pre></div>
+<div class="caja obs"><p><strong>Observación 1 (no imputes para quedar bien).</strong> Rellenar todo con la media hace que la tabla «parezca» completa y reduce artificialmente la variabilidad. Para un <strong>modelo</strong>, la imputación se aprende <strong>solo con el entrenamiento</strong> (otra vez la fuga de datos). Para un <strong>informe</strong>, lo honesto suele ser decir «faltan 37 días».</p>
+</div>
+<h2 id="duplicados-y-texto"><span class="n">§ 7</span>Duplicados y texto</h2>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>df[df.duplicated(keep=<span class="tk-k">False</span>)]                                    <span class="tk-c"># ver todas las copias</span>
+df.duplicated(subset=[&quot;fecha<span class="tk-s">&quot;, &quot;</span>tienda<span class="tk-s">&quot;, &quot;</span>producto&quot;]).<span class="tk-b">sum</span>()      <span class="tk-c"># duplicados de clave</span>
+df = df.drop_duplicates()</code></pre></div>
+<p>Un duplicado exacto puede ser un error de exportación <strong>o dos ventas reales iguales</strong>. La pregunta decisiva: <strong>¿hay un identificador de transacción?</strong> Si lo hay, los duplicados de ese identificador son errores; si no, quitar duplicados puede borrar ventas. Decídelo con quien conoce el negocio y anótalo en el código.</p>
+<p>El accesor <code>.str</code> aplica operaciones de texto a toda la columna:</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>df[&quot;tienda<span class="tk-s">&quot;] = df[&quot;</span>tienda<span class="tk-s">&quot;].str.strip().str.title()           # &quot;</span>centro &quot; → &quot;Centro&quot;
+p = df[&quot;producto&quot;].<span class="tk-b">str</span>.strip().<span class="tk-b">str</span>.lower()
+p.<span class="tk-b">str</span>.extract(<span class="tk-s">r&quot;(\d+)\s*(kg|g|l)&quot;</span>)                            <span class="tk-c"># cantidad y unidad</span>
+sin_tildes = p.<span class="tk-b">str</span>.normalize(&quot;NFKD<span class="tk-s">&quot;).str.encode(&quot;</span>ascii<span class="tk-s">&quot;, errors=&quot;</span>ignore<span class="tk-s">&quot;).str.decode(&quot;</span>ascii&quot;)
+df[&quot;tienda<span class="tk-s">&quot;] = df[&quot;</span>tienda<span class="tk-s">&quot;].replace({&quot;</span>Ctro<span class="tk-s">&quot;: &quot;</span>Centro<span class="tk-s">&quot;, &quot;</span>C. Habana<span class="tk-s">&quot;: &quot;</span>Centro Habana&quot;})   <span class="tk-c"># correcciones explícitas</span></code></pre></div>
+<p>Cuando las variantes no siguen una regla, un <strong>diccionario de correcciones</strong> explícito es lo más claro y lo más fácil de revisar.</p>
+<div class="caja ejemplo"><p><strong>Ejemplo 1 (el total por tienda, con honestidad).</strong> Tras leer bien, normalizar, convertir el centinela y quitar el duplicado confirmado:</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>df[&quot;importe<span class="tk-s">&quot;] = df[&quot;</span>unidades<span class="tk-s">&quot;] * df[&quot;</span>precio&quot;]
+df.groupby(&quot;tienda<span class="tk-s">&quot;)[&quot;</span>importe<span class="tk-s">&quot;].agg([&quot;</span><span class="tk-b">sum</span><span class="tk-s">&quot;, &quot;</span>count<span class="tk-s">&quot;, &quot;</span>size&quot;])
+<span class="tk-c">#            sum  count  size</span>
+<span class="tk-c"># Centro  6150.0      3     3      ← 12·250 + 3·250 + 2·1200</span>
+<span class="tk-c"># Cerro      0.0      0     1      ← ¡sum de solo NaN es 0!</span>
+<span class="tk-c"># Playa      0.0      0     1</span></code></pre></div>
+<p><code>sum</code> ignora los <code>NaN</code> y, si todos lo son, devuelve 0. Cerro y Playa <strong>no vendieron 0</strong>: <strong>no sabemos</strong> cuánto vendieron. <code>count</code> (no faltantes) frente a <code>size</code> (filas) lo revela, y <code>sum(min_count=1)</code> devuelve <code>NaN</code> cuando no hay ningún valor válido.</p>
+</div>
+<h2 id="detectar-valores-anomalos"><span class="n">§ 8</span>Detectar valores anómalos</h2>
+<p>Un <strong>anómalo</strong> puede ser un error (centinela, coma mal puesta, otra unidad) o un dato real e importante (una compra mayorista, un fraude). <strong>Detectar no es borrar</strong>: es marcar para revisar.</p>
+<p><strong>Primero, reglas de negocio</strong>, las más fiables:</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>reglas = {
+    &quot;unidades negativas<span class="tk-s">&quot;: df[&quot;</span>unidades&quot;] &lt; <span class="tk-n">0</span>,            <span class="tk-c"># ¿devoluciones? En Online Retail II, sí</span>
+    &quot;precio cero o negativo<span class="tk-s">&quot;: df[&quot;</span>precio&quot;] &lt;= <span class="tk-n">0</span>,
+    &quot;fecha futura<span class="tk-s">&quot;: df[&quot;</span>fecha&quot;] &gt; <span class="tk-b">pd</span>.Timestamp.today(),
+}
+<span class="tk-k">for</span> nombre, m <span class="tk-k">in</span> reglas.items():
+    <span class="tk-b">print</span>(<span class="tk-s">f&quot;{nombre}: {m.sum()}&quot;</span>)</code></pre></div>
+<p><strong>Después, reglas estadísticas:</strong></p>
+<div class="caja def"><p><strong>Definición 2 (regla del rango intercuartílico, de Tukey).</strong> Con <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Q</mi><mn>1</mn></msub></mrow><annotation encoding="application/x-tex">Q_1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal">Q</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>, <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Q</mi><mn>3</mn></msub></mrow><annotation encoding="application/x-tex">Q_3</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal">Q</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> los cuartiles e <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">I</mi><mi mathvariant="normal">Q</mi><mi mathvariant="normal">R</mi></mrow><mo>=</mo><msub><mi>Q</mi><mn>3</mn></msub><mo>−</mo><msub><mi>Q</mi><mn>1</mn></msub></mrow><annotation encoding="application/x-tex">\mathrm{IQR} = Q_3 - Q_1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathrm">IQR</span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal">Q</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal">Q</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>, un valor es <strong>sospechoso</strong> si <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>&lt;</mo><msub><mi>Q</mi><mn>1</mn></msub><mo>−</mo><mn>1,5</mn><mtext> </mtext><mrow><mi mathvariant="normal">I</mi><mi mathvariant="normal">Q</mi><mi mathvariant="normal">R</mi></mrow></mrow><annotation encoding="application/x-tex">x &lt; Q_1 - 1{,}5\,\mathrm{IQR}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.5782em;vertical-align:-0.0391em;"></span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&lt;</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal">Q</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord">1</span><span class="mord"><span class="mpunct">,</span></span><span class="mord">5</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathrm">IQR</span></span></span></span></span> o <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>&gt;</mo><msub><mi>Q</mi><mn>3</mn></msub><mo>+</mo><mn>1,5</mn><mtext> </mtext><mrow><mi mathvariant="normal">I</mi><mi mathvariant="normal">Q</mi><mi mathvariant="normal">R</mi></mrow></mrow><annotation encoding="application/x-tex">x &gt; Q_3 + 1{,}5\,\mathrm{IQR}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.5782em;vertical-align:-0.0391em;"></span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&gt;</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal">Q</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord">1</span><span class="mord"><span class="mpunct">,</span></span><span class="mord">5</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathrm">IQR</span></span></span></span></span>.</p>
+</div>
+<div class="caja def"><p><strong>Definición 3 (puntuación z robusta).</strong> Con la mediana <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover accent="true"><mi>x</mi><mo>~</mo></mover></mrow><annotation encoding="application/x-tex">\tilde x</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6679em;"></span><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6679em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal">x</span></span><span style="top:-3.35em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.2222em;"><span class="mord">~</span></span></span></span></span></span></span></span></span></span> y la <strong>desviación absoluta mediana</strong> <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">M</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">D</mi></mrow><mo>=</mo><mrow><mi mathvariant="normal">m</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">d</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">a</mi></mrow><mo stretchy="false">(</mo><mi mathvariant="normal">∣</mi><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mover accent="true"><mi>x</mi><mo>~</mo></mover><mi mathvariant="normal">∣</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\mathrm{MAD} = \mathrm{mediana}(|x_i - \tilde x|)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord"><span class="mord mathrm">MAD</span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathrm">mediana</span></span><span class="mopen">(</span><span class="mord">∣</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6679em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal">x</span></span><span style="top:-3.35em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.2222em;"><span class="mord">~</span></span></span></span></span></span></span><span class="mord">∣</span><span class="mclose">)</span></span></span></span>, se define <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>z</mi><mi>i</mi><mtext>rob</mtext></msubsup><mo>=</mo><mn>0,6745</mn><mtext> </mtext><mo stretchy="false">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mover accent="true"><mi>x</mi><mo>~</mo></mover><mo stretchy="false">)</mo><mi mathvariant="normal">/</mi><mrow><mi mathvariant="normal">M</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">D</mi></mrow></mrow><annotation encoding="application/x-tex">z_i^{\text{rob}} = 0{,}6745\,(x_i - \tilde x)/\mathrm{MAD}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1.1078em;vertical-align:-0.2587em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.044em;">z</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8491em;"><span style="top:-2.4413em;margin-left:-0.044em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">rob</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2587em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">0</span><span class="mord"><span class="mpunct">,</span></span><span class="mord">6745</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6679em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal">x</span></span><span style="top:-3.35em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.2222em;"><span class="mord">~</span></span></span></span></span></span></span><span class="mclose">)</span><span class="mord">/</span><span class="mord"><span class="mord mathrm">MAD</span></span></span></span></span> y se marca <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">∣</mi><msup><mi>z</mi><mtext>rob</mtext></msup><mi mathvariant="normal">∣</mi><mo>&gt;</mo><mn>3,5</mn></mrow><annotation encoding="application/x-tex">|z^{\text{rob}}| &gt; 3{,}5</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1.0991em;vertical-align:-0.25em;"></span><span class="mord">∣</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.044em;">z</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8491em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">rob</span></span></span></span></span></span></span></span></span></span><span class="mord">∣</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&gt;</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8389em;vertical-align:-0.1944em;"></span><span class="mord">3</span><span class="mord"><span class="mpunct">,</span></span><span class="mord">5</span></span></span></span> (Iglewicz y Hoaglin). El 0,6745 hace que, con datos normales, sea comparable a la puntuación z clásica.</p>
+</div>
+<p>¿Por qué no la z clásica, <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mi>x</mi><mo>−</mo><mover accent="true"><mi>x</mi><mo>ˉ</mo></mover><mo stretchy="false">)</mo><mi mathvariant="normal">/</mi><mi>s</mi></mrow><annotation encoding="application/x-tex">(x - \bar x)/s</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.5678em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal">x</span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.2222em;"><span class="mord">ˉ</span></span></span></span></span></span></span><span class="mclose">)</span><span class="mord">/</span><span class="mord mathnormal">s</span></span></span></span>? Porque la media y la desviación típica <strong>se dejan arrastrar por los propios anómalos</strong>: unos cuantos valores enormes inflan <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi></mrow><annotation encoding="application/x-tex">s</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.4306em;"></span><span class="mord mathnormal">s</span></span></span></span>, y entonces el umbral <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover accent="true"><mi>x</mi><mo>ˉ</mo></mover><mo>+</mo><mn>3</mn><mi>s</mi></mrow><annotation encoding="application/x-tex">\bar x + 3s</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6667em;vertical-align:-0.0833em;"></span><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.5678em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal">x</span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.2222em;"><span class="mord">ˉ</span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">3</span><span class="mord mathnormal">s</span></span></span></span> sube tanto que valores claramente raros quedan dentro (<em>enmascaramiento</em>). La mediana y la MAD apenas se mueven con unos pocos extremos: son <strong>robustas</strong>.</p>
+<p>Los precios, ingresos y cantidades tienen <strong>cola larga a la derecha</strong>: muchos valores pequeños y unos pocos grandes, todos legítimos. En escala lineal, cualquier regla marca toda la cola; en escala logarítmica la distribución se vuelve casi simétrica y la regla marca lo que de verdad no encaja. Compruébalo:</p>
+<figure class="widget" data-widget="atipicos" data-opciones="{}"><div class="w-cab"><span class="w-tit">Tres reglas, dos escalas</span><span class="w-tipo">motor interactivo</span></div><div class="w-cuerpo"><p class="sin-js">Esta visualización necesita JavaScript.</p></div><figcaption>600 precios legítimos con cola larga, tres centinelas 9999 y un precio 0. Busca la combinación que detecte los tres centinelas con menos falsas alarmas, y fíjate en lo que ninguna regla detecta.</figcaption></figure>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>x = df[&quot;precio&quot;].dropna()
+q1, q3 = x.quantile([<span class="tk-n">0.25</span>, <span class="tk-n">0.75</span>])
+fuera_iqr = (x &lt; q1 - <span class="tk-n">1.5</span> * (q3 - q1)) | (x &gt; q3 + <span class="tk-n">1.5</span> * (q3 - q1))
+med = x.median()
+z_rob = <span class="tk-n">0.6745</span> * (x - med) / (x - med).<span class="tk-b">abs</span>().median()
+lx = <span class="tk-b">np</span>.log10(x[x &gt; <span class="tk-n">0</span>])            <span class="tk-c"># el log no admite 0 ni negativos: trátalos con reglas de negocio</span></code></pre></div>
+<p>Un precio de 900 CUP es normal para el aceite y absurdo para unos fósforos: aplica las reglas <strong>dentro de cada grupo</strong>:</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>med_g = df.groupby(&quot;producto<span class="tk-s">&quot;)[&quot;</span>precio<span class="tk-s">&quot;].transform(&quot;</span>median&quot;)
+mad_g = (df[&quot;precio<span class="tk-s">&quot;] - med_g).abs().groupby(df[&quot;</span>producto<span class="tk-s">&quot;]).transform(&quot;</span>median&quot;)
+df[&quot;anomalo<span class="tk-s">&quot;] = (0.6745 * (df[&quot;</span>precio&quot;] - med_g) / mad_g).<span class="tk-b">abs</span>() &gt; <span class="tk-n">3.5</span></code></pre></div>
+<div class="tabla"><table>
+<thead>
+<tr>
+<th>Hallazgo</th>
+<th>Acción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>error con corrección conocida (otra unidad, una coma)</td>
+<td>corregir con una regla documentada</td>
+</tr>
+<tr>
+<td>centinela</td>
+<td>convertir en faltante</td>
+</tr>
+<tr>
+<td>dato real extremo (compra mayorista)</td>
+<td><strong>conservar</strong>; quizá analizar aparte</td>
+</tr>
+<tr>
+<td>no se sabe</td>
+<td>marcar (<code>df[&quot;revisar&quot;] = True</code>) y preguntar</td>
+</tr>
+</tbody></table></div>
+<aside class="caja refuta"><p><strong>Error típico: «Borro los anómalos porque estropean el gráfico y el modelo»</strong></p><p><strong>Por qué es tentador:</strong> el histograma queda bonito y el error del modelo baja. <strong>Por qué es un error:</strong> un fraude es, por definición, un anómalo; una compra mayorista es un cliente que importa. Borrar sesga el análisis y el modelo hacia una realidad que no existe, y en producción esos casos seguirán llegando. <strong>Lo correcto:</strong> marcar, preguntar, corregir solo lo que tiene corrección conocida, y usar escalas o métodos robustos para el resto.</p>
+</aside>
+<h2 id="modificar-un-dataframe-en-pandas-3-copia-al-escribir"><span class="n">§ 9</span>Modificar un <code>DataFrame</code> en pandas 3: copia al escribir</h2>
+<div class="caja def"><p><strong>Definición 4 (copia al escribir).</strong> En pandas 3, <strong>cualquier objeto que obtienes de otro (una columna, un filtro, una rebanada) se comporta como una copia independiente</strong>. Por dentro, pandas comparte la memoria mientras nadie escriba y solo copia en el momento de modificar.</p>
+</div>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>centro = df[df[&quot;tienda<span class="tk-s">&quot;] == &quot;</span>Centro&quot;]
+centro[&quot;precio&quot;] = <span class="tk-n">0</span>                                   <span class="tk-c"># cambia `centro`, no `df`</span>
+
+df[df[&quot;precio<span class="tk-s">&quot;] &gt; 5000][&quot;</span>precio<span class="tk-s">&quot;] = float(&quot;</span>nan&quot;)       <span class="tk-c"># ✗ asignación encadenada: no modifica df</span>
+df.loc[df[&quot;precio<span class="tk-s">&quot;] &gt; 5000, &quot;</span>precio<span class="tk-s">&quot;] = float(&quot;</span>nan&quot;)   <span class="tk-c"># ✓ un solo .loc</span>
+df = df.assign(importe=df[&quot;unidades<span class="tk-s">&quot;] * df[&quot;</span>precio&quot;])  <span class="tk-c"># ✓ columnas nuevas en cadena</span></code></pre></div>
+<p>La regla: <strong>para cambiar <code>df</code>, escribe <code>df.loc[...] = ...</code> o <code>df[&quot;col&quot;] = ...</code>; cualquier otra cosa cambia una copia.</strong> Es lo <strong>contrario</strong> de NumPy, donde una rebanada es una vista que sí comparte memoria al escribir (<a href="c02-ndarray.html">conferencia 2</a>). Las dos bibliotecas eligieron distinto; tenlo presente al pasar de una a otra.</p>
+<div class="predice" data-correcta="1"><span class="etq">Predice antes de seguir</span><p class="q">¿Cuál de estas líneas <strong>no</strong> modifica <code>df</code> en pandas 3?</p><ol class="opciones"><li><button type="button" data-i="0"><span class="letra">A</span><span><code>df[&quot;unidades&quot;] = df[&quot;unidades&quot;].fillna(0)</code></span></button></li><li><button type="button" data-i="1"><span class="letra">B</span><span><code>df[&quot;unidades&quot;].fillna(0, inplace=True)</code></span></button></li><li><button type="button" data-i="2"><span class="letra">C</span><span><code>df.loc[df[&quot;unidades&quot;].isna(), &quot;unidades&quot;] = 0</code></span></button></li></ol><details class="revela"><summary>Comprométete con una opción y después mira la explicación</summary><div class="dentro"><p><code>df[&quot;unidades&quot;]</code> es, por la copia al escribir, un objeto independiente; <code>inplace=True</code> modifica ese objeto, que se pierde. Es una asignación encadenada disfrazada (pandas 3 avisa). Evita <code>inplace=True</code>: casi nunca ahorra memoria y confunde.</p>
+</div></details></div>
+<h2 id="errores-tipicos"><span class="n">§ 10</span>Errores típicos</h2>
+<div class="tabla"><table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Síntoma</th>
+<th>Arreglo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Leer sin <code>sep</code>/<code>decimal</code></td>
+<td>una columna, o números como texto</td>
+<td>mira <code>shape</code> y <code>dtypes</code> tras leer</td>
+</tr>
+<tr>
+<td>Fechas sin <code>format</code></td>
+<td>fechas ambiguas al revés</td>
+<td>siempre <code>format=</code>; cuenta los <code>NaT</code></td>
+</tr>
+<tr>
+<td>Identificadores como números</td>
+<td>ceros perdidos, colisiones</td>
+<td><code>dtype={&quot;codigo&quot;: &quot;str&quot;}</code></td>
+</tr>
+<tr>
+<td>Variantes de texto</td>
+<td>más categorías de las reales</td>
+<td><code>nunique</code>, <code>value_counts</code>; <code>.str.strip()</code></td>
+</tr>
+<tr>
+<td><code>sum</code> de un grupo sin datos</td>
+<td>0 donde no se sabe</td>
+<td><code>min_count=1</code>; <code>count</code> frente a <code>size</code></td>
+</tr>
+<tr>
+<td>z clásica con anómalos grandes</td>
+<td>umbral inflado</td>
+<td>mediana y MAD; escala log</td>
+</tr>
+<tr>
+<td>Asignación encadenada o <code>inplace</code></td>
+<td>el cambio no se guarda</td>
+<td><code>df.loc[mascara, &quot;col&quot;] = valor</code></td>
+</tr>
+</tbody></table></div>
+<div class="caja llevas"><p><strong>Ideas que te llevas</strong></p><ul>
+<li><strong>Lee bien una vez</strong> (<code>sep</code>, <code>decimal</code>, <code>thousands</code>, <code>na_values</code>, <code>date_format</code>, <code>dtype</code>) y comprueba <code>shape</code> y <code>dtypes</code> justo después.</li>
+<li><strong>Rutina de inspección:</strong> forma, muestra, tipos, faltantes, duplicados, <code>nunique</code>, <code>describe</code>, <code>value_counts</code>.</li>
+<li><strong>Toda conversión forzada se audita.</strong> Un faltante no es un cero, y una fila que no existe tampoco.</li>
+<li><strong>Anómalos:</strong> reglas de negocio primero; luego IQR o MAD, en la escala adecuada y por grupos. Detectar ≠ borrar.</li>
+<li><strong>pandas 3:</strong> para modificar, <code>df.loc[mascara, &quot;col&quot;] = valor</code>.</li>
+</ul>
+</div>
+<h2 id="preguntas-de-recuperacion"><span class="n">§ 11</span>Preguntas de recuperación</h2>
+<ol>
+<li>Escribe la llamada a <code>read_csv</code> para un archivo con <code>;</code>, coma decimal, punto de miles, <code>s/d</code> como faltante y fechas <code>dd/mm/aaaa</code>.</li>
+<li>¿Por qué <code>pd.to_numeric(..., errors=&quot;coerce&quot;)</code> exige una comprobación posterior? Escríbela.</li>
+<li>¿Por qué una columna de enteros con faltantes sale <code>float64</code>, y qué tipo la conserva entera?</li>
+<li>Enuncia la regla del IQR y la de la MAD. ¿Por qué la segunda es robusta?</li>
+<li>¿Qué diferencia hay entre <code>count</code> y <code>size</code> en un <code>groupby</code>?</li>
+<li>¿Qué hace <code>df[mascara][&quot;col&quot;] = 0</code> en pandas 3?</li>
+</ol>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Respuestas</span></summary><div class="dentro"><ol>
+<li><code>pd.read_csv(ruta, sep=&quot;;&quot;, decimal=&quot;,&quot;, thousands=&quot;.&quot;, na_values=[&quot;s/d&quot;], parse_dates=[&quot;fecha&quot;], date_format=&quot;%d/%m/%Y&quot;)</code>.</li>
+<li>Porque convierte en <code>NaN</code> lo que no entiende sin avisar. <code>c = pd.to_numeric(s, errors=&quot;coerce&quot;); s[c.isna() &amp; s.notna()]</code>.</li>
+<li>El <code>int64</code> de NumPy no representa <code>NaN</code>, que es real. El tipo anulable <code>&quot;Int64&quot;</code>.</li>
+<li>IQR: fuera de <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">[</mo><msub><mi>Q</mi><mn>1</mn></msub><mo>−</mo><mn>1,5</mn><mtext> </mtext><mrow><mi mathvariant="normal">I</mi><mi mathvariant="normal">Q</mi><mi mathvariant="normal">R</mi></mrow><mo separator="true">,</mo><mtext> </mtext><msub><mi>Q</mi><mn>3</mn></msub><mo>+</mo><mn>1,5</mn><mtext> </mtext><mrow><mi mathvariant="normal">I</mi><mi mathvariant="normal">Q</mi><mi mathvariant="normal">R</mi></mrow><mo stretchy="false">]</mo></mrow><annotation encoding="application/x-tex">[Q_1 - 1{,}5\,\mathrm{IQR},\ Q_3 + 1{,}5\,\mathrm{IQR}]</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord"><span class="mord mathnormal">Q</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord">1</span><span class="mord"><span class="mpunct">,</span></span><span class="mord">5</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathrm">IQR</span></span><span class="mpunct">,</span><span class="mspace"> </span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">Q</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1</span><span class="mord"><span class="mpunct">,</span></span><span class="mord">5</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathrm">IQR</span></span><span class="mclose">]</span></span></span></span>. MAD: <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">∣</mi><mn>0,6745</mn><mtext> </mtext><mo stretchy="false">(</mo><mi>x</mi><mo>−</mo><mover accent="true"><mi>x</mi><mo>~</mo></mover><mo stretchy="false">)</mo><mi mathvariant="normal">/</mi><mrow><mi mathvariant="normal">M</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">D</mi></mrow><mi mathvariant="normal">∣</mi><mo>&gt;</mo><mn>3,5</mn></mrow><annotation encoding="application/x-tex">|0{,}6745\,(x - \tilde x)/\mathrm{MAD}| &gt; 3{,}5</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">∣0</span><span class="mord"><span class="mpunct">,</span></span><span class="mord">6745</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6679em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal">x</span></span><span style="top:-3.35em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.2222em;"><span class="mord">~</span></span></span></span></span></span></span><span class="mclose">)</span><span class="mord">/</span><span class="mord"><span class="mord mathrm">MAD</span></span><span class="mord">∣</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&gt;</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8389em;vertical-align:-0.1944em;"></span><span class="mord">3</span><span class="mord"><span class="mpunct">,</span></span><span class="mord">5</span></span></span></span>. La mediana y la MAD apenas cambian con unos pocos extremos; la media y la desviación, sí.</li>
+<li><code>count</code> cuenta valores no faltantes; <code>size</code>, filas. Si <code>count</code> es 0, la suma vale 0 aunque no sepas nada.</li>
+<li>Nada sobre <code>df</code>: modifica un intermedio. Lo correcto es <code>df.loc[mascara, &quot;col&quot;] = 0</code>.</li>
+</ol>
+</div></details>
+<h2 id="lecturas"><span class="n">§ 12</span>Lecturas</h2>
+<ul>
+<li><strong>Data Carpentry, «Análisis y visualización de datos usando Python»</strong> (<code>https://datacarpentry.github.io/python-ecology-lesson-es/</code>), en español, CC BY 4.0: episodios 3, 4 y 5. Sus datos están en los recursos de esta asignatura y tienen faltantes reales (la <a href="p03-pandas.html">práctica 3</a> los usa).</li>
+<li><strong>pandas, «What&#39;s new in 3.0.0»</strong> (<code>https://pandas.pydata.org/docs/whatsnew/v3.0.0.html</code>), en inglés: el tipo <code>str</code>, la copia al escribir y la resolución de fechas.</li>
+<li><strong>pandas, «IO tools»</strong> (<code>https://pandas.pydata.org/docs/user_guide/io.html</code>), en inglés: todos los parámetros de <code>read_csv</code> y <code>read_excel</code>.</li>
+<li><strong>Amat Rodrigo, «Detección de anomalías con Isolation Forest»</strong> (<code>https://www.cienciadedatos.net/documentos/py22-deteccion-anomalias-isolation-forest-python</code>), en español: para cuando las reglas univariantes no basten.</li>
+</ul>
+
+</article>
+<nav class="pie" aria-label="Anterior y siguiente"><a class="ant" href="p02-vectorizar.html"><small>← Anterior</small><span>Pensar en vectores: NumPy y aleatoriedad</span></a><a class="sig" href="c06-agregar.html"><small>Siguiente →</small><span>pandas II: agregar y reorganizar</span></a></nav>
+</main>
+</div>
+</body>
+</html>

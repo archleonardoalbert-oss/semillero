@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.dataset.tema = new URLSearchParams(location.search).get('tema') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro')</script>
+<script>document.documentElement.classList.add('js')</script>
+<title>De los ejercicios a un paquete con pruebas · Python científico</title>
+<meta name="description" content="Ocho ejercicios para convertir la práctica 3 en un repositorio que otra persona clona, instala sin conexión y ejecuta con un solo comando, con pruebas, un perfil medido y una optimización demostrada.">
+<meta name="theme-color" content="#f3efe4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0f15" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3.5' fill='%231b1e25'/%3E%3Crect x='2.5' y='2.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='6.5' y='2.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='10.5' y='2.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='2.5' y='6.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='6.5' y='6.5' width='3' height='3' rx='.6' fill='%23e69f00'/%3E%3Crect x='10.5' y='6.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='2.5' y='10.5' width='3' height='3' rx='.6' fill='%230072b2'/%3E%3Crect x='6.5' y='10.5' width='3' height='3' rx='.6' fill='%23555b66'/%3E%3Crect x='10.5' y='10.5' width='3' height='3' rx='.6' fill='%23cc79a7'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="lib/katex/katex.min.css">
+<link rel="stylesheet" href="css/curso.css">
+<script type="module" src="/semillero-puente.js"></script>
+<script type="module" src="motores/sitio.js"></script>
+</head>
+<body data-pieza="p04-paquete">
+<canvas id="fondo" aria-hidden="true"></canvas>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="barra"><a class="marca" href="index.html"><span class="chip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>Python científico</a><nav class="tira" aria-label="Programa de la asignatura"><span class="grupo"><a class="byte " href="index.html" data-pieza="index" title="Python científico y entorno de trabajo" aria-label="Python científico y entorno de trabajo">⌂</a></span><span class="grupo"><a class="byte c" href="c01-entorno.html" data-pieza="c01-entorno" title="Un entorno que funcione desde Cuba" aria-label="Un entorno que funcione desde Cuba">c1</a><a class="byte c" href="c02-ndarray.html" data-pieza="c02-ndarray" title="NumPy I: el ndarray" aria-label="NumPy I: el ndarray">c2</a><a class="byte c" href="c03-vectores.html" data-pieza="c03-vectores" title="NumPy II: pensar en vectores" aria-label="NumPy II: pensar en vectores">c3</a><a class="byte c" href="c04-aleatoriedad.html" data-pieza="c04-aleatoriedad" title="Aleatoriedad reproducible" aria-label="Aleatoriedad reproducible">c4</a><a class="byte c" href="c05-datos-sucios.html" data-pieza="c05-datos-sucios" title="pandas I: datos sucios" aria-label="pandas I: datos sucios">c5</a><a class="byte c" href="c06-agregar.html" data-pieza="c06-agregar" title="pandas II: agregar y reorganizar" aria-label="pandas II: agregar y reorganizar">c6</a><a class="byte c" href="c07-visualizacion.html" data-pieza="c07-visualizacion" title="Visualización y análisis exploratorio" aria-label="Visualización y análisis exploratorio">c7</a><a class="byte c" href="c08-proyecto.html" data-pieza="c08-proyecto" title="Código de proyecto, no de cuaderno" aria-label="Código de proyecto, no de cuaderno">c8</a></span><span class="grupo"><a class="byte p" href="p01-entorno.html" data-pieza="p01-entorno" title="Tu entorno, verificado y reproducible" aria-label="Tu entorno, verificado y reproducible">p1</a><a class="byte p" href="p02-vectorizar.html" data-pieza="p02-vectorizar" title="Pensar en vectores: NumPy y aleatoriedad" aria-label="Pensar en vectores: NumPy y aleatoriedad">p2</a><a class="byte p" href="p03-pandas.html" data-pieza="p03-pandas" title="Datos reales: ecología y un comercio en línea" aria-label="Datos reales: ecología y un comercio en línea">p3</a><a class="byte p actual" href="p04-paquete.html" data-pieza="p04-paquete" title="De los ejercicios a un paquete con pruebas" aria-label="De los ejercicios a un paquete con pruebas" aria-current="page">p4</a></span><span class="grupo"><a class="byte v" href="v01-einsum.html" data-pieza="v01-einsum" title="einsum: qué calcula y por qué es el idioma de los transformers" aria-label="einsum: qué calcula y por qué es el idioma de los transformers">v1</a><a class="byte v" href="v02-memoria-distancias.html" data-pieza="v02-memoria-distancias" title="La memoria de las distancias por pares, en bytes" aria-label="La memoria de las distancias por pares, en bytes">v2</a><a class="byte v" href="v03-reshape-vista.html" data-pieza="v03-reshape-vista" title="Cuándo aplanar un arreglo es una vista" aria-label="Cuándo aplanar un arreglo es una vista">v3</a></span></nav><button type="button" class="interruptor" aria-label="Cambiar de tema"><svg class="sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg></button><span class="progreso" aria-hidden="true"></span></header>
+<div class="pagina">
+<aside class="rail" aria-label="En esta página"><h2>En esta página</h2><ol><li><a href="#ejercicio-1-el-esqueleto" data-seccion="ejercicio-1-el-esqueleto">Ejercicio 1. El esqueleto</a></li><li><a href="#ejercicio-2-lectura-aislada-y-el-solape-como-funcion" data-seccion="ejercicio-2-lectura-aislada-y-el-solape-como-funcion">Ejercicio 2. Lectura aislada, y el solape como función</a></li><li><a href="#ejercicio-3-limpieza-con-sus-cuentas" data-seccion="ejercicio-3-limpieza-con-sus-cuentas">Ejercicio 3. Limpieza con sus cuentas</a></li><li><a href="#ejercicio-4-pruebas-de-la-lectura-y-la-limpieza" data-seccion="ejercicio-4-pruebas-de-la-lectura-y-la-limpieza">Ejercicio 4. Pruebas de la lectura y la limpieza</a></li><li><a href="#ejercicio-5-la-particion-por-factura-con-propiedades" data-seccion="ejercicio-5-la-particion-por-factura-con-propiedades">Ejercicio 5. La partición por factura, con propiedades</a></li><li><a href="#ejercicio-6-perfilar-la-tuberia-y-quitar-el-cuello-de-botell" data-seccion="ejercicio-6-perfilar-la-tuberia-y-quitar-el-cuello-de-botell">Ejercicio 6. Perfilar la tubería y quitar el cuello de botella</a></li><li><a href="#ejercicio-7-una-funcion-lenta-una-prueba-y-una-version-rapid" data-seccion="ejercicio-7-una-funcion-lenta-una-prueba-y-una-version-rapid">Ejercicio 7. Una función lenta, una prueba y una versión rápida</a></li><li><a href="#ejercicio-8-un-solo-comando-y-la-prueba-de-fuego" data-seccion="ejercicio-8-un-solo-comando-y-la-prueba-de-fuego">Ejercicio 8. Un solo comando, y la prueba de fuego</a></li></ol><a class="volver" href="index.html">← Programa de la asignatura</a></aside>
+<main id="contenido">
+
+<header class="cabeza"><div class="tipo"><span class="num">P4</span><span>Clase práctica</span></div><h1>De los ejercicios a un paquete con pruebas</h1><p class="resumen">Ocho ejercicios para convertir la práctica 3 en un repositorio que otra persona clona, instala sin conexión y ejecuta con un solo comando, con pruebas, un perfil medido y una optimización demostrada.</p></header>
+<article class="texto">
+<div class="caja nota"><p><strong>Conferencia que practica:</strong> <a href="c08-proyecto.html">8. Código de proyecto, no de cuaderno</a>, sobre el material de la <a href="p03-pandas.html">práctica 3</a> (Online Retail II) y con la aleatoriedad de la <a href="c04-aleatoriedad.html">conferencia 4</a>.</p>
+<p><strong>Entregable:</strong> el repositorio público <code>curso-ai-pandas</code>, con este <code>README</code> como portada: qué hace, cómo instalar (con y sin red), de dónde salen los datos, <code>make todo</code> y una tabla con las decisiones de limpieza y sus cuentas. Es la primera pieza de tu portafolio que un reclutador puede ejecutar.</p>
+<p><strong>Cómo trabajar.</strong> Sin asistente de IA. Cada ejercicio deja el repositorio en un estado que funciona: haz un <em>commit</em> al terminar cada uno.</p>
+</div>
+<h2 id="ejercicio-1-el-esqueleto">Ejercicio 1. El esqueleto</h2>
+<p>Crea la estructura de la conferencia 8 para un paquete llamado <code>minorista</code>, con <code>pyproject.toml</code>, <code>src/minorista/config.py</code> (rutas relativas a la raíz) y <code>.gitignore</code>. Instálalo en modo editable <strong>sin conexión</strong> desde tu carpeta de ruedas y comprueba que <code>python -c &quot;import minorista; print(minorista.config.RAIZ)&quot;</code> imprime la raíz del proyecto.</p>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span><span class="tag">Pista 1</span><span class="sum-t">Concepto</span></summary><div class="dentro"><p>Diseño <code>src/</code>: el paquete solo se importa si está instalado. <code>pip install -e .</code> necesita <code>setuptools</code>, que sin red debe salir de tu carpeta de ruedas.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span><span class="tag">Pista 2</span><span class="sum-t">Estrategia</span></summary><div class="dentro"><p>Crea carpetas y archivos vacíos primero (<code>data/raw</code>, <code>data/processed</code>, <code>src/minorista/__init__.py</code>, <code>tests/</code>), después <code>pyproject.toml</code> y <code>config.py</code>, y por último instala.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i></span><span class="tag">Pista 3</span><span class="sum-t">Arranque</span></summary><div class="dentro"><p><div class="codigo"><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>curso-ai-pandas/
+├── pyproject.toml   README.md   .gitignore   Makefile
+├── data/raw/   data/processed/
+├── src/minorista/__init__.py   config.py   lectura.py   limpieza.py   agregados.py   pipeline.py
+└── tests/</code></pre></div></p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="tag">Pista 4</span><span class="sum-t">Desbloqueo</span></summary><div class="dentro"><p>Para que <code>minorista.config</code> esté disponible tras <code>import minorista</code>, <code>__init__.py</code> debe importarlo: <code>from . import config</code>. Y <code>Path(__file__).resolve().parents[2]</code> sube de <code>src/minorista/config.py</code> a la raíz.</p>
+</div></details>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Solución modelo</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">toml</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># pyproject.toml</span>
+[build-system]
+<span class="tk-k">requires</span> = [<span class="tk-s">&quot;setuptools&gt;=69&quot;</span>]
+<span class="tk-k">build-backend</span> = <span class="tk-s">&quot;setuptools.build_meta&quot;</span>
+
+[project]
+<span class="tk-k">name</span> = <span class="tk-s">&quot;minorista&quot;</span>
+<span class="tk-k">version</span> = <span class="tk-s">&quot;0.1.0&quot;</span>
+<span class="tk-k">requires-python</span> = <span class="tk-s">&quot;&gt;=3.11&quot;</span>
+<span class="tk-k">dependencies</span> = [<span class="tk-s">&quot;numpy&gt;=2.0&quot;</span>, <span class="tk-s">&quot;pandas&gt;=3.0&quot;</span>, <span class="tk-s">&quot;pyarrow&quot;</span>, <span class="tk-s">&quot;openpyxl&quot;</span>]
+
+[project.optional-dependencies]
+<span class="tk-k">dev</span> = [<span class="tk-s">&quot;pytest&gt;=8&quot;</span>]
+
+[tool.pytest.ini_options]
+<span class="tk-k">testpaths</span> = [<span class="tk-s">&quot;tests&quot;</span>]</code></pre></div>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># src/minorista/config.py</span>
+<span class="tk-k">from</span> pathlib <span class="tk-k">import</span> Path
+
+RAIZ = Path(__file__).resolve().parents[<span class="tk-n">2</span>]
+CRUDOS = RAIZ / &quot;data<span class="tk-s">&quot; / &quot;</span>raw&quot;
+PROCESADOS = RAIZ / &quot;data<span class="tk-s">&quot; / &quot;</span>processed&quot;
+EXCEL = CRUDOS / &quot;online_retail_II.xlsx&quot;
+SEMILLA = <span class="tk-n">42</span></code></pre></div>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># src/minorista/__init__.py</span>
+<span class="tk-k">from</span> . <span class="tk-k">import</span> config</code></pre></div>
+<div class="codigo"><span class="lengua">bash</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">pip</span> install<span class="tk-o"> --no-index</span><span class="tk-o"> --find-links</span> ~/ruedas/py312<span class="tk-o"> -e</span> <span class="tk-s">&quot;.[dev]&quot;</span>
+<span class="tk-k">python</span><span class="tk-o"> -c</span> <span class="tk-s">&quot;import minorista; print(minorista.config.RAIZ)&quot;</span></code></pre></div>
+<strong>Idea reutilizable:</strong> antes de escribir lógica, el esqueleto instalable y una línea que demuestra que se importa.</p>
+</div></details>
+<h2 id="ejercicio-2-lectura-aislada-y-el-solape-como-funcion">Ejercicio 2. Lectura aislada, y el solape como función</h2>
+<p>En <code>lectura.py</code>, escribe <code>leer_excel(ruta)</code> (lee las dos hojas con los tipos correctos) y <code>unir_hojas(h1, h2)</code> (concatena quitando de <code>h2</code> las facturas que ya están en <code>h1</code>). <code>unir_hojas</code> debe ser <strong>pura</strong>: no lee archivos.</p>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span><span class="tag">Pista 1</span><span class="sum-t">Concepto</span></summary><div class="dentro"><p>Separar la entrada/salida de la lógica: la función que toca el disco es mínima; la que decide (el solape) se prueba con tablas de tres filas.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span><span class="tag">Pista 2</span><span class="sum-t">Estrategia</span></summary><div class="dentro"><p>Copia el código del ejercicio 9 de la práctica 3 y pártelo en dos funciones. La segunda recibe dos <code>DataFrame</code> y devuelve uno.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i></span><span class="tag">Pista 3</span><span class="sum-t">Arranque</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">def</span> unir_hojas(h1: <span class="tk-b">pd</span>.DataFrame, h2: <span class="tk-b">pd</span>.DataFrame) -&gt; <span class="tk-b">pd</span>.DataFrame:
+    <span class="tk-s">&quot;&quot;&quot;Concatena las hojas quitando de h2 las facturas que ya aparecen en h1 (las hojas se solapan).&quot;&quot;&quot;</span></code></pre></div></p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="tag">Pista 4</span><span class="sum-t">Desbloqueo</span></summary><div class="dentro"><p><code>h2[~h2[&quot;Invoice&quot;].isin(h1[&quot;Invoice&quot;])]</code> y <code>pd.concat([...], ignore_index=True)</code>. No modifiques <code>h1</code> ni <code>h2</code>.</p>
+</div></details>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Solución modelo</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># src/minorista/lectura.py</span>
+<span class="tk-k">import</span> pandas <span class="tk-k">as</span> <span class="tk-b">pd</span>
+
+TIPOS = {&quot;Invoice<span class="tk-s">&quot;: str, &quot;</span>StockCode&quot;: <span class="tk-b">str</span>}
+
+<span class="tk-k">def</span> leer_excel(ruta) -&gt; <span class="tk-b">tuple</span>[<span class="tk-b">pd</span>.DataFrame, <span class="tk-b">pd</span>.DataFrame]:
+    <span class="tk-s">&quot;&quot;&quot;Lee las dos hojas de Online Retail II con Invoice y StockCode como texto.&quot;&quot;&quot;</span>
+    hojas = <span class="tk-b">pd</span>.read_excel(ruta, sheet_name=<span class="tk-k">None</span>, dtype=TIPOS)
+    <span class="tk-k">return</span> hojas[&quot;Year <span class="tk-n">2009</span>-<span class="tk-n">2010</span><span class="tk-s">&quot;], hojas[&quot;</span>Year <span class="tk-n">2010</span>-<span class="tk-n">2011</span>&quot;]
+
+<span class="tk-k">def</span> unir_hojas(h1: <span class="tk-b">pd</span>.DataFrame, h2: <span class="tk-b">pd</span>.DataFrame) -&gt; <span class="tk-b">pd</span>.DataFrame:
+    <span class="tk-s">&quot;&quot;&quot;Concatena las hojas quitando de h2 las facturas que ya aparecen en h1 (las hojas se solapan).&quot;&quot;&quot;</span>
+    <span class="tk-k">return</span> <span class="tk-b">pd</span>.concat([h1, h2[~h2[&quot;Invoice<span class="tk-s">&quot;].isin(h1[&quot;</span>Invoice&quot;])]], ignore_index=<span class="tk-k">True</span>)</code></pre></div>
+<strong>Idea reutilizable:</strong> la decisión (qué es un duplicado entre hojas) vive en una función pura con nombre y documentación; la lectura no decide nada.</p>
+</div></details>
+<h2 id="ejercicio-3-limpieza-con-sus-cuentas">Ejercicio 3. Limpieza con sus cuentas</h2>
+<p>En <code>limpieza.py</code>, escribe <code>limpiar(df) -&gt; tuple[pd.DataFrame, dict]</code> que devuelva la tabla de ventas válidas <strong>y un diccionario con cuántas filas eliminó cada regla</strong>, para escribirlo en el <code>README</code>. Sin modificar <code>df</code>.</p>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span><span class="tag">Pista 1</span><span class="sum-t">Concepto</span></summary><div class="dentro"><p>Reglas de negocio como máscaras con nombre (práctica 3, ejercicio 10). Devolver las cuentas hace que el informe de limpieza salga del código, no de tu memoria.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span><span class="tag">Pista 2</span><span class="sum-t">Estrategia</span></summary><div class="dentro"><p>Un diccionario <code>{nombre: máscara}</code>, un diccionario de cuentas por comprensión, una máscara combinada «alguna regla», y <code>assign</code> para las columnas nuevas.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i></span><span class="tag">Pista 3</span><span class="sum-t">Arranque</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">def</span> limpiar(df):
+    reglas = {
+        &quot;cancelación<span class="tk-s">&quot;: df[&quot;</span>Invoice<span class="tk-s">&quot;].str.startswith(&quot;</span>C&quot;),
+        &quot;cantidad &lt;= <span class="tk-n">0</span><span class="tk-s">&quot;: df[&quot;</span>Quantity&quot;] &lt;= <span class="tk-n">0</span>,
+        &quot;precio &lt;= <span class="tk-n">0</span><span class="tk-s">&quot;: df[&quot;</span>Price&quot;] &lt;= <span class="tk-n">0</span>,
+    }</code></pre></div></p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="tag">Pista 4</span><span class="sum-t">Desbloqueo</span></summary><div class="dentro"><p><code>fuera = np.logical_or.reduce(list(reglas.values()))</code> combina todas; <code>cuentas = {k: int(m.sum()) for k, m in reglas.items()}</code> (las reglas pueden solaparse: añade también el total eliminado).</p>
+</div></details>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Solución modelo</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># src/minorista/limpieza.py</span>
+<span class="tk-k">import</span> numpy <span class="tk-k">as</span> <span class="tk-b">np</span>
+<span class="tk-k">import</span> pandas <span class="tk-k">as</span> <span class="tk-b">pd</span>
+
+<span class="tk-k">def</span> limpiar(df: <span class="tk-b">pd</span>.DataFrame) -&gt; <span class="tk-b">tuple</span>[<span class="tk-b">pd</span>.DataFrame, <span class="tk-b">dict</span>]:
+    <span class="tk-s">&quot;&quot;&quot;Ventas válidas: sin cancelaciones, cantidad &gt; 0 y precio &gt; 0. Devuelve también las cuentas por regla.&quot;&quot;&quot;</span>
+    reglas = {
+        &quot;cancelación<span class="tk-s">&quot;: df[&quot;</span>Invoice<span class="tk-s">&quot;].str.startswith(&quot;</span>C&quot;),
+        &quot;cantidad &lt;= <span class="tk-n">0</span><span class="tk-s">&quot;: df[&quot;</span>Quantity&quot;] &lt;= <span class="tk-n">0</span>,
+        &quot;precio &lt;= <span class="tk-n">0</span><span class="tk-s">&quot;: df[&quot;</span>Price&quot;] &lt;= <span class="tk-n">0</span>,
+    }
+    fuera = <span class="tk-b">np</span>.logical_or.reduce([m.to_numpy() <span class="tk-k">for</span> m <span class="tk-k">in</span> reglas.values()])
+    cuentas = {k: <span class="tk-b">int</span>(m.<span class="tk-b">sum</span>()) <span class="tk-k">for</span> k, m <span class="tk-k">in</span> reglas.items()} | {&quot;eliminadas en total&quot;: <span class="tk-b">int</span>(fuera.<span class="tk-b">sum</span>())}
+    ventas = df[~fuera].assign(
+        importe=<span class="tk-k">lambda</span> d: d[&quot;Quantity<span class="tk-s">&quot;] * d[&quot;</span>Price&quot;],
+        cliente=<span class="tk-k">lambda</span> d: d[&quot;Customer ID<span class="tk-s">&quot;].astype(&quot;</span>Int64&quot;),
+    )
+    <span class="tk-k">return</span> ventas, cuentas</code></pre></div>
+<code>str.startswith</code> sobre <code>str</code> devuelve booleanos; si <code>Invoice</code> tuviera faltantes devolvería <code>NaN</code> y la máscara fallaría: por eso la lectura fija <code>dtype=str</code> y la prueba del ejercicio 4 lo comprueba.</p>
+<p><strong>Idea reutilizable:</strong> una función de limpieza devuelve los datos <strong>y</strong> su auditoría.</p>
+</div></details>
+<h2 id="ejercicio-4-pruebas-de-la-lectura-y-la-limpieza">Ejercicio 4. Pruebas de la lectura y la limpieza</h2>
+<p>Escribe <code>tests/test_limpieza.py</code> con una fijación que construya una tabla pequeña (seis filas que cubran: venta normal, cancelación, cantidad negativa sin «C», precio 0, sin cliente, y una factura repetida en las dos hojas) y pruebas para: el solape (<code>unir_hojas</code>), cada regla de <code>limpiar</code>, que <code>limpiar</code> no modifica su entrada, y las cuentas.</p>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span><span class="tag">Pista 1</span><span class="sum-t">Concepto</span></summary><div class="dentro"><p><code>@pytest.fixture</code> para los datos compartidos; <code>pd.testing.assert_frame_equal</code> para comparar tablas; una prueba de <strong>regresión</strong> del solape, el error real que encontraste en la práctica 3.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span><span class="tag">Pista 2</span><span class="sum-t">Estrategia</span></summary><div class="dentro"><p>Diseña la tabla para que <strong>cada</strong> regla elimine exactamente una fila: así cada cuenta esperada es 1 y una prueba fallida dice exactamente qué regla se rompió.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i></span><span class="tag">Pista 3</span><span class="sum-t">Arranque</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-d">@pytest.fixture</span>
+<span class="tk-k">def</span> hoja():
+    <span class="tk-k">return</span> <span class="tk-b">pd</span>.DataFrame({
+        &quot;Invoice<span class="tk-s">&quot;:     [&quot;</span><span class="tk-n">100</span><span class="tk-s">&quot;, &quot;</span>C101<span class="tk-s">&quot;, &quot;</span><span class="tk-n">102</span><span class="tk-s">&quot;, &quot;</span><span class="tk-n">103</span><span class="tk-s">&quot;, &quot;</span><span class="tk-n">104</span>&quot;],
+        &quot;StockCode<span class="tk-s">&quot;:   [&quot;</span>A<span class="tk-s">&quot;, &quot;</span>A<span class="tk-s">&quot;, &quot;</span><span class="tk-s">B&quot;, &quot;</span>C<span class="tk-s">&quot;, &quot;</span>D&quot;],
+        &quot;Quantity&quot;:    [<span class="tk-n">2</span>, -<span class="tk-n">2</span>, -<span class="tk-n">5</span>, <span class="tk-n">1</span>, <span class="tk-n">3</span>],
+        &quot;Price&quot;:       [<span class="tk-n">1.5</span>, <span class="tk-n">1.5</span>, <span class="tk-n">0.0</span>, <span class="tk-n">0.0</span>, <span class="tk-n">2.0</span>],
+        &quot;Customer ID&quot;: [<span class="tk-n">7.0</span>, <span class="tk-n">7.0</span>, <span class="tk-k">None</span>, <span class="tk-n">8.0</span>, <span class="tk-k">None</span>],
+    })</code></pre></div></p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="tag">Pista 4</span><span class="sum-t">Desbloqueo</span></summary><div class="dentro"><p>En esa tabla, la fila «102» cumple <strong>dos</strong> reglas (cantidad negativa y precio 0): las cuentas por regla suman más que el total eliminado. Es un buen caso para comprobar que el total no se calcula sumando reglas.</p>
+</div></details>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Solución modelo</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># tests/test_limpieza.py</span>
+<span class="tk-k">import</span> pandas <span class="tk-k">as</span> <span class="tk-b">pd</span>
+<span class="tk-k">import</span> <span class="tk-b">pytest</span>
+<span class="tk-k">from</span> minorista.lectura <span class="tk-k">import</span> unir_hojas
+<span class="tk-k">from</span> minorista.limpieza <span class="tk-k">import</span> limpiar
+
+<span class="tk-d">@pytest.fixture</span>
+<span class="tk-k">def</span> hoja():
+    <span class="tk-k">return</span> <span class="tk-b">pd</span>.DataFrame({
+        &quot;Invoice<span class="tk-s">&quot;:     [&quot;</span><span class="tk-n">100</span><span class="tk-s">&quot;, &quot;</span>C101<span class="tk-s">&quot;, &quot;</span><span class="tk-n">102</span><span class="tk-s">&quot;, &quot;</span><span class="tk-n">103</span><span class="tk-s">&quot;, &quot;</span><span class="tk-n">104</span>&quot;],
+        &quot;StockCode<span class="tk-s">&quot;:   [&quot;</span>A<span class="tk-s">&quot;, &quot;</span>A<span class="tk-s">&quot;, &quot;</span><span class="tk-s">B&quot;, &quot;</span>C<span class="tk-s">&quot;, &quot;</span>D&quot;],
+        &quot;Quantity&quot;:    [<span class="tk-n">2</span>, -<span class="tk-n">2</span>, -<span class="tk-n">5</span>, <span class="tk-n">1</span>, <span class="tk-n">3</span>],
+        &quot;Price&quot;:       [<span class="tk-n">1.5</span>, <span class="tk-n">1.5</span>, <span class="tk-n">0.0</span>, <span class="tk-n">0.0</span>, <span class="tk-n">2.0</span>],
+        &quot;Customer ID&quot;: [<span class="tk-n">7.0</span>, <span class="tk-n">7.0</span>, <span class="tk-k">None</span>, <span class="tk-n">8.0</span>, <span class="tk-k">None</span>],
+    })
+
+<span class="tk-k">def</span> test_unir_hojas_quita_el_solape(hoja):           <span class="tk-c"># regresión: las hojas reales se solapan</span>
+    h2 = <span class="tk-b">pd</span>.concat([hoja.iloc[[<span class="tk-n">4</span>]], <span class="tk-b">pd</span>.DataFrame({&quot;Invoice<span class="tk-s">&quot;: [&quot;</span><span class="tk-n">200</span><span class="tk-s">&quot;], &quot;</span>StockCode<span class="tk-s">&quot;: [&quot;</span>E<span class="tk-s">&quot;], &quot;</span>Quantity&quot;: [<span class="tk-n">1</span>],
+                                                  &quot;Price<span class="tk-s">&quot;: [1.0], &quot;</span>Customer ID&quot;: [<span class="tk-n">9.0</span>]})], ignore_index=<span class="tk-k">True</span>)
+    r = unir_hojas(hoja, h2)
+    <span class="tk-k">assert</span> <span class="tk-b">len</span>(r) == <span class="tk-b">len</span>(hoja) + <span class="tk-n">1</span>
+    <span class="tk-k">assert</span> r[&quot;Invoice&quot;].value_counts().<span class="tk-b">max</span>() == <span class="tk-n">1</span>
+
+<span class="tk-k">def</span> test_limpiar_reglas_y_cuentas(hoja):
+    ventas, cuentas = limpiar(hoja)
+    <span class="tk-k">assert</span> <span class="tk-b">list</span>(ventas[&quot;Invoice<span class="tk-s">&quot;]) == [&quot;</span><span class="tk-n">100</span><span class="tk-s">&quot;, &quot;</span><span class="tk-n">104</span>&quot;]          <span class="tk-c"># la venta sin cliente se conserva</span>
+    <span class="tk-k">assert</span> cuentas == {&quot;cancelación<span class="tk-s">&quot;: 1, &quot;</span>cantidad &lt;= <span class="tk-n">0</span><span class="tk-s">&quot;: 2, &quot;</span>precio &lt;= <span class="tk-n">0</span><span class="tk-s">&quot;: 2, &quot;</span>eliminadas en total&quot;: <span class="tk-n">3</span>}
+    <span class="tk-k">assert</span> ventas[&quot;importe&quot;].tolist() == <span class="tk-b">pytest</span>.approx([<span class="tk-n">3.0</span>, <span class="tk-n">6.0</span>])
+    <span class="tk-k">assert</span> ventas[&quot;cliente&quot;].isna().tolist() == [<span class="tk-k">False</span>, <span class="tk-k">True</span>]
+
+<span class="tk-k">def</span> test_limpiar_no_modifica_la_entrada(hoja):
+    copia = hoja.copy()
+    limpiar(hoja)
+    <span class="tk-b">pd</span>.testing.assert_frame_equal(hoja, copia)</code></pre></div>
+Comprueba las cuentas a mano: «cantidad ≤ 0» afecta a C101 (−2) y 102 (−5); «precio ≤ 0», a 102 y 103; en total salen C101, 102 y 103, tres filas, aunque las reglas sumen 5.</p>
+<p><strong>Idea reutilizable:</strong> una tabla diminuta diseñada para que cada regla se vea por separado vale más que mil filas reales en una prueba.</p>
+</div></details>
+<h2 id="ejercicio-5-la-particion-por-factura-con-propiedades">Ejercicio 5. La partición por factura, con propiedades</h2>
+<p>Mueve la partición del ejercicio 12 de la práctica 3 a <code>particion.py</code> como <code>particion_por_factura(df, frac, semilla)</code> y pruébala con propiedades, parametrizando tres semillas: tamaños aproximados, disjuntas por factura, que cubren todo, reproducibles y distintas con otra semilla.</p>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span><span class="tag">Pista 1</span><span class="sum-t">Concepto</span></summary><div class="dentro"><p>Propiedades que se cumplen para cualquier entrada (conferencia 8, sección 4), con datos aleatorios <strong>con semilla fija</strong>.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span><span class="tag">Pista 2</span><span class="sum-t">Estrategia</span></summary><div class="dentro"><p>Genera en la prueba una tabla sintética con 200 facturas de 1 a 6 líneas cada una (<code>rng.integers</code>), aplica la función y comprueba cada propiedad con un <code>assert</code>.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i></span><span class="tag">Pista 3</span><span class="sum-t">Arranque</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-d">@pytest.mark.parametrize</span>(&quot;semilla&quot;, [<span class="tk-n">0</span>, <span class="tk-n">1</span>, <span class="tk-n">2</span>])
+<span class="tk-k">def</span> test_particion_por_factura(semilla):
+    rng = <span class="tk-b">np</span>.random.default_rng(<span class="tk-n">100</span> + semilla)
+    lineas = rng.integers(<span class="tk-n">1</span>, <span class="tk-n">7</span>, size=<span class="tk-n">200</span>)
+    df = <span class="tk-b">pd</span>.DataFrame({&quot;Invoice<span class="tk-s">&quot;: np.repeat([f&quot;</span>F{i}&quot; <span class="tk-k">for</span> i <span class="tk-k">in</span> <span class="tk-b">range</span>(<span class="tk-n">200</span>)], lineas)})</code></pre></div></p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="tag">Pista 4</span><span class="sum-t">Desbloqueo</span></summary><div class="dentro"><p>«Tamaño aproximado»: el 20 % de las <strong>facturas</strong> (exactamente 40), no de las líneas. Comprueba <code>pru[&quot;Invoice&quot;].nunique() == 40</code>.</p>
+</div></details>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Solución modelo</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># src/minorista/particion.py</span>
+<span class="tk-k">import</span> numpy <span class="tk-k">as</span> <span class="tk-b">np</span>
+<span class="tk-k">import</span> pandas <span class="tk-k">as</span> <span class="tk-b">pd</span>
+
+<span class="tk-k">def</span> particion_por_factura(df: <span class="tk-b">pd</span>.DataFrame, frac: <span class="tk-b">float</span>, semilla: <span class="tk-b">int</span>) -&gt; <span class="tk-b">tuple</span>[<span class="tk-b">pd</span>.DataFrame, <span class="tk-b">pd</span>.DataFrame]:
+    <span class="tk-s">&quot;&quot;&quot;Entrenamiento y prueba con una fracción de las FACTURAS en prueba; ninguna factura queda partida.&quot;&quot;&quot;</span>
+    facturas = df[&quot;Invoice&quot;].unique()
+    prueba = <span class="tk-b">np</span>.random.default_rng(semilla).permutation(facturas)[: <span class="tk-b">int</span>(frac * <span class="tk-b">len</span>(facturas))]
+    es_prueba = df[&quot;Invoice&quot;].isin(prueba)
+    <span class="tk-k">return</span> df[~es_prueba], df[es_prueba]</code></pre></div>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># tests/test_particion.py</span>
+<span class="tk-k">import</span> numpy <span class="tk-k">as</span> <span class="tk-b">np</span>
+<span class="tk-k">import</span> pandas <span class="tk-k">as</span> <span class="tk-b">pd</span>
+<span class="tk-k">import</span> <span class="tk-b">pytest</span>
+<span class="tk-k">from</span> minorista.particion <span class="tk-k">import</span> particion_por_factura
+
+<span class="tk-d">@pytest.mark.parametrize</span>(&quot;semilla&quot;, [<span class="tk-n">0</span>, <span class="tk-n">1</span>, <span class="tk-n">2</span>])
+<span class="tk-k">def</span> test_particion_por_factura(semilla):
+    rng = <span class="tk-b">np</span>.random.default_rng(<span class="tk-n">100</span> + semilla)
+    df = <span class="tk-b">pd</span>.DataFrame({&quot;Invoice<span class="tk-s">&quot;: np.repeat([f&quot;</span>F{i}&quot; <span class="tk-k">for</span> i <span class="tk-k">in</span> <span class="tk-b">range</span>(<span class="tk-n">200</span>)], rng.integers(<span class="tk-n">1</span>, <span class="tk-n">7</span>, size=<span class="tk-n">200</span>))})
+    ent, pru = particion_por_factura(df, <span class="tk-n">0.2</span>, semilla)
+    <span class="tk-k">assert</span> pru[&quot;Invoice&quot;].nunique() == <span class="tk-n">40</span>
+    <span class="tk-k">assert</span> <span class="tk-b">set</span>(ent[&quot;Invoice<span class="tk-s">&quot;]).isdisjoint(pru[&quot;</span>Invoice&quot;])
+    <span class="tk-k">assert</span> <span class="tk-b">len</span>(ent) + <span class="tk-b">len</span>(pru) == <span class="tk-b">len</span>(df)
+    ent2, pru2 = particion_por_factura(df, <span class="tk-n">0.2</span>, semilla)
+    <span class="tk-b">pd</span>.testing.assert_frame_equal(pru, pru2)
+    <span class="tk-k">assert</span> <span class="tk-k">not</span> pru.equals(particion_por_factura(df, <span class="tk-n">0.2</span>, semilla + <span class="tk-n">10</span>)[<span class="tk-n">1</span>])</code></pre></div>
+<strong>Idea reutilizable:</strong> las funciones aleatorias se prueban por sus propiedades y por su reproducibilidad, nunca por un valor concreto «que salió una vez».</p>
+</div></details>
+<h2 id="ejercicio-6-perfilar-la-tuberia-y-quitar-el-cuello-de-botell">Ejercicio 6. Perfilar la tubería y quitar el cuello de botella</h2>
+<p>Escribe <code>pipeline.py</code> con <code>main()</code> (leer → unir → limpiar → semanal → guardar en <code>data/processed/</code>). Perfílalo con <code>cProfile</code>. ¿Qué paso se lleva el tiempo? Arréglalo sin cambiar el resultado y mide de nuevo.</p>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span><span class="tag">Pista 1</span><span class="sum-t">Concepto</span></summary><div class="dentro"><p>Medir antes de optimizar. En una tubería con un Excel de 45 MB, sospecha de la lectura antes que de pandas.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span><span class="tag">Pista 2</span><span class="sum-t">Estrategia</span></summary><div class="dentro"><p><code>python -m cProfile -o perfil.out -m minorista.pipeline</code> y ordena por <code>cumulative</code>. Busca la primera función tuya con <code>cumtime</code> grande.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i></span><span class="tag">Pista 3</span><span class="sum-t">Arranque</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">def</span> main():
+    h1, h2 = leer_excel(config.EXCEL)
+    ventas, cuentas = limpiar(unir_hojas(h1, h2))
+    config.PROCESADOS.mkdir(parents=<span class="tk-k">True</span>, exist_ok=<span class="tk-k">True</span>)
+    ventas.to_parquet(config.PROCESADOS / &quot;ventas.parquet&quot;)</code></pre></div></p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="tag">Pista 4</span><span class="sum-t">Desbloqueo</span></summary><div class="dentro"><p><code>leer_excel</code> (en realidad, <code>openpyxl</code>) se lleva casi todo el tiempo: interpretar el XML del Excel es lento. La solución es una <strong>caché</strong>: si existe <code>data/processed/crudo.parquet</code>, léelo; si no, lee el Excel y guárdalo. La prueba de equivalencia: la tabla leída de la caché es igual a la del Excel.</p>
+</div></details>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Solución modelo</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-c"># src/minorista/pipeline.py</span>
+<span class="tk-k">import</span> pandas <span class="tk-k">as</span> <span class="tk-b">pd</span>
+<span class="tk-k">from</span> minorista <span class="tk-k">import</span> config
+<span class="tk-k">from</span> minorista.lectura <span class="tk-k">import</span> leer_excel, unir_hojas
+<span class="tk-k">from</span> minorista.limpieza <span class="tk-k">import</span> limpiar
+
+<span class="tk-k">def</span> crudo() -&gt; <span class="tk-b">pd</span>.DataFrame:
+    <span class="tk-s">&quot;&quot;&quot;Las dos hojas unidas sin solape; la primera vez lee el Excel (lento) y guarda una caché en Parquet.&quot;&quot;&quot;</span>
+    cache = config.PROCESADOS / &quot;crudo.parquet&quot;
+    <span class="tk-k">if</span> cache.exists():
+        <span class="tk-k">return</span> <span class="tk-b">pd</span>.read_parquet(cache)
+    df = unir_hojas(*leer_excel(config.EXCEL))
+    config.PROCESADOS.mkdir(parents=<span class="tk-k">True</span>, exist_ok=<span class="tk-k">True</span>)
+    df.to_parquet(cache)
+    <span class="tk-k">return</span> df
+
+<span class="tk-k">def</span> main():
+    ventas, cuentas = limpiar(crudo())
+    ventas.to_parquet(config.PROCESADOS / &quot;ventas.parquet&quot;)
+    <span class="tk-k">for</span> k, v <span class="tk-k">in</span> cuentas.items():
+        <span class="tk-b">print</span>(<span class="tk-s">f&quot;{k}: {v}&quot;</span>)
+
+<span class="tk-k">if</span> __name__ == &quot;__main__&quot;:
+    main()</code></pre></div>
+Mide tú los tiempos (dependen de tu máquina): la primera ejecución sigue pagando la lectura del Excel, que con <code>openpyxl</code> cuesta minutos; las siguientes leen Parquet en segundos o menos. Anota los dos números en el <code>README</code>. La caché es un dato <strong>derivado</strong>: vive en <code>data/processed/</code>, no va a Git y se puede borrar para forzar la relectura.</p>
+<p><strong>Idea reutilizable:</strong> el cuello de botella casi nunca está donde lo intuyes; cuando es la entrada/salida, la respuesta suele ser un formato mejor, no un algoritmo mejor.</p>
+</div></details>
+<h2 id="ejercicio-7-una-funcion-lenta-una-prueba-y-una-version-rapid">Ejercicio 7. Una función lenta, una prueba y una versión rápida</h2>
+<p>Un compañero escribió esto para el importe total y el número de facturas de cada cliente:</p>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">def</span> resumen_clientes_lento(ventas):
+    filas = {}
+    <span class="tk-k">for</span> _, r <span class="tk-k">in</span> ventas.iterrows():
+        <span class="tk-k">if</span> <span class="tk-b">pd</span>.isna(r[&quot;cliente&quot;]):
+            <span class="tk-k">continue</span>
+        f = filas.setdefault(r[&quot;cliente<span class="tk-s">&quot;], {&quot;</span>importe<span class="tk-s">&quot;: 0.0, &quot;</span>facturas&quot;: <span class="tk-b">set</span>()})
+        f[&quot;importe<span class="tk-s">&quot;] += r[&quot;</span>Quantity<span class="tk-s">&quot;] * r[&quot;</span>Price&quot;]
+        f[&quot;facturas<span class="tk-s">&quot;].add(r[&quot;</span>Invoice&quot;])
+    <span class="tk-k">return</span> <span class="tk-b">pd</span>.DataFrame({c: {&quot;importe<span class="tk-s">&quot;: v[&quot;</span>importe<span class="tk-s">&quot;], &quot;</span>n_facturas<span class="tk-s">&quot;: len(v[&quot;</span>facturas&quot;])}
+                         <span class="tk-k">for</span> c, v <span class="tk-k">in</span> filas.items()}).T.sort_index()</code></pre></div>
+<p>Escribe primero la <strong>prueba de equivalencia</strong>, después <code>resumen_clientes</code> vectorizada con <code>groupby</code>, y mide la diferencia con 50 000 filas de <code>ventas</code>.</p>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span><span class="tag">Pista 1</span><span class="sum-t">Concepto</span></summary><div class="dentro"><p><code>iterrows</code> crea una <code>Series</code> por fila: es el patrón lento número uno de pandas (conferencia 8, tabla de sospechosos). La versión vectorizada es una agregación con nombre.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span><span class="tag">Pista 2</span><span class="sum-t">Estrategia</span></summary><div class="dentro"><p>La prueba compara las dos funciones sobre una tabla pequeña con un cliente faltante y una factura con dos líneas. Después, <code>groupby(&quot;cliente&quot;).agg(importe=..., n_facturas=...)</code>.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i></span><span class="tag">Pista 3</span><span class="sum-t">Arranque</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">def</span> resumen_clientes(ventas):
+    <span class="tk-k">return</span> (ventas.dropna(subset=[&quot;cliente&quot;])
+                  .groupby(&quot;cliente&quot;)
+                  .agg(importe=(&quot;importe<span class="tk-s">&quot;, &quot;</span><span class="tk-b">sum</span><span class="tk-s">&quot;), n_facturas=(&quot;</span>Invoice<span class="tk-s">&quot;, &quot;</span>nunique&quot;)))</code></pre></div></p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="tag">Pista 4</span><span class="sum-t">Desbloqueo</span></summary><div class="dentro"><p>La versión lenta devuelve tipos <code>object</code> (por construir el <code>DataFrame</code> desde diccionarios y trasponer) y un índice con otro nombre: en la prueba, compara con <code>check_dtype=False</code> y <code>check_names=False</code>, o convierte antes con <code>.astype(float)</code>.</p>
+</div></details>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Solución modelo</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code><span class="tk-k">def</span> test_resumen_clientes_igual_a_lento():
+    v = <span class="tk-b">pd</span>.DataFrame({&quot;Invoice<span class="tk-s">&quot;: [&quot;</span><span class="tk-n">1</span><span class="tk-s">&quot;, &quot;</span><span class="tk-n">1</span><span class="tk-s">&quot;, &quot;</span><span class="tk-n">2</span><span class="tk-s">&quot;, &quot;</span><span class="tk-n">3</span><span class="tk-s">&quot;], &quot;</span>Quantity<span class="tk-s">&quot;: [2, 1, 4, 1], &quot;</span>Price&quot;: [<span class="tk-n">1.0</span>, <span class="tk-n">3.0</span>, <span class="tk-n">0.5</span>, <span class="tk-n">9.0</span>],
+                      &quot;cliente<span class="tk-s">&quot;: pd.array([7, 7, 7, pd.NA], dtype=&quot;</span>Int64&quot;)})
+    v[&quot;importe<span class="tk-s">&quot;] = v[&quot;</span>Quantity<span class="tk-s">&quot;] * v[&quot;</span>Price&quot;]
+    rapido = resumen_clientes(v)
+    lento = resumen_clientes_lento(v)
+    <span class="tk-b">pd</span>.testing.assert_frame_equal(rapido.astype(<span class="tk-b">float</span>), lento.astype(<span class="tk-b">float</span>), check_names=<span class="tk-k">False</span>, check_index_type=<span class="tk-k">False</span>)
+    <span class="tk-k">assert</span> rapido.loc[<span class="tk-n">7</span>, &quot;n_facturas<span class="tk-s">&quot;] == 2 and rapido.loc[7, &quot;</span>importe&quot;] == <span class="tk-b">pytest</span>.approx(<span class="tk-n">7.0</span>)</code></pre></div>
+<div class="codigo"><span class="lengua">python</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>muestra = ventas.head(<span class="tk-n">50_000</span>)
+%timeit resumen_clientes_lento(muestra)
+%timeit resumen_clientes(muestra)</code></pre></div>
+Mide tú el factor; con <code>iterrows</code> sobre decenas de miles de filas suele ser de dos o tres órdenes de magnitud. Lo que no depende de la máquina: la prueba existía <strong>antes</strong> de cambiar el código, así que la versión rápida está demostrada equivalente.</p>
+<p><strong>Idea reutilizable:</strong> prueba de equivalencia primero, versión rápida después, medición al final.</p>
+</div></details>
+<h2 id="ejercicio-8-un-solo-comando-y-la-prueba-de-fuego">Ejercicio 8. Un solo comando, y la prueba de fuego</h2>
+<p>Escribe un <code>Makefile</code> con los objetivos <code>instalar</code> (sin red), <code>datos</code> (la tubería), <code>pruebas</code> y <code>todo</code>. Escribe el <code>README</code>. Después: clona el repositorio en otra carpeta <strong>con la red desactivada</strong>, copia allí el Excel a <code>data/raw/</code> y ejecuta <code>make todo</code>. ¿Sale lo mismo?</p>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span><span class="tag">Pista 1</span><span class="sum-t">Concepto</span></summary><div class="dentro"><p>El «un solo comando» de la conferencia 8 y la prueba de fuego de la conferencia 1, juntas.</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span><span class="tag">Pista 2</span><span class="sum-t">Estrategia</span></summary><div class="dentro"><p>Cada objetivo del <code>Makefile</code> es una línea de lo que ya haces a mano. La variable <code>RUEDAS</code> debe poder cambiarse desde fuera (<code>make todo RUEDAS=/media/usb/ruedas</code>).</p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i></span><span class="tag">Pista 3</span><span class="sum-t">Arranque</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">make</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>RUEDAS ?= $(HOME)/ruedas/py312
+PY := .venv/bin/python</code></pre></div></p>
+</div></details>
+<details class="pista"><summary><span class="nivel" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="tag">Pista 4</span><span class="sum-t">Desbloqueo</span></summary><div class="dentro"><p>En un <code>Makefile</code>, las órdenes van indentadas con un <strong>tabulador</strong>, no con espacios. Y las pruebas no necesitan el Excel (usan tablas sintéticas): por eso pueden correr en GitHub Actions sin descargar 45 MB.</p>
+</div></details>
+<details class="sol"><summary><span class="tag">Respuesta</span><span class="sum-t">Solución modelo</span></summary><div class="dentro"><p><div class="codigo"><span class="lengua">make</span><button type="button" class="copiar" aria-label="Copiar el código">copiar</button><pre><code>RUEDAS ?= $(HOME)/ruedas/py312
+PY := .venv/bin/python
+
+instalar:
+	python3.12 -m venv .venv
+	$(PY) -m pip install --no-index --find-links $(RUEDAS) -r requirements.txt
+	$(PY) -m pip install --no-index --find-links $(RUEDAS) --no-deps -e .
+
+datos:
+	$(PY) -m minorista.pipeline
+
+pruebas:
+	$(PY) -m pytest -q
+
+todo: instalar pruebas datos</code></pre></div>
+El <code>README</code> lleva las cinco secciones de la conferencia 8 y la tabla de cuentas que imprime <code>main()</code>. Si en la carpeta nueva y sin red <code>make todo</code> termina con las pruebas en verde y las mismas cuentas de limpieza, el proyecto es reproducible. Si falla, el mensaje te dirá qué falta: casi siempre una rueda que no estaba en la carpeta (vuelve a la conferencia 1) o una ruta absoluta escondida.</p>
+<p><strong>Idea reutilizable:</strong> «funciona en mi máquina» no es un resultado; «funciona en otra carpeta, sin red, con un comando» sí lo es.</p>
+</div></details>
+
+</article>
+<nav class="pie" aria-label="Anterior y siguiente"><a class="ant" href="c08-proyecto.html"><small>← Anterior</small><span>Código de proyecto, no de cuaderno</span></a><a class="sig" href="v01-einsum.html"><small>Siguiente →</small><span>einsum: qué calcula y por qué es el idioma de los transformers</span></a></nav>
+</main>
+</div>
+</body>
+</html>
