@@ -1,0 +1,11 @@
+{
+  "nombre": "semillero",
+  "titulo": "Semillero",
+  "descripcion": "Un almacén de ideas: Claude investiga cada una, emite un dictamen y convierte las buenas en un plan de estudio.",
+  "ruta": "/semillero/",
+  "demo": {
+    "carpeta": "dist-demo",
+    "construir": "npm ci && node demo/construir.mjs",
+    "entrada": "index.html"
+  }
+}

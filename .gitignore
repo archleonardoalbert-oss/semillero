@@ -6,3 +6,4 @@ datos/
 .worktrees/
 .copias/
 web/dist-demo/
+dist-demo/
